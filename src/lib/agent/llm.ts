@@ -5,7 +5,7 @@ const BASE_URL = (process.env.LLM_BASE_URL ?? "https://ai.tkapi.site/v1").replac
 const API_KEY = process.env.LLM_API_KEY ?? "";
 const MODEL = process.env.LLM_MODEL ?? "grok-4.6";
 const REASONING = process.env.LLM_REASONING_EFFORT ?? "medium";
-const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? 28000);
+const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? 40000);
 
 export function llmConfigured() {
   return Boolean(API_KEY);

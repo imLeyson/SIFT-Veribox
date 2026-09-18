@@ -4,7 +4,7 @@ import { useVeriboxStore } from "@/lib/store";
 import { serializeCanvas } from "@/lib/canvas-graph";
 import type { Brief, ExplorationRoute, PlatformPlan } from "@/types";
 
-const CLIENT_TIMEOUT_MS = 45000;
+const CLIENT_TIMEOUT_MS = 50000;
 let inflight: AbortController | null = null;
 let userCancel = false;
 

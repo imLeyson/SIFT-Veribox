@@ -103,7 +103,7 @@ export async function liveGenerateRoutes(
 7. 最多推荐 1 条；推荐理由必须挂钩当前 Brief 的未知项。推荐不等于自动选择。
 8. 中文输出。`,
     JSON.stringify({ brief, starting_state: startingState, user_initial_idea: userInitialIdea }, null, 2),
-    "medium"
+    "low"
   );
   return parseOrThrow(RoutesPayloadSchema, camelRoutes(data), "探索路线");
 }
