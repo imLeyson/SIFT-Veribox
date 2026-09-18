@@ -2,6 +2,12 @@ import { z } from "zod";
 
 const nonEmpty = z.string().trim().min(1);
 
+export const ClarifyQuestionSchema = z.object({
+  id: nonEmpty,
+  prompt: nonEmpty,
+  options: z.array(nonEmpty).min(2).max(5),
+});
+
 export const BriefSchema = z.object({
   goal: nonEmpty,
   targetUser: nonEmpty,
@@ -10,6 +16,12 @@ export const BriefSchema = z.object({
   constraints: z.array(z.string().trim()),
   deliverable: nonEmpty,
   openQuestions: z.array(nonEmpty).max(3).default([]),
+  clarifyQuestions: z.array(ClarifyQuestionSchema).max(4).default([]),
+});
+
+export const ClarifyResultSchema = z.object({
+  brief: BriefSchema,
+  ready: z.boolean(),
 });
 
 export const RouteSchema = z.object({

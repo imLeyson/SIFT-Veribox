@@ -27,10 +27,18 @@ export function mockParseBrief(raw: string): Brief {
         "避免廉价感",
       ]),
       deliverable: "视觉探索方向",
-      openQuestions: [],
+      openQuestions: ["你更想先搞清哪件事？"],
+      clarifyQuestions: [
+        {
+          id: "q1",
+          prompt: "你更想先搞清哪件事？",
+          options: ["瓶子和包装长什么样", "人怎么用、怎么拍", "别的品牌在卖什么样子"],
+        },
+      ],
     };
   }
 
+  const short = raw.trim().length < 24;
   return {
     goal: summarizeGoal(raw),
     targetUser: "待确认目标用户",
@@ -38,8 +46,29 @@ export function mockParseBrief(raw: string): Brief {
     unknown: ["还不知道先去搜什么"],
     constraints: [],
     deliverable: "视觉探索方向",
-    openQuestions:
-      raw.trim().length < 20 ? ["目标用户是谁？", "有哪些明确不要的方向？"] : [],
+    openQuestions: short
+      ? ["这是做什么？", "先看哪一块？"]
+      : ["你更想先搞清哪件事？"],
+    clarifyQuestions: short
+      ? [
+          {
+            id: "q1",
+            prompt: "这是做什么？",
+            options: ["App / 小程序界面", "包装或产品外观", "品牌或平面", "还没定"],
+          },
+          {
+            id: "q2",
+            prompt: "先看哪一块？",
+            options: ["别人怎么做", "关键页面或关键物件", "用户怎么用"],
+          },
+        ]
+      : [
+          {
+            id: "q1",
+            prompt: "你更想先搞清哪件事？",
+            options: ["别人怎么做", "关键部分长什么样", "用在什么场合"],
+          },
+        ],
   };
 }
 

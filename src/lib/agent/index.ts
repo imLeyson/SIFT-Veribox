@@ -12,6 +12,7 @@ import {
 } from "./mock";
 import {
   liveParseBrief,
+  liveClarifyBrief,
   liveGenerateRoutes,
   livePlatformPlan,
 } from "./live";
@@ -32,6 +33,28 @@ export function agentInfo(): { mode: AgentMode; model: string | null } {
 export async function parseBrief(raw: string): Promise<Brief> {
   if (llmConfigured()) return liveParseBrief(raw);
   return parseOrThrow(BriefSchema, mockParseBrief(raw), "Brief");
+}
+
+export async function clarifyBrief(
+  brief: Brief,
+  picks: { id: string; prompt: string; choice: string | null }[],
+  round: number
+): Promise<{ brief: Brief; ready: boolean }> {
+  if (llmConfigured()) return liveClarifyBrief(brief, picks, round);
+  const known = [...brief.known];
+  for (const pick of picks) {
+    if (pick.choice) known.push(pick.choice);
+  }
+  const next = {
+    ...brief,
+    known,
+    clarifyQuestions: [] as Brief["clarifyQuestions"],
+    openQuestions: [] as string[],
+  };
+  return {
+    brief: parseOrThrow(BriefSchema, next, "Brief"),
+    ready: true,
+  };
 }
 
 export async function generateRoutes(

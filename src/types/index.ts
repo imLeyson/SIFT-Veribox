@@ -1,5 +1,11 @@
 import type { Edge, Node } from "@xyflow/react";
 
+export interface ClarifyQuestion {
+  id: string;
+  prompt: string;
+  options: string[];
+}
+
 export interface Brief {
   goal: string;
   targetUser: string;
@@ -8,6 +14,7 @@ export interface Brief {
   constraints: string[];
   deliverable: string;
   openQuestions: string[];
+  clarifyQuestions: ClarifyQuestion[];
 }
 
 export type StartingState = "has_idea" | "no_idea" | null;
@@ -98,6 +105,7 @@ export interface VeriboxState {
   userChanges: string[];
   loading: boolean;
   error: string | null;
+  clarifyRound: number;
   nodes: VBNode[];
   edges: VBEdge[];
   selectedNodeId: string | null;

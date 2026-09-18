@@ -56,6 +56,7 @@ type Actions = {
   setStep: (step: FlowStep) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setClarifyRound: (round: number) => void;
   goBack: () => void;
   reset: () => void;
   recordChange: (change: string) => void;
@@ -88,6 +89,7 @@ const initial: VeriboxState = {
   userChanges: [],
   loading: false,
   error: null,
+  clarifyRound: 0,
   nodes: seedNodes(),
   edges: [],
   selectedNodeId: BRIEF_INPUT_ID,
@@ -285,6 +287,7 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
       setStep: (step) => set({ step }),
       setLoading: (loading) => set({ loading }),
       setError: (error) => set({ error }),
+      setClarifyRound: (clarifyRound) => set({ clarifyRound }),
       goBack: () => {
         const current = get().step;
         if (current === "platform_plan" || current === "canvas_chat") {
@@ -489,6 +492,7 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
         activeStep: state.activeStep,
         platformPlan: state.platformPlan,
         userChanges: state.userChanges,
+        clarifyRound: state.clarifyRound,
         nodes: state.nodes,
         edges: state.edges,
         selectedNodeId: state.selectedNodeId,

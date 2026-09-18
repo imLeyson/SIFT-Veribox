@@ -8,19 +8,19 @@ import { useVeriboxActions } from "@/hooks/useVeriboxActions";
 import type { VBData } from "@/types";
 
 export function BriefNode({ data, selected }: NodeProps<Node<VBData, "brief">>) {
-  const { updateBriefField, answerOpenQuestion, skipOpenQuestion } =
-    useVeriboxStore();
+  const { updateBriefField, loading } = useVeriboxStore();
   const { confirmBriefAndContinue } = useVeriboxActions();
   const brief = data.brief;
-  const [drafts, setDrafts] = useState<Record<number, string>>({});
+  const questions = brief?.clarifyQuestions ?? [];
+  const [picks, setPicks] = useState<Record<string, string | null>>({});
   if (!brief) return null;
 
-  const pending = brief.openQuestions.length;
+  const pending = questions.filter((q) => picks[q.id] === undefined);
 
   return (
-    <NodeShell kicker="任务" title="核对一下，有问就答" selected={selected}>
+    <NodeShell kicker="任务" title="点选项就行，不用填空" selected={selected}>
       <p className="text-xs text-muted">
-        上面是 Agent 听懂的内容。下面的问题能答就答，不会就跳过，然后点确认。
+        Agent 听完 Brief 后，不清楚的地方会给选项。点选或跳过，它会再想一轮。
       </p>
       <dl className="mt-3 space-y-2 text-sm">
         <EditableRow
@@ -38,53 +38,43 @@ export function BriefNode({ data, selected }: NodeProps<Node<VBData, "brief">>) 
         <Row label="不要" value={brief.constraints.join(" / ") || "—"} />
       </dl>
 
-      {pending > 0 && (
-        <div className="mt-3 space-y-3 rounded-xl bg-mist/80 p-3">
-          <p className="text-xs font-medium text-ink">
-            待确认 · 共 {pending} 条，答完或跳过即可
-          </p>
-          {brief.openQuestions.slice(0, 3).map((q, i) => (
-            <div key={`${q}-${i}`}>
-              <p className="text-sm text-ink">{q}</p>
-              <div className="mt-1.5 flex gap-2">
-                <input
-                  value={drafts[i] ?? ""}
-                  onChange={(e) =>
-                    setDrafts((d) => ({ ...d, [i]: e.target.value }))
-                  }
-                  placeholder="在这儿回答"
-                  className="min-w-0 flex-1 rounded-lg border border-line bg-cream/80 px-2 py-1.5 text-sm outline-none focus:border-accent"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const v = (drafts[i] ?? "").trim();
-                      if (v) {
-                        answerOpenQuestion(i, v);
-                        setDrafts({});
+      {questions.length > 0 && (
+        <div className="mt-3 space-y-4 rounded-xl bg-mist/80 p-3">
+          {questions.map((q) => (
+            <div key={q.id}>
+              <p className="text-sm font-medium text-ink">{q.prompt}</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {q.options.map((opt) => {
+                  const on = picks[q.id] === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      className={[
+                        "rounded-full px-2.5 py-1 text-xs",
+                        on
+                          ? "bg-ink text-cream"
+                          : "border border-line bg-cream/80 text-ink hover:border-ink/40",
+                      ].join(" ")}
+                      onClick={() =>
+                        setPicks((p) => ({ ...p, [q.id]: on ? null : opt }))
                       }
-                    }
-                  }}
-                />
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
                 <button
                   type="button"
-                  className="btn-primary !px-2.5 !py-1.5 text-xs"
-                  disabled={!(drafts[i] ?? "").trim()}
-                  onClick={() => {
-                    answerOpenQuestion(i, drafts[i] ?? "");
-                    setDrafts({});
-                  }}
+                  className={[
+                    "rounded-full px-2.5 py-1 text-xs",
+                    picks[q.id] === null
+                      ? "bg-ink text-cream"
+                      : "border border-dashed border-line text-muted",
+                  ].join(" ")}
+                  onClick={() => setPicks((p) => ({ ...p, [q.id]: null }))}
                 >
-                  记下
-                </button>
-                <button
-                  type="button"
-                  className="btn-ghost !px-2.5 !py-1.5 text-xs"
-                  onClick={() => {
-                    skipOpenQuestion(i);
-                    setDrafts({});
-                  }}
-                >
-                  跳过
+                  这题先不管
                 </button>
               </div>
             </div>
@@ -95,9 +85,24 @@ export function BriefNode({ data, selected }: NodeProps<Node<VBData, "brief">>) 
       <button
         type="button"
         className="btn-primary mt-4 w-full"
-        onClick={confirmBriefAndContinue}
+        disabled={loading}
+        onClick={() => {
+          const payload = questions.map((q) => ({
+            id: q.id,
+            prompt: q.prompt,
+            choice: picks[q.id] ?? null,
+          }));
+          void confirmBriefAndContinue(payload);
+          setPicks({});
+        }}
       >
-        {pending > 0 ? "剩下的先跳过，继续" : "确认，继续选搜法"}
+        {loading
+          ? "正在根据你的选择想…"
+          : questions.length === 0
+            ? "确认，继续"
+            : pending.length
+              ? "按已选的继续（没点的当跳过）"
+              : "按这些选择继续"}
       </button>
     </NodeShell>
   );

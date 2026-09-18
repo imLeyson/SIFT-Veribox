@@ -212,12 +212,44 @@ export function useVeriboxActions() {
     }
   }
 
-  async function confirmBriefAndContinue() {
+  async function confirmBriefAndContinue(
+    picks: { id: string; prompt: string; choice: string | null }[] = []
+  ) {
     const store = useVeriboxStore.getState();
-    const remaining = store.brief?.openQuestions.length ?? 0;
-    for (let i = remaining - 1; i >= 0; i -= 1) {
-      store.skipOpenQuestion(i);
+    const brief = store.brief;
+    if (!brief) return;
+
+    const hasChoices = picks.some((p) => p.choice);
+    const hasQuestions = (brief.clarifyQuestions?.length ?? 0) > 0;
+
+    if (hasQuestions && (hasChoices || store.clarifyRound < 2)) {
+      store.setLoading(true);
+      store.setError(null);
+      try {
+        const data = await postJson<{ brief: Brief; ready: boolean }>(
+          "/api/clarify",
+          {
+            brief,
+            picks,
+            round: store.clarifyRound + 1,
+          }
+        );
+        const next = useVeriboxStore.getState();
+        next.setBrief(data.brief);
+        next.setClarifyRound(data.ready ? 2 : store.clarifyRound + 1);
+        if (data.ready || data.brief.clarifyQuestions.length === 0) {
+          next.setStartingState(null, []);
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "确认失败";
+        if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
+        useVeriboxStore.getState().setStartingState(null, []);
+      } finally {
+        useVeriboxStore.getState().setLoading(false);
+      }
+      return;
     }
+
     useVeriboxStore.getState().setStartingState(null, []);
   }
 

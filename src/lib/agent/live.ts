@@ -11,6 +11,7 @@ import { craftGuide, craftLabel, inferCraft } from "./craft";
 import {
   BriefSchema,
   CanvasChatSchema,
+  ClarifyResultSchema,
   parseOrThrow,
   PlatformPlanSchema,
   RoutesPayloadSchema,
@@ -30,6 +31,13 @@ function list(value: unknown) {
 
 function camelBrief(data: Record<string, unknown>) {
   const unknown = list(data.unknown);
+  const clarifyQuestions = normalizeClarify(
+    data.clarify_questions ?? data.clarifyQuestions
+  );
+  const openQuestions = list(data.open_questions ?? data.openQuestions).slice(
+    0,
+    3
+  );
   return {
     goal: text(data.goal, "寻找视觉方向"),
     targetUser: text(data.target_user ?? data.targetUser, "待确认目标用户"),
@@ -37,8 +45,29 @@ function camelBrief(data: Record<string, unknown>) {
     unknown: unknown.length ? unknown : ["还不知道先去搜什么"],
     constraints: list(data.constraints),
     deliverable: text(data.deliverable, "先找到能搜的方向"),
-    openQuestions: list(data.open_questions ?? data.openQuestions).slice(0, 3),
+    openQuestions: openQuestions.length
+      ? openQuestions
+      : clarifyQuestions.map((q) => q.prompt),
+    clarifyQuestions,
   };
+}
+
+function normalizeClarify(value: unknown): Brief["clarifyQuestions"] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, i) => {
+      const row = (item ?? {}) as Record<string, unknown>;
+      const prompt = text(row.prompt ?? row.question, "");
+      const options = list(row.options);
+      if (!prompt || options.length < 2) return null;
+      return {
+        id: text(row.id, `q${i + 1}`),
+        prompt,
+        options: options.slice(0, 5),
+      };
+    })
+    .filter((q): q is Brief["clarifyQuestions"][number] => Boolean(q))
+    .slice(0, 4);
 }
 
 function text(value: unknown, fallback: string) {
@@ -80,19 +109,57 @@ export async function liveParseBrief(raw: string): Promise<Brief> {
   const data = await completeJson<Record<string, unknown>>(
     `你是 SIFT。把设计师随口说的 Brief 收成一张工作卡。
 ${TONE}
-只返回 JSON：goal, target_user, known[], unknown[], constraints[], deliverable, open_questions[]。
+只返回 JSON：goal, target_user, known[], unknown[], constraints[], deliverable, open_questions[], clarify_questions[]。
+
+clarify_questions 每项：{ id, prompt, options[] }。这是给用户点的，不要让人填空。
 
 规则：
-- 只用用户原话里的词，不拔高、不翻译成提案腔。
-- known 用短词：自然、年轻、不要太粉。
-- unknown 写成「还不知道先看什么」，用 Brief 里的对象，不要套「先看瓶还是场景」。
-- constraints 保留「不要…」。
-- open_questions 最多 3 个，追问这个项目真正缺的：做什么端、有没有竞品、交付是页面还是包装。
-- 不要给风格结论。不要假设一定是包装。`,
+- 只用用户原话里的词，不拔高。
+- known 用短词。unknown 写「还不知道先看什么」。
+- 不要给风格结论。不要默认当成包装。
+- 题量按情况变，不要每次三道：
+  · Brief 已经能开工：0 题
+  · 缺一两处：1 题，2–4 个选项
+  · 很糊：最多 3 题，每题 2–4 个选项
+- 选项必须具体、能点、贴这个工种。App 问「先看首页还是先看流程」；包装问「先看瓶子还是货架」。禁止开放填空。
+- open_questions 与 clarify 的 prompt 对齐即可。`,
     raw,
     "low"
   );
   return parseOrThrow(BriefSchema, camelBrief(data), "Brief");
+}
+
+export async function liveClarifyBrief(
+  brief: Brief,
+  picks: { id: string; prompt: string; choice: string | null }[],
+  round: number
+): Promise<{ brief: Brief; ready: boolean }> {
+  const data = await completeJson<Record<string, unknown>>(
+    `你是 SIFT。用户没有填空，只点了选项。根据选择更新 Brief，并决定还要不要再问。
+${TONE}
+只返回 JSON：{ "brief": { ...Brief字段, clarify_questions[] }, "ready": true|false }
+
+规则：
+- 把用户点过的选项写进 known，从 unknown 里划掉已经选清的。
+- 跳过的题不要编答案。
+- ready=true：已经够出 3 条搜法，clarify_questions 必须 []。
+- ready=false：再出 1–2 道点选题（每题 2–4 选项），不要重复刚问过的。
+- 第 ${round} 轮了。超过 2 轮必须 ready=true。
+- 题量和选项数随还缺什么变，不要凑数。
+- 选项继续贴工种，禁止填空题。`,
+    JSON.stringify({ brief, picks, round }, null, 2),
+    "low"
+  );
+  const briefRaw = (data.brief ?? data) as Record<string, unknown>;
+  const next = parseOrThrow(BriefSchema, camelBrief(briefRaw), "Brief");
+  const ready =
+    round >= 2 ||
+    Boolean(data.ready) ||
+    next.clarifyQuestions.length === 0;
+  if (ready) next.clarifyQuestions = [];
+  next.openQuestions = next.clarifyQuestions.map((q) => q.prompt);
+  parseOrThrow(ClarifyResultSchema, { brief: next, ready }, "确认结果");
+  return { brief: next, ready };
 }
 
 export async function liveGenerateRoutes(
