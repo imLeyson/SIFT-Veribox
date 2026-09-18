@@ -4,8 +4,8 @@ export const BRIEF_INPUT_ID = "card-brief-input";
 export const BRIEF_ID = "card-brief";
 export const STATE_ID = "card-state";
 
-const COL = 390;
-const ROW = 300;
+const COL = 420;
+const ROW = 460;
 
 export function seedNodes(): VBNode[] {
   return [
