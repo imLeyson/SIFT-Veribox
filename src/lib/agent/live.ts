@@ -175,24 +175,98 @@ ${ranked
     "low"
   );
 
-  const parsed = parseOrThrow(PlatformPlanSchema, data, "平台搜索计划");
-  const names = new Set(SOURCE_REGISTRY);
-  const sources = parsed.sources
-    .filter((s) => names.has(s.name))
-    .map((s, i) => withSearchUrl({ ...s, rank: i + 1 }));
-  const alternatives = parsed.alternatives
-    .filter((s) => names.has(s.name) && !sources.some((x) => x.name === s.name))
-    .slice(0, 4)
-    .map((s, i) => withSearchUrl({ ...s, rank: i + 4 }));
+  const allowed = new Set(SOURCE_REGISTRY);
 
-  if (sources.length !== 3) {
-    throw new Error("平台计划来源必须正好 3 个，且名称在来源表内");
-  }
-  if (alternatives.length < 2) {
-    throw new Error("平台计划备选来源必须 2–4 个");
-  }
+  const normalizeQuery = (q: unknown) => {
+    if (typeof q === "string" && q.trim()) {
+      return { query: q.trim(), translation: q.trim() };
+    }
+    const row = (q ?? {}) as Record<string, unknown>;
+    const query = text(row.query, "");
+    if (!query) return null;
+    return { query, translation: text(row.translation, query) };
+  };
 
-  return { goal: parsed.goal, sources, alternatives };
+  const normalizeSource = (item: unknown, i: number): PlatformSource | null => {
+    const row = (item ?? {}) as Record<string, unknown>;
+    const name = text(row.name ?? row.source, "");
+    if (!name || !allowed.has(name)) return null;
+    let queries = Array.isArray(row.queries)
+      ? row.queries.map(normalizeQuery).filter((q): q is { query: string; translation: string } => Boolean(q))
+      : [];
+    if (queries.length < 2) {
+      queries = [
+        ...queries,
+        { query: `${activeStep} ${name}`, translation: `在${name}检索「${activeStep}」` },
+        { query: `${brief.goal} ${activeStep}`, translation: "围绕任务补充检索" },
+      ].slice(0, 4);
+    }
+    return {
+      rank: Number(row.rank) || i + 1,
+      name,
+      label: text(row.label, ranked.find((s) => s.name === name)?.role ?? "参考"),
+      reason: text(row.reason, "当前步骤需要这个来源"),
+      queries: queries.slice(0, 4),
+    };
+  };
+
+  let sources = (Array.isArray(data.sources) ? data.sources : [])
+    .map(normalizeSource)
+    .filter((s): s is PlatformSource => Boolean(s));
+  for (const def of ranked) {
+    if (sources.length >= 3) break;
+    if (sources.some((s) => s.name === def.name)) continue;
+    sources.push(
+      normalizeSource(
+        {
+          name: def.name,
+          label: def.role,
+          queries: [
+            { query: activeStep, translation: `检索「${activeStep}」` },
+            { query: brief.goal, translation: "围绕任务检索" },
+          ],
+        },
+        sources.length
+      ) as PlatformSource
+    );
+  }
+  sources = sources.slice(0, 3).map((s, i) => withSearchUrl({ ...s, rank: i + 1 }));
+
+  let alternatives = (Array.isArray(data.alternatives) ? data.alternatives : [])
+    .map(normalizeSource)
+    .filter((s): s is PlatformSource => s != null)
+    .filter((s) => !sources.some((x) => x.name === s.name));
+  for (const def of ranked) {
+    if (alternatives.length >= 2) break;
+    if (sources.some((s) => s.name === def.name) || alternatives.some((s) => s.name === def.name)) {
+      continue;
+    }
+    alternatives.push(
+      normalizeSource(
+        {
+          name: def.name,
+          label: def.role,
+          queries: [
+            { query: activeStep, translation: `备选检索「${activeStep}」` },
+            { query: brief.known[0] ?? brief.goal, translation: "备选方向" },
+          ],
+        },
+        alternatives.length + 4
+      ) as PlatformSource
+    );
+  }
+  alternatives = alternatives.slice(0, 4).map((s, i) => withSearchUrl({ ...s, rank: i + 4 }));
+
+  const parsed = parseOrThrow(
+    PlatformPlanSchema,
+    {
+      goal: text(data.goal, `探索「${activeStep}」`),
+      sources,
+      alternatives,
+    },
+    "平台搜索计划"
+  );
+  return parsed;
 }
 
 export async function liveCanvasChatRaw(
