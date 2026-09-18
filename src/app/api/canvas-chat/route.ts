@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { liveCanvasChat } from "@/lib/agent/canvas-chat";
 import { wrap } from "@/lib/agent";
-import type { VBEdge, VBNode } from "@/types";
+import { parseAnswers } from "@/lib/agent/questions";
+import type { AgentQuestion, ChatMessage, VBEdge, VBNode } from "@/types";
 
 export const maxDuration = 60;
 
@@ -14,6 +15,10 @@ export async function POST(request: Request) {
       selectedId?: string | null;
       nodeIds?: string[];
       canvas?: unknown;
+      answers?: unknown;
+      askedQuestions?: AgentQuestion[];
+      recent_messages?: Pick<ChatMessage, "role" | "content">[];
+      sessionVersion?: number;
     };
     const message = body.message?.trim();
     if (!message) {
@@ -25,7 +30,13 @@ export async function POST(request: Request) {
       body.nodes ?? [],
       body.edges ?? [],
       body.selectedId ?? null,
-      body.nodeIds
+      body.nodeIds,
+      {
+        answers: parseAnswers(body.answers),
+        askedQuestions: body.askedQuestions,
+        recentMessages: body.recent_messages,
+        canvas: body.canvas,
+      }
     );
 
     return NextResponse.json(

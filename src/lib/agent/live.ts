@@ -8,8 +8,8 @@ import type {
 import { completeJson } from "./llm";
 import { rankSources, SOURCE_REGISTRY, withSearchUrl } from "./sources";
 import { craftGuide, craftLabel, inferCraft } from "./craft";
-import { normalizeQuestions } from "./questions";
-import type { AgentQuestion } from "@/types";
+import { dedupeQuestions, normalizeQuestions } from "./questions";
+import type { AgentAnswer, AgentContext, AgentQuestion } from "@/types";
 import {
   BriefSchema,
   CanvasChatSchema,
@@ -138,7 +138,8 @@ ${TONE}
 
 提问规则：
 - 只有答案会改变后续规划时才问。优先：目标、受众、交付范围、互相打架的限制。
-- 用户已经写清的受众、不要项、产品类型不要再问。信息够就 questions=[]。
+- 用户已经写清的受众、不要项、产品类型、交付物、渠道不要再问。
+- 信息够就 questions=[]。宁可少问。目标、受众、品类、不要项都清楚时，最多 1 道仍会改路线的题；没有就空数组。
 - 每轮 1–3 题，每题 2–4 个有实际差异的选项。
 - 选项贴这个 Brief 的工种，不要把所有项目都问成「先看页面还是流程」。
 - 不要替用户提交推荐项。`,
@@ -154,10 +155,18 @@ ${TONE}
   return { brief, questions };
 }
 
+function askedFrom(ctx?: AgentContext, extra?: AgentAnswer[]) {
+  return [
+    ...(ctx?.askedQuestions ?? []),
+    ...((ctx?.answers ?? extra ?? []).map((a) => ({ id: a.questionId }))),
+  ];
+}
+
 export async function liveClarifyBrief(
   brief: Brief,
   answers: unknown[],
-  round: number
+  round: number,
+  previousQuestions: AgentQuestion[] = []
 ): Promise<{ brief: Brief; questions: AgentQuestion[]; stall: boolean }> {
   const data = await completeJson<Record<string, unknown>>(
     `你是 SIFT。用户用选项/自定义/暂不确定做了回答。更新理解，决定还要不要问。
@@ -167,15 +176,18 @@ ${TONE}
 规则：
 - 选项进 preferences 或 known：用户明确的事实进 known；偏好进 preferences；你提出的未确认内容进 assumptions。不要一律写成 known。
 - 暂不确定不要编答案。
-- 只有还会改变路线时才继续问。questions 1–3 题，每题 2–4 选项，不要重复。
+- 只有还会改变路线时才继续问。questions 1–3 题，每题 2–4 选项，不要重复已问过的题。
 - 信息够则 questions=[]。
-- 不要强制在第 2 轮结束。`,
-    JSON.stringify({ brief, answers, round }, null, 2),
+- 不要强制在第 2 轮结束；不要替用户提交推荐项。`,
+    JSON.stringify({ brief, answers, round, previous_questions: previousQuestions }, null, 2),
     "low"
   );
   const briefRaw = (data.brief ?? data) as Record<string, unknown>;
   const next = parseOrThrow(BriefSchema, camelBrief(briefRaw), "Brief");
-  const questions = normalizeQuestions(data.questions, "brief", "card-brief");
+  const questions = dedupeQuestions(
+    normalizeQuestions(data.questions, "brief", "card-brief"),
+    previousQuestions
+  );
   const stall = round >= 2 && questions.length > 0;
   return { brief: next, questions, stall };
 }
@@ -183,7 +195,8 @@ ${TONE}
 export async function liveGenerateRoutes(
   brief: Brief,
   startingState: StartingState,
-  userInitialIdea: string[]
+  userInitialIdea: string[],
+  ctx: AgentContext = {}
 ): Promise<{
   payload: { recommendedRouteId: string | null; routes: ExplorationRoute[] } | null;
   questions: AgentQuestion[];
@@ -209,12 +222,18 @@ ${TONE}
 1. 只有未决选择会改变路线时才提问。不能把「先看页面还是流程」当成所有项目的固定问题。
 2. 有路线时正好 3 条，起点不同，不是三个风格名。
 3. 推荐理由对应这份 Brief，区分事实和建议。
-4. 非包装不要出现货架/瓶型。`,
+4. 非包装不要出现货架/瓶型。
+5. 不要重复已经问过的题。force=true 时不要再问，直接给三条路线。`,
     JSON.stringify(
       {
         brief,
         starting_state: startingState,
         user_initial_idea: userInitialIdea,
+        answers: ctx.answers ?? [],
+        asked_questions: ctx.askedQuestions ?? [],
+        recent_messages: ctx.recentMessages ?? [],
+        canvas: ctx.canvas ?? null,
+        force: Boolean(ctx.force),
         craft: craftLabel(craft),
       },
       null,
@@ -222,7 +241,9 @@ ${TONE}
     ),
     "low"
   );
-  const questions = normalizeQuestions(data.questions, "routes");
+  const questions = ctx.force
+    ? []
+    : dedupeQuestions(normalizeQuestions(data.questions, "routes"), askedFrom(ctx));
   if (questions.length) return { payload: null, questions };
   return {
     payload: parseOrThrow(RoutesPayloadSchema, camelRoutes(data), "探索路线"),
@@ -233,7 +254,8 @@ ${TONE}
 export async function livePlatformPlan(
   brief: Brief,
   selectedRoute: { title: string; steps: string[]; purpose: string } | undefined,
-  activeStep: string
+  activeStep: string,
+  ctx: AgentContext = {}
 ): Promise<{ plan: PlatformPlan | null; questions: AgentQuestion[] }> {
   const ranked = rankSources(activeStep, brief);
   const craft = inferCraft(
@@ -275,18 +297,34 @@ ${ranked
 5. 禁止空词：aesthetic, vibe, premium, luxury, editorial, 高级感, 氛围感。
 6. 词要从 Brief 里的产品/对象来。App 就搜页面和流程，不要搜瓶子和货架。
 7. reason 一句：为什么现在先来这个站。
-8. 不要让用户跑遍所有站。`,
+8. 不要让用户跑遍所有站。
+9. 不要重复已经问过的题。force=true 时不要再问，直接给搜索计划。`,
     JSON.stringify(
       {
         brief,
         selected_route: selectedRoute ?? null,
         active_step: activeStep,
+        answers: ctx.answers ?? [],
+        asked_questions: ctx.askedQuestions ?? [],
+        recent_messages: ctx.recentMessages ?? [],
+        canvas: ctx.canvas ?? null,
+        force: Boolean(ctx.force),
       },
       null,
       2
     ),
     "low"
   );
+
+  const questions = ctx.force
+    ? []
+    : dedupeQuestions(
+        normalizeQuestions(data.questions, "platform"),
+        askedFrom(ctx)
+      );
+  if (questions.length) {
+    return { plan: null, questions };
+  }
 
   const allowed = new Set(SOURCE_REGISTRY);
 
@@ -370,10 +408,6 @@ ${ranked
   }
   alternatives = alternatives.slice(0, 4).map((s, i) => withSearchUrl({ ...s, rank: i + 4 }));
 
-  const questions = normalizeQuestions(data.questions, "platform");
-  if (questions.length && sources.length < 3) {
-    return { plan: null, questions };
-  }
   const parsed = parseOrThrow(
     PlatformPlanSchema,
     {
@@ -388,7 +422,8 @@ ${ranked
 
 export async function liveCanvasChatRaw(
   message: string,
-  canvas: unknown
+  canvas: unknown,
+  ctx: AgentContext = {}
 ): Promise<{
   reply: string;
   cards: { title: string; body: string; parentId: string | null }[];
@@ -408,11 +443,22 @@ ${TONE}
 
 规则：
 - 普通问答：intent=answer，只回复，cards=[]。
-- 需要澄清：intent=ask，给 1–3 道点选题，先问再做。
-- 明确要求新增内容：intent=deepen，只在相关分支加卡，不要每次默认 1–3 张。
+- 需要澄清：intent=ask，给 1–3 道点选题，先问再做。不要重复已问过的题。
+- 明确要求新增内容：intent=deepen 或 edit，只在相关分支加卡，不要每次默认 1–3 张。
+- compare 只比较，不加卡，除非用户明确要求新增。
 - 不要重做 Brief 和三条主路线。
 - parentId 必须是已有卡片 id。`,
-    JSON.stringify({ message, canvas }, null, 2),
+    JSON.stringify(
+      {
+        message,
+        canvas,
+        answers: ctx.answers ?? [],
+        asked_questions: ctx.askedQuestions ?? [],
+        recent_messages: ctx.recentMessages ?? [],
+      },
+      null,
+      2
+    ),
     "low"
   );
   const parsed = parseOrThrow(CanvasChatSchema, data, "画布对话");

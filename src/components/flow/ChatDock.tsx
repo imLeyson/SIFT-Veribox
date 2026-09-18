@@ -17,6 +17,7 @@ export function ChatDock() {
     setChatOpen,
     loading,
     pendingQuestions,
+    askRoundByStage,
   } = useVeriboxStore();
   const { sendCanvasChat, cancelInflight, submitAnswers } = useVeriboxActions();
   const [text, setText] = useState("");
@@ -63,7 +64,7 @@ export function ChatDock() {
       <div ref={scroller} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {messages.length === 0 && (
           <p className="text-sm leading-relaxed text-muted">
-            点选卡片，或用卡片上方的「从这里深化」。Agent 会读连线和全文，再在右侧长出分支。
+            点选卡片后提问。普通问题只回答；只有明确要求深化时才会加卡片。
           </p>
         )}
         {messages.map((m) => (
@@ -80,7 +81,12 @@ export function ChatDock() {
         ))}
         {pendingQuestions.some((q) => q.stage === "chat") && (
           <QuestionBlock
+            key={pendingQuestions
+              .filter((q) => q.stage === "chat")
+              .map((q) => q.id)
+              .join("|")}
             questions={pendingQuestions.filter((q) => q.stage === "chat")}
+            stall={askRoundByStage.chat >= 2}
             disabled={loading}
             onSubmit={(answers, proceed) =>
               void submitAnswers(answers, proceed, "chat")
@@ -156,7 +162,7 @@ export function ChatDock() {
           ) : (
             <>
               <Send className="h-4 w-4" />
-              发送并深化
+              发送
             </>
           )}
         </button>

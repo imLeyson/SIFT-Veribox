@@ -5,7 +5,7 @@ import { useVeriboxStore } from "@/lib/store";
 import { ThinkingProgress } from "@/components/canvas/ThinkingProgress";
 import { InfiniteCanvas } from "@/components/flow/InfiniteCanvas";
 import { ChatDock } from "@/components/flow/ChatDock";
-import { cancelInflight } from "@/hooks/useVeriboxActions";
+import { cancelInflight, useVeriboxActions } from "@/hooks/useVeriboxActions";
 
 function subscribeHydration(onStoreChange: () => void) {
   const unsub = useVeriboxStore.persist.onFinishHydration(onStoreChange);
@@ -14,7 +14,9 @@ function subscribeHydration(onStoreChange: () => void) {
 }
 
 export function Workspace() {
-  const { step, error, reset, loading, nodes, goBack } = useVeriboxStore();
+  const { step, error, reset, loading, nodes, goBack, staleFlags, selectedRoute } =
+    useVeriboxStore();
+  const { generateSchemes, chooseRoute } = useVeriboxActions();
   const ready = useSyncExternalStore(
     subscribeHydration,
     () => useVeriboxStore.persist.hasHydrated(),
@@ -94,6 +96,22 @@ export function Workspace() {
           className="z-10 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800"
         >
           {error}
+        </div>
+      )}
+
+      {(staleFlags.routes || staleFlags.platform) && (
+        <div className="z-10 flex flex-wrap items-center justify-between gap-2 border-b border-line/70 bg-mist/80 px-4 py-2 text-sm text-ink">
+          <p>理解改过了，现有路线或搜索计划可能过时。</p>
+          <button
+            type="button"
+            className="btn-ghost !px-3 !py-1 text-xs"
+            onClick={() => {
+              if (staleFlags.routes) void generateSchemes();
+              else if (selectedRoute) void chooseRoute(selectedRoute, true);
+            }}
+          >
+            重新生成
+          </button>
         </div>
       )}
 

@@ -9,13 +9,18 @@ import { useVeriboxActions } from "@/hooks/useVeriboxActions";
 import type { VBData } from "@/types";
 
 export function RouteNode({ data, selected }: NodeProps<Node<VBData, "route">>) {
-  const { loading, nodes, pendingQuestions } = useVeriboxStore();
+  const { loading, nodes, pendingQuestions, selectedRoute, askRoundByStage } =
+    useVeriboxStore();
   const { chooseRoute, submitAnswers } = useVeriboxActions();
   const route = data.route;
   if (!route) return null;
   const branched = nodes.some(
     (n) => n.data.kind === "platform" && n.data.routeId === route.id
   );
+  const routeQs = pendingQuestions.filter((q) => q.stage === "routes");
+  const platformQs = pendingQuestions.filter((q) => q.stage === "platform");
+  const showPlatformQs =
+    selectedRoute?.id === route.id && !branched && platformQs.length > 0;
 
   return (
     <NodeShell
@@ -34,10 +39,12 @@ export function RouteNode({ data, selected }: NodeProps<Node<VBData, "route">>) 
       <p className="text-sm">
         <span className="text-muted">△</span> {route.watchOut}
       </p>
-      {pendingQuestions.some((q) => q.stage === "routes") && (
+      {routeQs.length > 0 && (
         <div className="mt-3">
           <QuestionBlock
-            questions={pendingQuestions.filter((q) => q.stage === "routes")}
+            key={routeQs.map((q) => q.id).join("|")}
+            questions={routeQs}
+            stall={askRoundByStage.routes >= 2}
             disabled={loading}
             onSubmit={(answers, proceed) =>
               void submitAnswers(answers, proceed, "routes")
@@ -45,6 +52,20 @@ export function RouteNode({ data, selected }: NodeProps<Node<VBData, "route">>) 
           />
         </div>
       )}
+      {showPlatformQs && (
+        <div className="mt-3">
+          <QuestionBlock
+            key={platformQs.map((q) => q.id).join("|")}
+            questions={platformQs}
+            stall={askRoundByStage.platform >= 2}
+            disabled={loading}
+            onSubmit={(answers, proceed) =>
+              void submitAnswers(answers, proceed, "platform")
+            }
+          />
+        </div>
+      )}
+      {routeQs.length === 0 && !showPlatformQs && (
       <button
         type="button"
         className="btn-primary mt-4 w-full"
@@ -62,6 +83,7 @@ export function RouteNode({ data, selected }: NodeProps<Node<VBData, "route">>) 
           "用这套去搜"
         )}
       </button>
+      )}
     </NodeShell>
   );
 }

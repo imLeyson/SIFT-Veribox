@@ -23,6 +23,7 @@ export function PlatformNode({
     replaceSource,
     toggleMoreSources,
     pendingQuestions,
+    askRoundByStage,
   } = useVeriboxStore();
   const { advanceStep, submitAnswers } = useVeriboxActions();
   const platformQs = pendingQuestions.filter((q) => q.stage === "platform");
@@ -47,7 +48,9 @@ export function PlatformNode({
       {platformQs.length > 0 && (
         <div className="mb-3">
           <QuestionBlock
+            key={platformQs.map((q) => q.id).join("|")}
             questions={platformQs}
+            stall={askRoundByStage.platform >= 2}
             disabled={loading}
             onSubmit={(answers, proceed) =>
               void submitAnswers(answers, proceed, "platform")

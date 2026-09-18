@@ -132,6 +132,14 @@ export const CanvasChatSchema = z.object({
     .optional(),
 });
 
+export const EnvelopeMetaSchema = z.object({
+  questions: z.array(AgentQuestionSchema).max(3).default([]),
+  requestId: nonEmpty,
+  sessionVersion: z.number().int().nonnegative(),
+  mode: z.enum(["live", "mock"]),
+  model: z.string().nullable(),
+});
+
 export function parseOrThrow<T>(
   schema: z.ZodType<T>,
   data: unknown,

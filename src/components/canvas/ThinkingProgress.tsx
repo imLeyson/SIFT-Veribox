@@ -8,7 +8,7 @@ const PHASES: Record<string, string[]> = {
   brief_confirm: ["判断先搜什么", "编排 3 套顺序", "配上推荐理由"],
   routes: ["判断先搜什么", "编排 3 套顺序", "配上推荐理由"],
   platform_plan: ["匹配网站", "写中英搜索词", "排好复制顺序"],
-  canvas_chat: ["阅读整张画布", "判断缺口与焦点", "长出可执行的新卡片"],
+  canvas_chat: ["阅读整张画布", "判断是问答还是深化", "回复或按需加卡片"],
 };
 
 function titleFor(step: FlowStep) {

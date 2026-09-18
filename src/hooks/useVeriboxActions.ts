@@ -13,9 +13,11 @@ import type {
 const CLIENT_TIMEOUT_MS = 50000;
 let inflight: AbortController | null = null;
 let userCancel = false;
+let requestGen = 0;
 
 export function cancelInflight() {
   userCancel = true;
+  requestGen += 1;
   inflight?.abort();
   inflight = null;
   useVeriboxStore.getState().setLoading(false);
@@ -30,9 +32,24 @@ type Envelope<T> = {
   error?: string;
 };
 
+function agentContext() {
+  const s = useVeriboxStore.getState();
+  return {
+    answers: s.answers,
+    askedQuestions: s.askedQuestions,
+    recent_messages: s.messages.slice(-6).map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+    canvas: serializeCanvas(s.nodes, s.edges, s.selectedNodeId),
+    sessionVersion: s.sessionVersion,
+  };
+}
+
 async function postJson<T>(url: string, body: unknown): Promise<Envelope<T>> {
-  inflight?.abort();
+  const myGen = ++requestGen;
   userCancel = false;
+  inflight?.abort();
   const ac = new AbortController();
   inflight = ac;
   const timer = window.setTimeout(() => ac.abort(), CLIENT_TIMEOUT_MS);
@@ -45,8 +62,9 @@ async function postJson<T>(url: string, body: unknown): Promise<Envelope<T>> {
       signal: ac.signal,
     });
   } catch {
+    if (requestGen !== myGen || userCancel) throw new Error("已取消");
     if (ac.signal.aborted) {
-      throw new Error(userCancel ? "已取消" : "思考超时，请再试一次");
+      throw new Error("思考超时，请再试一次");
     }
     throw new Error("网络中断，请再试一次");
   } finally {
@@ -70,6 +88,7 @@ async function postJson<T>(url: string, body: unknown): Promise<Envelope<T>> {
     throw new Error("服务返回了无法解析的内容，请再试一次");
   }
 
+  if (requestGen !== myGen) throw new Error("已取消");
   if (!res.ok) throw new Error(json.error ?? "请求失败");
   return json;
 }
@@ -78,8 +97,12 @@ function applyEnvelope(requestId?: string) {
   if (requestId) useVeriboxStore.getState().bumpSession(requestId);
 }
 
+function endLoading() {
+  if (!inflight) useVeriboxStore.getState().setLoading(false);
+}
+
 export function useVeriboxActions() {
-  async function requestRoutes() {
+  async function requestRoutes(force = false) {
     const store = useVeriboxStore.getState();
     const brief = store.brief;
     if (!brief) return;
@@ -87,9 +110,12 @@ export function useVeriboxActions() {
       ...store.userInitialIdea,
       ...brief.preferences,
       ...brief.known,
+      ...store.answers
+        .filter((a) => a.kind !== "uncertain")
+        .map((a) => a.custom)
+        .filter((v): v is string => Boolean(v)),
     ].filter(Boolean);
     store.setLoading(true);
-    store.setStep("routes");
     store.setError(null);
     try {
       const env = await postJson<{
@@ -98,8 +124,8 @@ export function useVeriboxActions() {
       }>("/api/routes", {
         brief,
         user_initial_idea: ideas,
-        answers: store.answers,
-        sessionVersion: store.sessionVersion,
+        force,
+        ...agentContext(),
       });
       const next = useVeriboxStore.getState();
       applyEnvelope(env.requestId);
@@ -112,12 +138,13 @@ export function useVeriboxActions() {
         next.setPendingQuestions(
           next.pendingQuestions.filter((q) => q.stage !== "routes")
         );
+        next.resetAskRound("routes");
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "方案生成失败";
       if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
     } finally {
-      useVeriboxStore.getState().setLoading(false);
+      endLoading();
     }
   }
 
@@ -139,6 +166,7 @@ export function useVeriboxActions() {
       const next = useVeriboxStore.getState();
       applyEnvelope(env.requestId);
       if (env.data) next.setBrief(env.data);
+      next.resetAskRound("brief");
       next.setPendingQuestions(env.questions ?? []);
       if (!(env.questions ?? []).length && env.data) {
         await requestRoutes();
@@ -147,11 +175,11 @@ export function useVeriboxActions() {
       const msg = e instanceof Error ? e.message : "解析失败";
       if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
     } finally {
-      useVeriboxStore.getState().setLoading(false);
+      endLoading();
     }
   }
 
-  async function chooseRoute(route: ExplorationRoute) {
+  async function chooseRoute(route: ExplorationRoute, force = false) {
     const store = useVeriboxStore.getState();
     const brief = store.brief;
     if (!brief) return;
@@ -172,8 +200,8 @@ export function useVeriboxActions() {
         brief,
         selected_route: route,
         active_step: step,
-        sessionVersion: store.sessionVersion,
-        answers: store.answers,
+        force,
+        ...agentContext(),
       });
       const next = useVeriboxStore.getState();
       applyEnvelope(env.requestId);
@@ -181,12 +209,15 @@ export function useVeriboxActions() {
         ...next.pendingQuestions.filter((q) => q.stage !== "platform"),
         ...(env.questions ?? []),
       ]);
-      if (env.data) next.setPlatformPlan(env.data, route.id, step);
+      if (env.data) {
+        next.setPlatformPlan(env.data, route.id, step);
+        next.resetAskRound("platform");
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "搜索计划生成失败";
       if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
     } finally {
-      useVeriboxStore.getState().setLoading(false);
+      endLoading();
     }
   }
 
@@ -207,8 +238,8 @@ export function useVeriboxActions() {
         brief,
         selected_route: route,
         active_step: next,
-        sessionVersion: store.sessionVersion,
-        answers: store.answers,
+        force: false,
+        ...agentContext(),
       });
       const st = useVeriboxStore.getState();
       applyEnvelope(env.requestId);
@@ -216,12 +247,15 @@ export function useVeriboxActions() {
         ...st.pendingQuestions.filter((q) => q.stage !== "platform"),
         ...(env.questions ?? []),
       ]);
-      if (env.data) st.setPlatformPlan(env.data, route.id, next);
+      if (env.data) {
+        st.setPlatformPlan(env.data, route.id, next);
+        st.resetAskRound("platform");
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "搜索计划生成失败";
       if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
     } finally {
-      useVeriboxStore.getState().setLoading(false);
+      endLoading();
     }
   }
 
@@ -240,8 +274,8 @@ export function useVeriboxActions() {
         reply: string;
         cards: { title: string; body: string; parentId: string | null }[];
       }>("/api/canvas-chat", {
+        ...agentContext(),
         message,
-        canvas: serializeCanvas(store.nodes, store.edges, store.selectedNodeId),
         nodeIds: store.nodes.map((n) => n.id),
         nodes: store.nodes.map((n) => ({
           id: n.id,
@@ -277,8 +311,7 @@ export function useVeriboxActions() {
           label: e.label,
         })),
         selectedId: store.selectedNodeId,
-        sessionVersion: store.sessionVersion,
-        answers: store.answers,
+        ...agentContext(),
       });
       const next = useVeriboxStore.getState();
       applyEnvelope(env.requestId);
@@ -298,11 +331,12 @@ export function useVeriboxActions() {
           }))
         );
       }
+      if (!(env.questions ?? []).length) next.resetAskRound("chat");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "对话失败";
       if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
     } finally {
-      useVeriboxStore.getState().setLoading(false);
+      endLoading();
     }
   }
 
@@ -313,9 +347,15 @@ export function useVeriboxActions() {
   ) {
     const store = useVeriboxStore.getState();
     store.addAnswers(answers);
+    store.clearDrafts(answers.map((a) => a.questionId));
     const pending = store.pendingQuestions.filter((q) => q.stage === stage);
+    const round = store.bumpAskRound(stage);
+    const force = proceed && round >= 2;
+    if (store.routes.length > 0 && stage === "brief") {
+      store.setStale({ routes: true, platform: true });
+    }
     if (!pending.length && proceed) {
-      if (stage === "brief") await requestRoutes();
+      if (stage === "brief") await requestRoutes(force);
       return;
     }
     store.setLoading(true);
@@ -325,7 +365,8 @@ export function useVeriboxActions() {
         const env = await postJson<Brief>("/api/clarify", {
           brief: store.brief,
           answers,
-          round: Math.floor(store.answers.length / 3) + 1,
+          questions: pending,
+          round,
           sessionVersion: store.sessionVersion,
         });
         const next = useVeriboxStore.getState();
@@ -336,20 +377,21 @@ export function useVeriboxActions() {
           ...next.pendingQuestions.filter((q) => q.stage !== "brief"),
           ...qs,
         ]);
-        if (proceed && (env.stall || qs.length === 0)) {
+        if (proceed && (qs.length === 0 || force || env.stall)) {
           next.setPendingQuestions(
             next.pendingQuestions.filter((q) => q.stage !== "brief")
           );
-          await requestRoutes();
+          next.resetAskRound("brief");
+          await requestRoutes(true);
         }
         return;
       }
       if (stage === "routes") {
-        await requestRoutes();
+        if (proceed) await requestRoutes(force);
         return;
       }
       if (stage === "platform" && store.selectedRoute) {
-        await chooseRoute(store.selectedRoute);
+        if (proceed) await chooseRoute(store.selectedRoute, force);
         return;
       }
       if (stage === "chat") {
@@ -357,13 +399,15 @@ export function useVeriboxActions() {
           .map((a) => a.custom ?? a.kind)
           .filter(Boolean)
           .join("；");
-        await sendCanvasChat(`对刚才的问题：${summary || "按假设继续"}`);
+        if (proceed) {
+          await sendCanvasChat(`对刚才的问题：${summary || "按假设继续"}`);
+        }
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "提交失败";
       if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
     } finally {
-      useVeriboxStore.getState().setLoading(false);
+      endLoading();
     }
   }
 

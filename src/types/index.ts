@@ -117,6 +117,16 @@ export interface ChatMessage {
   focusId?: string | null;
 };
 
+export type AskRoundByStage = Record<QuestionStage, number>;
+
+export type AgentContext = {
+  answers?: AgentAnswer[];
+  askedQuestions?: AgentQuestion[];
+  recentMessages?: Pick<ChatMessage, "role" | "content">[];
+  canvas?: unknown;
+  force?: boolean;
+};
+
 export interface VeriboxState {
   sessionId: string;
   step: FlowStep;
@@ -134,6 +144,9 @@ export interface VeriboxState {
   error: string | null;
   pendingQuestions: AgentQuestion[];
   answers: AgentAnswer[];
+  draftAnswers: AgentAnswer[];
+  askedQuestions: AgentQuestion[];
+  askRoundByStage: AskRoundByStage;
   sessionVersion: number;
   lastRequestId: string | null;
   staleFlags: { routes: boolean; platform: boolean };

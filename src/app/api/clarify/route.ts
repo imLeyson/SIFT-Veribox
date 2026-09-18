@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { clarifyBrief, wrap } from "@/lib/agent";
-import type { AgentAnswer, Brief } from "@/types";
+import { parseAnswers } from "@/lib/agent/questions";
+import type { AgentQuestion, Brief } from "@/types";
 
 export const maxDuration = 60;
 
@@ -8,7 +9,8 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       brief?: Brief;
-      answers?: AgentAnswer[];
+      answers?: unknown;
+      questions?: AgentQuestion[];
       round?: number;
       sessionVersion?: number;
     };
@@ -17,8 +19,9 @@ export async function POST(request: Request) {
     }
     const parsed = await clarifyBrief(
       body.brief,
-      body.answers ?? [],
-      body.round ?? 1
+      parseAnswers(body.answers),
+      body.round ?? 1,
+      body.questions ?? []
     );
     return NextResponse.json({
       ...wrap(parsed.brief, parsed.questions, (body.sessionVersion ?? 0) + 1),

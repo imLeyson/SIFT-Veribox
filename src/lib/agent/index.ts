@@ -1,5 +1,6 @@
 import type {
   AgentAnswer,
+  AgentContext,
   AgentQuestion,
   Brief,
   ExplorationRoute,
@@ -11,6 +12,8 @@ import {
   mockParseBrief,
   mockGenerateRoutes,
   mockPlatformPlan,
+  mockPlatformQuestions,
+  mockRouteQuestions,
 } from "./mock";
 import {
   liveParseBrief,
@@ -20,11 +23,16 @@ import {
 } from "./live";
 import {
   BriefSchema,
+  EnvelopeMetaSchema,
   parseOrThrow,
   PlatformPlanSchema,
   RoutesPayloadSchema,
 } from "./schema";
-import { newRequestId, normalizeQuestions } from "./questions";
+import {
+  applyAnswersToBrief,
+  newRequestId,
+  normalizeQuestions,
+} from "./questions";
 
 export type AgentMode = "live" | "mock";
 
@@ -38,13 +46,26 @@ export function wrap<T>(
   questions: AgentQuestion[],
   sessionVersion: number
 ) {
-  return {
+  const info = agentInfo();
+  const envelope = {
     data,
-    questions,
+    questions: questions.slice(0, 3),
     requestId: newRequestId(),
     sessionVersion,
-    ...agentInfo(),
+    ...info,
   };
+  parseOrThrow(
+    EnvelopeMetaSchema,
+    {
+      questions: envelope.questions,
+      requestId: envelope.requestId,
+      sessionVersion: envelope.sessionVersion,
+      mode: envelope.mode,
+      model: envelope.model,
+    },
+    "响应"
+  );
+  return envelope;
 }
 
 export async function parseBrief(raw: string): Promise<{
@@ -68,41 +89,45 @@ export async function parseBrief(raw: string): Promise<{
 export async function clarifyBrief(
   brief: Brief,
   answers: AgentAnswer[],
-  round: number
+  round: number,
+  questions: AgentQuestion[] = []
 ): Promise<{ brief: Brief; questions: AgentQuestion[]; stall: boolean }> {
-  if (llmConfigured()) return liveClarifyBrief(brief, answers, round);
-  const preferences = [...brief.preferences];
-  const known = [...brief.known];
-  for (const a of answers) {
-    if (a.kind === "option" || a.kind === "custom") {
-      const text = a.custom ?? a.optionId ?? "";
-      if (text) preferences.push(text);
-    }
-  }
+  if (llmConfigured()) return liveClarifyBrief(brief, answers, round, questions);
   const next = parseOrThrow(
     BriefSchema,
-    {
-      ...brief,
-      known,
-      preferences,
-      clarifyQuestions: [],
-      openQuestions: [],
-    },
+    applyAnswersToBrief(brief, answers, questions),
     "Brief"
   );
-  return { brief: next, questions: [], stall: false };
+  const stillUncertain = answers.length > 0 && answers.every((a) => a.kind === "uncertain");
+  if (stillUncertain && round < 2) {
+    return {
+      brief: next,
+      questions: questions.slice(0, 3),
+      stall: false,
+    };
+  }
+  return { brief: next, questions: [], stall: stillUncertain && round >= 2 };
 }
 
 export async function generateRoutes(
   brief: Brief,
   startingState: StartingState,
-  userInitialIdea: string[]
+  userInitialIdea: string[],
+  ctx: AgentContext = {}
 ): Promise<{
   payload: { recommendedRouteId: string | null; routes: ExplorationRoute[] } | null;
   questions: AgentQuestion[];
 }> {
   if (llmConfigured()) {
-    return liveGenerateRoutes(brief, startingState, userInitialIdea);
+    return liveGenerateRoutes(brief, startingState, userInitialIdea, ctx);
+  }
+  if (!ctx.force) {
+    const questions = mockRouteQuestions(
+      brief,
+      ctx.answers ?? [],
+      ctx.askedQuestions ?? []
+    );
+    if (questions.length) return { payload: null, questions };
   }
   return {
     payload: parseOrThrow(
@@ -117,10 +142,19 @@ export async function generateRoutes(
 export async function planPlatforms(
   brief: Brief,
   selectedRoute: ExplorationRoute | undefined,
-  activeStep: string
+  activeStep: string,
+  ctx: AgentContext = {}
 ): Promise<{ plan: PlatformPlan | null; questions: AgentQuestion[] }> {
   if (llmConfigured()) {
-    return livePlatformPlan(brief, selectedRoute, activeStep);
+    return livePlatformPlan(brief, selectedRoute, activeStep, ctx);
+  }
+  if (!ctx.force) {
+    const questions = mockPlatformQuestions(
+      brief,
+      ctx.answers ?? [],
+      ctx.askedQuestions ?? []
+    );
+    if (questions.length) return { plan: null, questions };
   }
   return {
     plan: parseOrThrow(

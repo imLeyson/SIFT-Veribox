@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { generateRoutes, wrap } from "@/lib/agent";
-import type { AgentAnswer, Brief } from "@/types";
+import { parseAnswers } from "@/lib/agent/questions";
+import type { AgentQuestion, Brief, ChatMessage } from "@/types";
 
 export const maxDuration = 60;
 
@@ -9,7 +10,11 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       brief?: Brief;
       user_initial_idea?: string[];
-      answers?: AgentAnswer[];
+      answers?: unknown;
+      askedQuestions?: AgentQuestion[];
+      recent_messages?: Pick<ChatMessage, "role" | "content">[];
+      canvas?: unknown;
+      force?: boolean;
       sessionVersion?: number;
     };
 
@@ -20,7 +25,14 @@ export async function POST(request: Request) {
     const parsed = await generateRoutes(
       body.brief,
       body.user_initial_idea?.length ? "has_idea" : "no_idea",
-      body.user_initial_idea ?? []
+      body.user_initial_idea ?? [],
+      {
+        answers: parseAnswers(body.answers),
+        askedQuestions: body.askedQuestions,
+        recentMessages: body.recent_messages,
+        canvas: body.canvas,
+        force: body.force,
+      }
     );
     return NextResponse.json(
       wrap(parsed.payload, parsed.questions, (body.sessionVersion ?? 0) + 1)

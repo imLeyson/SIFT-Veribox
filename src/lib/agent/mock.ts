@@ -1,4 +1,6 @@
 import type {
+  AgentAnswer,
+  AgentQuestion,
   Brief,
   ExplorationRoute,
   PlatformPlan,
@@ -7,6 +9,119 @@ import type {
 } from "@/types";
 import { withSearchUrl } from "./sources";
 import { inferCraft } from "./craft";
+import { dedupeQuestions } from "./questions";
+
+function blobOf(brief: Brief) {
+  return [
+    brief.goal,
+    brief.targetUser,
+    brief.deliverable,
+    ...brief.known,
+    ...brief.unknown,
+    ...brief.constraints,
+    ...brief.preferences,
+    ...brief.assumptions,
+  ].join(" ");
+}
+
+export function mockRouteQuestions(
+  brief: Brief,
+  answers: AgentAnswer[] = [],
+  asked: AgentQuestion[] = []
+): AgentQuestion[] {
+  if (answers.some((a) => a.questionId.startsWith("routes_"))) return [];
+  const blob = blobOf(brief);
+  const luxuryCheap = /奢华|高端|礼品/.test(blob) && /便宜|低成本|好做/.test(blob);
+  const youngOld = /年轻/.test(blob) && /老字号|传统/.test(blob);
+  const questions: AgentQuestion[] = [];
+  if (luxuryCheap) {
+    questions.push({
+      id: "routes_q_cost",
+      stage: "routes",
+      prompt: "礼品档和落地成本打架时，先按哪边搜？",
+      options: [
+        {
+          id: "gift",
+          label: "先按礼品档搜",
+          rationale: "会看到更完整的层次，但可能做不起",
+        },
+        {
+          id: "cost",
+          label: "先按能落地的成本搜",
+          rationale: "更接近能做出来的，但会少看高档参考",
+          recommended: true,
+        },
+      ],
+    });
+  } else if (youngOld) {
+    questions.push({
+      id: "routes_q_heritage",
+      stage: "routes",
+      prompt: "年轻客群和老字号感，先按哪边排探索顺序？",
+      options: [
+        {
+          id: "youth",
+          label: "先按年轻人怎么认",
+          rationale: "更接近购买现场",
+        },
+        {
+          id: "heritage",
+          label: "先按老字号怎么认",
+          rationale: "更容易保住已有识别",
+        },
+      ],
+    });
+  }
+  return dedupeQuestions(questions, [...asked, ...answers.map((a) => ({ id: a.questionId }))]);
+}
+
+export function mockPlatformQuestions(
+  brief: Brief,
+  answers: AgentAnswer[] = [],
+  asked: AgentQuestion[] = []
+): AgentQuestion[] {
+  if (answers.some((a) => a.questionId.startsWith("platform_"))) return [];
+  const decided = [
+    brief.goal,
+    brief.targetUser,
+    ...brief.known,
+    ...brief.preferences,
+    ...brief.constraints,
+  ].join(" ");
+  if (/国内|海外|英文|中文|小红书|pinterest|behance/i.test(decided)) return [];
+  const needsRegion = brief.unknown.some((item) =>
+    /地区|语言|海外|国内|平台/.test(item)
+  );
+  if (!needsRegion) return [];
+  return dedupeQuestions(
+    [
+      {
+        id: "platform_q_lang",
+        stage: "platform",
+        prompt: "这一轮先看哪边的参考？",
+        options: [
+          {
+            id: "cn",
+            label: "国内站为主",
+            rationale: "更接近上线环境",
+            recommended: true,
+          },
+          {
+            id: "en",
+            label: "英文站为主",
+            rationale: "更容易看到完整项目",
+          },
+          {
+            id: "mix",
+            label: "中英都看",
+            rationale: "对照差异，但会慢一点",
+          },
+        ],
+      },
+    ],
+    [...asked, ...answers.map((a) => ({ id: a.questionId }))]
+  );
+}
 
 export function mockParseBrief(raw: string): Brief {
   const text = raw.toLowerCase();
@@ -39,7 +154,9 @@ export function mockParseBrief(raw: string): Brief {
     goal: summarizeGoal(raw),
     targetUser: "待确认目标用户",
     known: extractTokens(raw).slice(0, 4),
-    unknown: ["还不知道先去搜什么"],
+    unknown: short
+      ? ["还没确认这是界面、包装还是品牌"]
+      : ["还没确认先看哪一块"],
     constraints: [],
     deliverable: "视觉探索方向",
     preferences: [],

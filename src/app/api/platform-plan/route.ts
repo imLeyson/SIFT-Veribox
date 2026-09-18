@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { planPlatforms, wrap } from "@/lib/agent";
-import type { Brief, ExplorationRoute } from "@/types";
+import { parseAnswers } from "@/lib/agent/questions";
+import type { AgentQuestion, Brief, ChatMessage, ExplorationRoute } from "@/types";
 
 export const maxDuration = 60;
 
@@ -10,6 +11,11 @@ export async function POST(request: Request) {
       brief?: Brief;
       selected_route?: ExplorationRoute;
       active_step?: string;
+      answers?: unknown;
+      askedQuestions?: AgentQuestion[];
+      recent_messages?: Pick<ChatMessage, "role" | "content">[];
+      canvas?: unknown;
+      force?: boolean;
       sessionVersion?: number;
     };
 
@@ -23,7 +29,14 @@ export async function POST(request: Request) {
     const parsed = await planPlatforms(
       body.brief,
       body.selected_route,
-      body.active_step
+      body.active_step,
+      {
+        answers: parseAnswers(body.answers),
+        askedQuestions: body.askedQuestions,
+        recentMessages: body.recent_messages,
+        canvas: body.canvas,
+        force: body.force,
+      }
     );
     return NextResponse.json(
       wrap(parsed.plan, parsed.questions, (body.sessionVersion ?? 0) + 1)

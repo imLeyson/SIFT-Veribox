@@ -1,7 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { AgentAnswer, AgentQuestion } from "@/types";
+import { useVeriboxStore } from "@/lib/store";
+
+function seedFromDraft(
+  questions: AgentQuestion[],
+  drafts: AgentAnswer[]
+) {
+  const picked: Record<string, string> = {};
+  const custom: Record<string, string> = {};
+  const uncertain: Record<string, boolean> = {};
+  for (const q of questions) {
+    const draft = drafts.find((a) => a.questionId === q.id);
+    if (!draft) continue;
+    if (draft.kind === "uncertain") uncertain[q.id] = true;
+    else if (draft.kind === "custom") custom[q.id] = draft.custom ?? "";
+    else if (draft.kind === "option" && draft.optionId) picked[q.id] = draft.optionId;
+  }
+  return { picked, custom, uncertain };
+}
 
 export function QuestionBlock({
   questions,
@@ -14,9 +32,24 @@ export function QuestionBlock({
   disabled?: boolean;
   onSubmit: (answers: AgentAnswer[], proceed: boolean) => void;
 }) {
-  const [picked, setPicked] = useState<Record<string, string>>({});
-  const [custom, setCustom] = useState<Record<string, string>>({});
-  const [uncertain, setUncertain] = useState<Record<string, boolean>>({});
+  const draftAnswers = useVeriboxStore((s) => s.draftAnswers);
+  const upsertDraft = useVeriboxStore((s) => s.upsertDraft);
+  const questionKey = questions.map((q) => q.id).join("|");
+  const seeded = useMemo(
+    () => seedFromDraft(questions, draftAnswers),
+    // hydrate once from persisted drafts for this question set
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [questionKey]
+  );
+  const [picked, setPicked] = useState<Record<string, string>>(seeded.picked);
+  const [custom, setCustom] = useState<Record<string, string>>(seeded.custom);
+  const [uncertain, setUncertain] = useState<Record<string, boolean>>(
+    seeded.uncertain
+  );
+
+  function persist(next: AgentAnswer) {
+    upsertDraft(next);
+  }
 
   if (!questions.length && !stall) return null;
 
@@ -63,6 +96,12 @@ export function QuestionBlock({
                   onClick={() => {
                     setUncertain((u) => ({ ...u, [q.id]: false }));
                     setPicked((p) => ({ ...p, [q.id]: opt.id }));
+                    persist({
+                      questionId: q.id,
+                      kind: "option",
+                      optionId: opt.id,
+                      custom: opt.label,
+                    });
                   }}
                 >
                   <span className="font-medium">
@@ -88,17 +127,31 @@ export function QuestionBlock({
             placeholder="自己补充一句"
             className="mt-2 w-full rounded-lg border border-line bg-cream/80 px-2 py-1.5 text-sm outline-none focus:border-accent"
             onChange={(e) => {
-              setCustom((c) => ({ ...c, [q.id]: e.target.value }));
+              const value = e.target.value;
+              setCustom((c) => ({ ...c, [q.id]: value }));
               setUncertain((u) => ({ ...u, [q.id]: false }));
+              persist({
+                questionId: q.id,
+                kind: value.trim() ? "custom" : "option",
+                optionId: picked[q.id],
+                custom: value,
+              });
             }}
           />
           <button
             type="button"
             disabled={disabled}
             className={`mt-1 text-xs ${uncertain[q.id] ? "text-ink" : "text-muted"}`}
-            onClick={() =>
-              setUncertain((u) => ({ ...u, [q.id]: !u[q.id] }))
-            }
+            onClick={() => {
+              const next = !uncertain[q.id];
+              setUncertain((u) => ({ ...u, [q.id]: next }));
+              persist({
+                questionId: q.id,
+                kind: next ? "uncertain" : picked[q.id] ? "option" : "custom",
+                optionId: picked[q.id],
+                custom: custom[q.id],
+              });
+            }}
           >
             暂不确定
           </button>

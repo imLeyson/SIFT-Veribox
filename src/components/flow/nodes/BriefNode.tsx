@@ -8,12 +8,24 @@ import { useVeriboxActions } from "@/hooks/useVeriboxActions";
 import type { VBData } from "@/types";
 
 export function BriefNode({ data, selected }: NodeProps<Node<VBData, "brief">>) {
-  const { updateBriefField, loading, pendingQuestions } = useVeriboxStore();
+  const {
+    updateBriefField,
+    loading,
+    pendingQuestions,
+    routes,
+    askRoundByStage,
+  } = useVeriboxStore();
   const { confirmBriefAndContinue, submitAnswers } = useVeriboxActions();
   const brief = data.brief;
   if (!brief) return null;
-  const questions = pendingQuestions.filter((q) => q.stage === "brief");
-  const stall = questions.length > 0 && pendingQuestions.length >= 2;
+  const questions = pendingQuestions.filter(
+    (q) => q.stage === "brief" || (routes.length === 0 && q.stage === "routes")
+  );
+  const stall =
+    questions.length > 0 &&
+    (questions.some((q) => q.stage === "routes")
+      ? askRoundByStage.routes >= 2
+      : askRoundByStage.brief >= 2);
 
   return (
     <NodeShell kicker="任务" title="当前理解" selected={selected}>
@@ -42,11 +54,16 @@ export function BriefNode({ data, selected }: NodeProps<Node<VBData, "brief">>) 
       {questions.length > 0 ? (
         <div className="mt-4">
           <QuestionBlock
+            key={questions.map((q) => q.id).join("|")}
             questions={questions}
             stall={stall}
             disabled={loading}
             onSubmit={(answers, proceed) =>
-              void submitAnswers(answers, proceed, "brief")
+              void submitAnswers(
+                answers,
+                proceed,
+                questions.some((q) => q.stage === "routes") ? "routes" : "brief"
+              )
             }
           />
         </div>
