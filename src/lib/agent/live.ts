@@ -15,38 +15,57 @@ import {
   RoutesPayloadSchema,
 } from "./schema";
 
+function list(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(Boolean);
+}
+
 function camelBrief(data: Record<string, unknown>) {
+  const unknown = list(data.unknown);
   return {
-    goal: data.goal,
-    targetUser: data.target_user ?? data.targetUser,
-    known: data.known,
-    unknown: data.unknown,
-    constraints: data.constraints,
-    deliverable: data.deliverable,
-    openQuestions: data.open_questions ?? data.openQuestions ?? [],
+    goal: text(data.goal, "寻找视觉方向"),
+    targetUser: text(data.target_user ?? data.targetUser, "待确认目标用户"),
+    known: list(data.known),
+    unknown: unknown.length ? unknown : ["当前最大的视觉不确定性是什么"],
+    constraints: list(data.constraints),
+    deliverable: text(data.deliverable, "视觉探索方向"),
+    openQuestions: list(data.open_questions ?? data.openQuestions).slice(0, 3),
   };
+}
+
+function text(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
 function camelRoutes(data: Record<string, unknown>) {
   const routes = Array.isArray(data.routes)
-    ? data.routes.map((item) => {
+    ? data.routes.map((item, i) => {
         const row = (item ?? {}) as Record<string, unknown>;
+        const steps = Array.isArray(row.steps)
+          ? row.steps
+              .map((s) => (typeof s === "string" ? s.trim() : ""))
+              .filter(Boolean)
+          : [];
         return {
-          id: row.id,
-          title: row.title,
-          question: row.question,
-          steps: row.steps,
-          purpose: row.purpose,
-          advantage: row.advantage,
-          watchOut: row.watch_out ?? row.watchOut,
-          recommendationReason:
+          id: text(row.id, `route_0${i + 1}`),
+          title: text(row.title, `探索方法 ${i + 1}`),
+          question: text(row.question, "这一步要先搞清什么？"),
+          steps,
+          purpose: text(row.purpose, "按顺序搜索，避免同时铺开。"),
+          advantage: text(row.advantage, "判断更具体。"),
+          watchOut: text(row.watch_out ?? row.watchOut, "不要当成最终风格。"),
+          recommendationReason: text(
             row.recommendation_reason ?? row.recommendationReason,
+            "对应当前 Brief 里还不清楚的部分。"
+          ),
         };
       })
     : [];
+  const rec = data.recommended_route_id ?? data.recommendedRouteId ?? null;
   return {
-    recommendedRouteId:
-      data.recommended_route_id ?? data.recommendedRouteId ?? null,
+    recommendedRouteId: rec === "" ? null : rec,
     routes,
   };
 }
