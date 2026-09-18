@@ -14,7 +14,7 @@ export function BriefNode({ data, selected }: NodeProps<Node<VBData, "brief">>) 
 
   return (
     <NodeShell kicker="任务" title="确认理解" selected={selected}>
-      <p className="text-xs text-muted">确认后，右侧会生长出搜索方案。</p>
+      <p className="text-xs text-muted">Agent 只结构化，不替你选风格。</p>
       <dl className="mt-3 space-y-2 text-sm">
         <Row label="Goal" value={brief.goal} />
         <Row label="User" value={brief.targetUser} />
@@ -22,12 +22,24 @@ export function BriefNode({ data, selected }: NodeProps<Node<VBData, "brief">>) 
         <Row label="Explore" value={brief.unknown.join(" / ")} />
         <Row label="Avoid" value={brief.constraints.join(" / ")} />
       </dl>
+      {brief.openQuestions.length > 0 && (
+        <div className="mt-3 rounded-xl bg-mist/80 p-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted">
+            待确认
+          </p>
+          <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-ink">
+            {brief.openQuestions.slice(0, 3).map((q) => (
+              <li key={q}>{q}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <button
         type="button"
         className="btn-primary mt-4 w-full"
         onClick={confirmBriefAndContinue}
       >
-        生成搜索方案
+        确认，选择探索入口
       </button>
       <button
         type="button"

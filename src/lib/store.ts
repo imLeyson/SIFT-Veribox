@@ -24,6 +24,7 @@ import type {
 import {
   BRIEF_ID,
   BRIEF_INPUT_ID,
+  STATE_ID,
   childPosition,
   link,
   seedNodes,
@@ -65,6 +66,9 @@ type Actions = {
   ) => void;
   addMessage: (message: Omit<ChatMessage, "id">) => void;
   setChatOpen: (open: boolean) => void;
+  skipSource: (nodeId: string, name: string) => void;
+  replaceSource: (nodeId: string, name: string) => void;
+  toggleMoreSources: (nodeId: string) => void;
 };
 
 const initial: VeriboxState = {
@@ -137,10 +141,33 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
         });
       },
       setUserInitialIdea: (userInitialIdea) => set({ userInitialIdea }),
-      setStartingState: (startingState, ideas = []) =>
-        set({ startingState, userInitialIdea: ideas, error: null }),
-      setRoutes: (routes, recommendedRouteId) => {
+      setStartingState: (startingState, ideas = []) => {
         const parent = get().nodes.find((n) => n.id === BRIEF_ID);
+        const label =
+          startingState === "has_idea"
+            ? `已有想法：${ideas.join(" / ") || "未写词"}`
+            : startingState === "no_idea"
+              ? "暂时没有明确想法"
+              : "选择入口后才会生成路线";
+        const node: VBNode = {
+          id: STATE_ID,
+          type: "state",
+          position: childPosition(parent, 0, 1),
+          data: { kind: "state", title: "当前状态", body: label },
+          dragHandle: ".card-drag",
+        };
+        set({
+          startingState,
+          userInitialIdea: ideas,
+          step: "starting_state",
+          error: null,
+          nodes: upsertNode(get().nodes, node),
+          edges: upsertEdge(get().edges, link(BRIEF_ID, STATE_ID, "状态")),
+          selectedNodeId: STATE_ID,
+        });
+      },
+      setRoutes: (routes, recommendedRouteId) => {
+        const parent = get().nodes.find((n) => n.id === STATE_ID) ?? get().nodes.find((n) => n.id === BRIEF_ID);
         let nodes = get().nodes;
         let edges = get().edges;
         routes.forEach((route, i) => {
@@ -160,7 +187,7 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
           nodes = upsertNode(nodes, node);
           edges = upsertEdge(
             edges,
-            link(BRIEF_ID, id, route.id === recommendedRouteId ? "推荐" : "方案")
+            link(STATE_ID, id, route.id === recommendedRouteId ? "推荐" : "方案")
           );
         });
         set({
@@ -179,6 +206,18 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
           step: "platform_plan",
           error: null,
           selectedNodeId: `card-route-${route.id}`,
+          nodes: get().nodes.map((n) =>
+            n.data.kind === "route"
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    dimmed: n.data.route?.id !== route.id,
+                    recommended: n.data.route?.id === get().recommendedRouteId,
+                  },
+                }
+              : n
+          ),
         }),
       setPlatformPlan: (platformPlan, routeId, stepName) => {
         const rid = routeId ?? get().selectedRoute?.id ?? "route";
@@ -214,13 +253,68 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
       setStep: (step) => set({ step }),
       setLoading: (loading) => set({ loading }),
       setError: (error) => set({ error }),
-      goBack: () => set({ selectedNodeId: null }),
-      reset: () =>
+      goBack: () => {
+        const current = get().step;
+        if (current === "platform_plan" || current === "canvas_chat") {
+          const nodes = get().nodes.filter((n) => n.data.kind !== "platform");
+          const ids = new Set(nodes.map((n) => n.id));
+          set({
+            step: "routes",
+            selectedRoute: null,
+            activeStep: null,
+            platformPlan: null,
+            nodes: nodes.map((n) =>
+              n.data.kind === "route" ? { ...n, data: { ...n.data, dimmed: false } } : n
+            ),
+            edges: get().edges.filter((e) => ids.has(e.source) && ids.has(e.target)),
+            selectedNodeId: get().routes[0]
+              ? `card-route-${get().routes[0].id}`
+              : STATE_ID,
+          });
+          return;
+        }
+        if (current === "routes") {
+          const nodes = get().nodes.filter((n) => n.data.kind !== "route");
+          const ids = new Set(nodes.map((n) => n.id));
+          set({
+            step: "starting_state",
+            routes: [],
+            recommendedRouteId: null,
+            nodes,
+            edges: get().edges.filter((e) => ids.has(e.source) && ids.has(e.target)),
+            selectedNodeId: STATE_ID,
+          });
+          return;
+        }
+        if (current === "starting_state") {
+          const nodes = get().nodes.filter((n) => n.id !== STATE_ID);
+          const ids = new Set(nodes.map((n) => n.id));
+          set({
+            step: "brief_confirm",
+            startingState: null,
+            userInitialIdea: [],
+            nodes,
+            edges: get().edges.filter((e) => ids.has(e.source) && ids.has(e.target)),
+            selectedNodeId: BRIEF_ID,
+          });
+          return;
+        }
+        if (current === "brief_confirm") {
+          set({ step: "brief_input", selectedNodeId: BRIEF_INPUT_ID });
+        }
+      },
+      reset: () => {
+        useVeriboxStore.persist.clearStorage();
         set({
           ...initial,
           sessionId: newSessionId(),
           nodes: seedNodes(),
-        }),
+          edges: [],
+          messages: [],
+          loading: false,
+          error: null,
+        });
+      },
       recordChange: (change) =>
         set({ userChanges: [...get().userChanges, change] }),
       onNodesChange: (changes) =>
@@ -259,6 +353,71 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
           messages: [...get().messages, { ...message, id: newId("msg") }],
         }),
       setChatOpen: (chatOpen) => set({ chatOpen }),
+      skipSource: (nodeId, name) => {
+        set({
+          nodes: get().nodes.map((n) =>
+            n.id === nodeId
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    skippedSources: [
+                      ...(n.data.skippedSources ?? []),
+                      name,
+                    ],
+                  },
+                }
+              : n
+          ),
+        });
+        get().recordChange(`skip:${name}`);
+      },
+      replaceSource: (nodeId, name) => {
+        const node = get().nodes.find((n) => n.id === nodeId);
+        const plan = node?.data.plan;
+        if (!plan) return;
+        const skipped = new Set(node.data.skippedSources ?? []);
+        const replaced = { ...(node.data.replacedSources ?? {}) };
+        const visible = plan.sources
+          .map((s) => replaced[s.name] ?? s)
+          .filter((s) => !skipped.has(s.name));
+        const alt = plan.alternatives.find(
+          (a) =>
+            !visible.some((s) => s.name === a.name) &&
+            !skipped.has(a.name) &&
+            a.name !== name
+        );
+        if (!alt) return;
+        set({
+          nodes: get().nodes.map((n) =>
+            n.id === nodeId
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    replacedSources: { ...replaced, [name]: alt },
+                  },
+                }
+              : n
+          ),
+        });
+        get().recordChange(`replace:${name}->${alt.name}`);
+      },
+      toggleMoreSources: (nodeId) => {
+        set({
+          nodes: get().nodes.map((n) =>
+            n.id === nodeId
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    showMoreSources: !n.data.showMoreSources,
+                  },
+                }
+              : n
+          ),
+        });
+      },
     }),
     {
       name: "veribox-canvas-think-v1",

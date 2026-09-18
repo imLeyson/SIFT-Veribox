@@ -13,7 +13,7 @@ function subscribeHydration(onStoreChange: () => void) {
 }
 
 export function Workspace() {
-  const { step, error, reset, loading, nodes } = useVeriboxStore();
+  const { step, error, reset, loading, nodes, goBack } = useVeriboxStore();
   const ready = useSyncExternalStore(
     subscribeHydration,
     () => useVeriboxStore.persist.hasHydrated(),
@@ -61,9 +61,16 @@ export function Workspace() {
           <p className="hidden text-xs text-muted sm:block">
             拖画布平移 · 拖标题移动卡片 · 拉线连接 · 对话会读整张画布
           </p>
-          <button type="button" className="btn-ghost text-xs" onClick={reset}>
-            新建探索
-          </button>
+          <div className="flex items-center gap-2">
+            {step !== "brief_input" && (
+              <button type="button" className="btn-ghost text-xs" onClick={goBack}>
+                返回上一步
+              </button>
+            )}
+            <button type="button" className="btn-ghost text-xs" onClick={reset}>
+              新建探索
+            </button>
+          </div>
         </div>
       </header>
 
