@@ -7,6 +7,7 @@ export interface Brief {
   unknown: string[];
   constraints: string[];
   deliverable: string;
+  openQuestions: string[];
 }
 
 export type StartingState = "has_idea" | "no_idea" | null;
@@ -45,6 +46,7 @@ export interface PlatformPlan {
 export type FlowStep =
   | "brief_input"
   | "brief_confirm"
+  | "starting_state"
   | "routes"
   | "platform_plan"
   | "canvas_chat";
@@ -64,8 +66,12 @@ export type VBData = {
   brief?: Brief;
   route?: ExplorationRoute;
   recommended?: boolean;
+  dimmed?: boolean;
   plan?: PlatformPlan;
   routeId?: string;
+  skippedSources?: string[];
+  replacedSources?: Record<string, PlatformSource>;
+  showMoreSources?: boolean;
 };
 
 export type VBNode = Node<VBData>;
