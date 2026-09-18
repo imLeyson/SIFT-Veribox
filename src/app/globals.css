@@ -1,26 +1,219 @@
 @import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --cream: #f7f3ec;
+  --ink: #1f1c18;
+  --muted: #6f675e;
+  --mist: #ebe4d8;
+  --line: #ddd4c6;
+  --accent: #8b7db5;
+  --accent-ink: #5b4d86;
+  --card: rgba(255, 252, 247, 0.86);
+  --background: #f4efe6;
+  --foreground: #1f1c18;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-cream: var(--cream);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-mist: var(--mist);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
   --font-sans: var(--font-geist-sans);
+  --font-serif: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+body {
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(180, 198, 230, 0.28), transparent 55%),
+    radial-gradient(900px 500px at 90% 0%, rgba(196, 184, 220, 0.22), transparent 50%),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  min-height: 100%;
+}
+
+.font-serif {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+}
+
+.card {
+  border: 1px solid color-mix(in oklab, var(--line) 80%, white);
+  border-radius: 1.25rem;
+  background: var(--card);
+  box-shadow: 0 10px 30px rgba(40, 32, 20, 0.04);
+  backdrop-filter: blur(8px);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: var(--ink);
+  color: var(--cream);
+  padding: 0.625rem 1.125rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  padding: 0.625rem 1.125rem;
+  font-size: 0.875rem;
+  transition: background 0.15s ease;
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.think-bar-fill {
+  transition: width 80ms linear;
+  background-image: linear-gradient(
+    90deg,
+    var(--ink) 0%,
+    color-mix(in oklab, var(--ink) 80%, white) 50%,
+    var(--ink) 100%
+  );
+  background-size: 160px 100%;
+  animation: think-sheen 1.4s linear infinite;
+}
+
+@keyframes think-sheen {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 160px 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.react-flow {
+  --xy-background-color: transparent;
+  cursor: grab;
+}
+
+.react-flow.dragging,
+.react-flow.nodrag {
+  cursor: grabbing;
+}
+
+.react-flow__node {
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.vb-node {
+  transform: translateZ(0);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.vb-node:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(40, 32, 20, 0.08);
+}
+
+.vb-node-selected {
+  box-shadow:
+    0 0 0 1.5px var(--ink),
+    0 18px 40px rgba(40, 32, 20, 0.1);
+}
+
+.vb-handle {
+  width: 12px !important;
+  height: 12px !important;
+  border: 2px solid var(--ink) !important;
+  background: var(--cream) !important;
+  opacity: 0.35;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.vb-handle-out {
+  background: var(--ink) !important;
+}
+
+.react-flow__node:hover .vb-handle,
+.react-flow__node.selected .vb-handle {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+.react-flow__edge-path {
+  stroke-linecap: round;
+}
+
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:focus .react-flow__edge-path {
+  stroke: var(--ink) !important;
+}
+
+.react-flow__connection-path {
+  stroke: var(--ink) !important;
+}
+
+.react-flow__controls {
+  box-shadow: none !important;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  border-radius: 12px;
+  margin: 12px !important;
+}
+
+.react-flow__controls-button {
+  background: var(--card);
+  border-bottom-color: var(--line);
+  fill: var(--ink);
+  width: 28px;
+  height: 28px;
+}
+
+.react-flow__minimap {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line) !important;
+  margin: 12px !important;
+  box-shadow: none !important;
+}
+
+.react-flow__edge-textbg {
+  fill: var(--cream);
+}
+
+.react-flow__edge-text {
+  fill: var(--muted);
+  font-size: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
 }
