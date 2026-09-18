@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Veribox · Exploration Agent",
-  description: "把设计任务变成可复制的搜索顺序和中英文关键词",
+  title: "SIFT · Visual Research Agent",
+  description:
+    "SIFT 是一个帮助设计师把模糊 Brief 编排成视觉探索路线和搜索行动的 Agent。",
 };
 
 export default function RootLayout({

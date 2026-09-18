@@ -1,25 +1,35 @@
-# Veribox · Exploration Agent MVP
+# SIFT
 
-基于 `Veribox_Exploration_Agent_MVP_PRD_v0.1.md` 的可交互 Demo。
+SIFT 是一个帮助设计师把模糊 Brief 编排成视觉探索路线和搜索行动的 Agent。
 
-## 流程
+```text
+Brief → 理解任务 → 选择当前状态 → 3 条探索路线 → 平台搜索计划 → 画布对话深化
+```
 
-Brief 输入 → Brief 确认 → 探索状态 → 3 条探索路线 → 平台搜索计划
+Agent 负责组织可能性，设计师负责判断和选择。
 
 ## 启动
 
 ```bash
-cd veribox-mvp
 npm install
 npm run dev
 ```
 
 打开 http://localhost:3000
 
-当前 Agent 使用 **mock structured output**（无需 API Key），覆盖护肤 Brief 示例与通用回退。
+无 `LLM_API_KEY` 时走 Mock Mode。配置 Grok 4.6：
 
-## 技术栈
+```text
+LLM_BASE_URL
+LLM_API_KEY
+LLM_MODEL=grok-4.6
+LLM_REASONING_EFFORT=medium
+```
 
-- Next.js App Router + TypeScript + Tailwind CSS
-- Zustand + LocalStorage
-- Lucide icons
+## 测试
+
+```bash
+npm run lint
+npm run test
+npm run build
+```

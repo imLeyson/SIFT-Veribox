@@ -15,7 +15,7 @@ export function BriefInput() {
     <section className="mx-auto w-full max-w-2xl">
       <div className="card p-8 sm:p-10">
         <p className="text-sm font-medium uppercase tracking-[0.14em] text-muted">
-          Veribox
+          SIFT
         </p>
         <h1 className="mt-3 font-serif text-3xl leading-tight text-ink sm:text-4xl">
           先把任务变成能搜的词

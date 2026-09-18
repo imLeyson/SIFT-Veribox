@@ -74,7 +74,7 @@ async function completeJsonOnce<T>(
         ],
       }),
     });
-  } catch (error) {
+  } catch {
     if (controller.signal.aborted) {
       throw new Error("模型请求超时，请再试一次");
     }

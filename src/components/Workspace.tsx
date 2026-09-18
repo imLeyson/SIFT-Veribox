@@ -50,7 +50,7 @@ export function Workspace() {
         <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div>
             <p className="text-sm font-semibold tracking-wide text-ink">
-              Veribox
+              SIFT
             </p>
             <p className="text-xs text-muted">
               {loading

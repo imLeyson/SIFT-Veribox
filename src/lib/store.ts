@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import {
   addEdge,
   applyEdgeChanges,
@@ -420,7 +420,30 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
       },
     }),
     {
-      name: "veribox-canvas-think-v1",
+      name: "sift-agent-v1",
+      version: 1,
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        state.loading = false;
+        state.error = null;
+      },
+      storage: createJSONStorage(() => ({
+        getItem: (name) => {
+          try {
+            return localStorage.getItem(name);
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name, value) => localStorage.setItem(name, value),
+        removeItem: (name) => {
+          try {
+            localStorage.removeItem(name);
+          } catch {
+            /* ignore */
+          }
+        },
+      })),
       partialize: (state) => ({
         sessionId: state.sessionId,
         step: state.step,
