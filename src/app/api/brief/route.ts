@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { agentInfo, parseBrief } from "@/lib/agent";
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {

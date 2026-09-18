@@ -5,7 +5,7 @@ const BASE_URL = (process.env.LLM_BASE_URL ?? "https://ai.tkapi.site/v1").replac
 const API_KEY = process.env.LLM_API_KEY ?? "";
 const MODEL = process.env.LLM_MODEL ?? "grok-4.6";
 const REASONING = process.env.LLM_REASONING_EFFORT ?? "medium";
-const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? 90000);
+const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? 28000);
 
 export function llmConfigured() {
   return Boolean(API_KEY);
@@ -41,9 +41,10 @@ export async function completeJson<T>(
 }
 
 function isRetryable(error: unknown, status?: number): boolean {
-  if (status && status >= 500) return true;
+  if (status && status >= 500 && status !== 504) return true;
   const msg = error instanceof Error ? error.message : String(error);
-  return /为空|超时|SSL|fetch|network|ECONNRESET|AbortError/i.test(msg);
+  if (/超时|AbortError/i.test(msg)) return false;
+  return /为空|SSL|ECONNRESET|network/i.test(msg);
 }
 
 async function completeJsonOnce<T>(

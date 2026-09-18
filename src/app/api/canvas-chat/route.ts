@@ -3,7 +3,7 @@ import { liveCanvasChat } from "@/lib/agent/canvas-chat";
 import { agentInfo } from "@/lib/agent";
 import type { VBEdge, VBNode } from "@/types";
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
@@ -12,6 +12,8 @@ export async function POST(request: Request) {
       nodes?: VBNode[];
       edges?: VBEdge[];
       selectedId?: string | null;
+      nodeIds?: string[];
+      canvas?: unknown;
     };
     const message = body.message?.trim();
     if (!message) {
@@ -22,7 +24,8 @@ export async function POST(request: Request) {
       message,
       body.nodes ?? [],
       body.edges ?? [],
-      body.selectedId ?? null
+      body.selectedId ?? null,
+      body.nodeIds
     );
 
     return NextResponse.json({ data, ...agentInfo() });

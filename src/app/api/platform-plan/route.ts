@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { agentInfo, planPlatforms } from "@/lib/agent";
 import type { Brief, ExplorationRoute } from "@/types";
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {

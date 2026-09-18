@@ -5,6 +5,7 @@ import { useVeriboxStore } from "@/lib/store";
 import { ThinkingProgress } from "@/components/canvas/ThinkingProgress";
 import { InfiniteCanvas } from "@/components/flow/InfiniteCanvas";
 import { ChatDock } from "@/components/flow/ChatDock";
+import { cancelInflight } from "@/hooks/useVeriboxActions";
 
 function subscribeHydration(onStoreChange: () => void) {
   const unsub = useVeriboxStore.persist.onFinishHydration(onStoreChange);
@@ -74,7 +75,18 @@ export function Workspace() {
         </div>
       </header>
 
-      {loading && <ThinkingProgress step={step} />}
+      {loading && (
+        <div className="relative">
+          <ThinkingProgress step={step} />
+          <button
+            type="button"
+            className="btn-ghost absolute right-4 top-3 z-20 !px-3 !py-1 text-xs"
+            onClick={() => cancelInflight()}
+          >
+            取消
+          </button>
+        </div>
+      )}
 
       {error && (
         <div

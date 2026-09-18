@@ -95,7 +95,7 @@ export const CanvasChatCardSchema = z.object({
 
 export const CanvasChatSchema = z.object({
   reply: nonEmpty,
-  cards: z.array(CanvasChatCardSchema).min(1).max(3),
+  cards: z.array(CanvasChatCardSchema).max(3).default([]),
 });
 
 export function parseOrThrow<T>(

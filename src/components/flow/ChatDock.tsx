@@ -10,7 +10,7 @@ const CHIPS = ["从这里深化", "再开一个对照分支", "把搜索词写�
 export function ChatDock() {
   const { messages, selectedNodeId, nodes, chatOpen, setChatOpen, loading } =
     useVeriboxStore();
-  const { sendCanvasChat } = useVeriboxActions();
+  const { sendCanvasChat, cancelInflight } = useVeriboxActions();
   const [text, setText] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
   const focus = nodes.find((n) => n.id === selectedNodeId);
@@ -71,10 +71,19 @@ export function ChatDock() {
           </div>
         ))}
         {loading && (
-          <p className="flex items-center gap-2 text-xs text-muted">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            正在看画布…
-          </p>
+          <div className="flex items-center justify-between gap-2 text-xs text-muted">
+            <p className="inline-flex items-center gap-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              正在思考，最多约 45 秒…
+            </p>
+            <button
+              type="button"
+              className="underline"
+              onClick={() => cancelInflight()}
+            >
+              取消
+            </button>
+          </div>
         )}
       </div>
 

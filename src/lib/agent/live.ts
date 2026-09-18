@@ -196,7 +196,7 @@ export async function liveCanvasChatRaw(
 4. 不替用户做最终视觉判断。
 5. 中文。`,
     JSON.stringify({ message, canvas }, null, 2),
-    "medium"
+    "low"
   );
   return parseOrThrow(CanvasChatSchema, data, "画布对话");
 }

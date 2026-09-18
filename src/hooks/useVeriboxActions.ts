@@ -1,18 +1,42 @@
 "use client";
 
 import { useVeriboxStore } from "@/lib/store";
+import { serializeCanvas } from "@/lib/canvas-graph";
 import type { Brief, ExplorationRoute, PlatformPlan } from "@/types";
 
+const CLIENT_TIMEOUT_MS = 45000;
+let inflight: AbortController | null = null;
+let userCancel = false;
+
+export function cancelInflight() {
+  userCancel = true;
+  inflight?.abort();
+  inflight = null;
+  useVeriboxStore.getState().setLoading(false);
+}
+
 async function postJson<T>(url: string, body: unknown): Promise<T> {
+  inflight?.abort();
+  userCancel = false;
+  const ac = new AbortController();
+  inflight = ac;
+  const timer = window.setTimeout(() => ac.abort(), CLIENT_TIMEOUT_MS);
   let res: Response;
   try {
     res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: ac.signal,
     });
   } catch {
-    throw new Error("连不上本地服务，请确认开发服务器还在运行");
+    if (ac.signal.aborted) {
+      throw new Error(userCancel ? "已取消" : "思考超时，请再试一次");
+    }
+    throw new Error("网络中断，请再试一次");
+  } finally {
+    window.clearTimeout(timer);
+    if (inflight === ac) inflight = null;
   }
 
   const raw = await res.text();
@@ -51,9 +75,8 @@ export function useVeriboxActions() {
       const brief = await postJson<Brief>("/api/brief", { brief: raw });
       useVeriboxStore.getState().setBrief(brief);
     } catch (e) {
-      useVeriboxStore.getState().setError(
-        e instanceof Error ? e.message : "解析失败"
-      );
+      const msg = e instanceof Error ? e.message : "解析失败";
+      if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
     } finally {
       useVeriboxStore.getState().setLoading(false);
     }
@@ -83,9 +106,8 @@ export function useVeriboxActions() {
       });
       useVeriboxStore.getState().setPlatformPlan(plan, route.id, step);
     } catch (e) {
-      useVeriboxStore.getState().setError(
-        e instanceof Error ? e.message : "搜索计划生成失败"
-      );
+      const msg = e instanceof Error ? e.message : "搜索计划生成失败";
+      if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
     } finally {
       useVeriboxStore.getState().setLoading(false);
     }
@@ -111,9 +133,8 @@ export function useVeriboxActions() {
       });
       useVeriboxStore.getState().setPlatformPlan(plan, route.id, next);
     } catch (e) {
-      useVeriboxStore.getState().setError(
-        e instanceof Error ? e.message : "搜索计划生成失败"
-      );
+      const msg = e instanceof Error ? e.message : "搜索计划生成失败";
+      if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
     } finally {
       useVeriboxStore.getState().setLoading(false);
     }
@@ -135,8 +156,41 @@ export function useVeriboxActions() {
         cards: { title: string; body: string; parentId: string | null }[];
       }>("/api/canvas-chat", {
         message,
-        nodes: store.nodes,
-        edges: store.edges,
+        canvas: serializeCanvas(store.nodes, store.edges, store.selectedNodeId),
+        nodeIds: store.nodes.map((n) => n.id),
+        nodes: store.nodes.map((n) => ({
+          id: n.id,
+          type: n.type,
+          position: n.position,
+          data: {
+            kind: n.data.kind,
+            title: n.data.title,
+            body: n.data.body,
+            brief: n.data.brief,
+            route: n.data.route,
+            recommended: n.data.recommended,
+            routeId: n.data.routeId,
+            plan: n.data.plan
+              ? {
+                  goal: n.data.plan.goal,
+                  sources: n.data.plan.sources.map((s) => ({
+                    rank: s.rank,
+                    name: s.name,
+                    label: s.label,
+                    reason: s.reason,
+                    queries: s.queries,
+                  })),
+                  alternatives: [],
+                }
+              : undefined,
+          },
+        })),
+        edges: store.edges.map((e) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          label: e.label,
+        })),
         selectedId: store.selectedNodeId,
       });
       const next = useVeriboxStore.getState();
@@ -151,9 +205,8 @@ export function useVeriboxActions() {
         );
       }
     } catch (e) {
-      useVeriboxStore.getState().setError(
-        e instanceof Error ? e.message : "对话失败"
-      );
+      const msg = e instanceof Error ? e.message : "对话失败";
+      if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
     } finally {
       useVeriboxStore.getState().setLoading(false);
     }
@@ -187,9 +240,8 @@ export function useVeriboxActions() {
       });
       useVeriboxStore.getState().setRoutes(data.routes, data.recommendedRouteId);
     } catch (e) {
-      useVeriboxStore.getState().setError(
-        e instanceof Error ? e.message : "方案生成失败"
-      );
+      const msg = e instanceof Error ? e.message : "方案生成失败";
+      if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
     } finally {
       useVeriboxStore.getState().setLoading(false);
     }
@@ -205,5 +257,6 @@ export function useVeriboxActions() {
     chooseRoute,
     advanceStep,
     sendCanvasChat,
+    cancelInflight,
   };
 }

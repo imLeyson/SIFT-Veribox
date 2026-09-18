@@ -9,11 +9,15 @@ export async function liveCanvasChat(
   message: string,
   nodes: VBNode[],
   edges: VBEdge[],
-  selectedId: string | null
+  selectedId: string | null,
+  nodeIds?: string[]
 ): Promise<{
   reply: string;
   cards: { title: string; body: string; parentId: string | null }[];
 }> {
+  const ids = new Set(
+    (nodeIds && nodeIds.length ? nodeIds : nodes.map((n) => n.id)).filter(Boolean)
+  );
   const canvas = serializeCanvas(nodes, edges, selectedId);
   const parsed = llmConfigured()
     ? await liveCanvasChatRaw(message, canvas)
@@ -23,14 +27,13 @@ export async function liveCanvasChat(
         "画布对话"
       );
 
-  const ids = new Set(nodes.map((n) => n.id));
   const cards = parsed.cards.map((card) => {
     const parentId =
       card.parentId && ids.has(card.parentId)
         ? card.parentId
         : selectedId && ids.has(selectedId)
           ? selectedId
-          : (nodes[nodes.length - 1]?.id ?? null);
+          : ([...ids][ids.size - 1] ?? null);
     if (!parentId || !ids.has(parentId)) {
       throw new Error("画布对话的 parentId 必须对应已有卡片");
     }
