@@ -1,4 +1,6 @@
 import type {
+  AgentAnswer,
+  AgentQuestion,
   Brief,
   ExplorationRoute,
   PlatformPlan,
@@ -22,6 +24,7 @@ import {
   PlatformPlanSchema,
   RoutesPayloadSchema,
 } from "./schema";
+import { newRequestId, normalizeQuestions } from "./questions";
 
 export type AgentMode = "live" | "mock";
 
@@ -30,59 +33,101 @@ export function agentInfo(): { mode: AgentMode; model: string | null } {
   return { mode: "mock", model: null };
 }
 
-export async function parseBrief(raw: string): Promise<Brief> {
+export function wrap<T>(
+  data: T | null,
+  questions: AgentQuestion[],
+  sessionVersion: number
+) {
+  return {
+    data,
+    questions,
+    requestId: newRequestId(),
+    sessionVersion,
+    ...agentInfo(),
+  };
+}
+
+export async function parseBrief(raw: string): Promise<{
+  brief: Brief;
+  questions: AgentQuestion[];
+}> {
   if (llmConfigured()) return liveParseBrief(raw);
-  return parseOrThrow(BriefSchema, mockParseBrief(raw), "Brief");
+  const brief = parseOrThrow(BriefSchema, mockParseBrief(raw), "Brief");
+  const questions = normalizeQuestions(
+    brief.clarifyQuestions.map((q) => ({
+      id: q.id,
+      prompt: q.prompt,
+      options: q.options.map((label, i) => ({ id: `opt_${i + 1}`, label })),
+    })),
+    "brief",
+    "card-brief"
+  );
+  return { brief, questions };
 }
 
 export async function clarifyBrief(
   brief: Brief,
-  picks: { id: string; prompt: string; choice: string | null }[],
+  answers: AgentAnswer[],
   round: number
-): Promise<{ brief: Brief; ready: boolean }> {
-  if (llmConfigured()) return liveClarifyBrief(brief, picks, round);
+): Promise<{ brief: Brief; questions: AgentQuestion[]; stall: boolean }> {
+  if (llmConfigured()) return liveClarifyBrief(brief, answers, round);
+  const preferences = [...brief.preferences];
   const known = [...brief.known];
-  for (const pick of picks) {
-    if (pick.choice) known.push(pick.choice);
+  for (const a of answers) {
+    if (a.kind === "option" || a.kind === "custom") {
+      const text = a.custom ?? a.optionId ?? "";
+      if (text) preferences.push(text);
+    }
   }
-  const next = {
-    ...brief,
-    known,
-    clarifyQuestions: [] as Brief["clarifyQuestions"],
-    openQuestions: [] as string[],
-  };
-  return {
-    brief: parseOrThrow(BriefSchema, next, "Brief"),
-    ready: true,
-  };
+  const next = parseOrThrow(
+    BriefSchema,
+    {
+      ...brief,
+      known,
+      preferences,
+      clarifyQuestions: [],
+      openQuestions: [],
+    },
+    "Brief"
+  );
+  return { brief: next, questions: [], stall: false };
 }
 
 export async function generateRoutes(
   brief: Brief,
   startingState: StartingState,
   userInitialIdea: string[]
-): Promise<{ recommendedRouteId: string | null; routes: ExplorationRoute[] }> {
+): Promise<{
+  payload: { recommendedRouteId: string | null; routes: ExplorationRoute[] } | null;
+  questions: AgentQuestion[];
+}> {
   if (llmConfigured()) {
     return liveGenerateRoutes(brief, startingState, userInitialIdea);
   }
-  return parseOrThrow(
-    RoutesPayloadSchema,
-    mockGenerateRoutes(brief, startingState, userInitialIdea),
-    "探索路线"
-  );
+  return {
+    payload: parseOrThrow(
+      RoutesPayloadSchema,
+      mockGenerateRoutes(brief, startingState, userInitialIdea),
+      "探索路线"
+    ),
+    questions: [],
+  };
 }
 
 export async function planPlatforms(
   brief: Brief,
   selectedRoute: ExplorationRoute | undefined,
   activeStep: string
-): Promise<PlatformPlan> {
+): Promise<{ plan: PlatformPlan | null; questions: AgentQuestion[] }> {
   if (llmConfigured()) {
     return livePlatformPlan(brief, selectedRoute, activeStep);
   }
-  return parseOrThrow(
-    PlatformPlanSchema,
-    mockPlatformPlan(brief, activeStep),
-    "平台搜索计划"
-  );
+  return {
+    plan: parseOrThrow(
+      PlatformPlanSchema,
+      mockPlatformPlan(brief, activeStep),
+      "平台搜索计划"
+    ),
+    questions: [],
+  };
 }

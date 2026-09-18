@@ -4,13 +4,21 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, MessageSquare, Send } from "lucide-react";
 import { useVeriboxStore } from "@/lib/store";
 import { useVeriboxActions } from "@/hooks/useVeriboxActions";
+import { QuestionBlock } from "./QuestionBlock";
 
 const CHIPS = ["词再具体点", "换个搜法", "先看国内货架"];
 
 export function ChatDock() {
-  const { messages, selectedNodeId, nodes, chatOpen, setChatOpen, loading } =
-    useVeriboxStore();
-  const { sendCanvasChat, cancelInflight } = useVeriboxActions();
+  const {
+    messages,
+    selectedNodeId,
+    nodes,
+    chatOpen,
+    setChatOpen,
+    loading,
+    pendingQuestions,
+  } = useVeriboxStore();
+  const { sendCanvasChat, cancelInflight, submitAnswers } = useVeriboxActions();
   const [text, setText] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
   const focus = nodes.find((n) => n.id === selectedNodeId);
@@ -70,6 +78,15 @@ export function ChatDock() {
             {m.content}
           </div>
         ))}
+        {pendingQuestions.some((q) => q.stage === "chat") && (
+          <QuestionBlock
+            questions={pendingQuestions.filter((q) => q.stage === "chat")}
+            disabled={loading}
+            onSubmit={(answers, proceed) =>
+              void submitAnswers(answers, proceed, "chat")
+            }
+          />
+        )}
         {loading && (
           <div className="flex items-center justify-between gap-2 text-xs text-muted">
             <p className="inline-flex items-center gap-2">

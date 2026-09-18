@@ -1,28 +1,23 @@
 "use client";
 
-import { useState } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
+import { QuestionBlock } from "../QuestionBlock";
 import { useVeriboxStore } from "@/lib/store";
 import { useVeriboxActions } from "@/hooks/useVeriboxActions";
 import type { VBData } from "@/types";
 
 export function BriefNode({ data, selected }: NodeProps<Node<VBData, "brief">>) {
-  const { updateBriefField, loading } = useVeriboxStore();
-  const { confirmBriefAndContinue } = useVeriboxActions();
+  const { updateBriefField, loading, pendingQuestions } = useVeriboxStore();
+  const { confirmBriefAndContinue, submitAnswers } = useVeriboxActions();
   const brief = data.brief;
-  const questions = brief?.clarifyQuestions ?? [];
-  const [picks, setPicks] = useState<Record<string, string | null>>({});
   if (!brief) return null;
-
-  const pending = questions.filter((q) => picks[q.id] === undefined);
+  const questions = pendingQuestions.filter((q) => q.stage === "brief");
+  const stall = questions.length > 0 && pendingQuestions.length >= 2;
 
   return (
-    <NodeShell kicker="任务" title="点选项就行，不用填空" selected={selected}>
-      <p className="text-xs text-muted">
-        Agent 听完 Brief 后，不清楚的地方会给选项。点选或跳过，它会再想一轮。
-      </p>
-      <dl className="mt-3 space-y-2 text-sm">
+    <NodeShell kicker="任务" title="当前理解" selected={selected}>
+      <dl className="mt-1 space-y-2 text-sm">
         <EditableRow
           label="要做什么"
           value={brief.goal}
@@ -33,77 +28,38 @@ export function BriefNode({ data, selected }: NodeProps<Node<VBData, "brief">>) 
           value={brief.targetUser}
           onSave={(v) => updateBriefField("targetUser", v)}
         />
-        <Row label="已经知道" value={brief.known.join(" / ") || "—"} />
-        <Row label="还不知道" value={brief.unknown.join(" / ") || "—"} />
+        <Row label="已经明确" value={brief.known.join(" / ") || "—"} />
+        <Row label="还缺" value={brief.unknown.join(" / ") || "—"} />
         <Row label="不要" value={brief.constraints.join(" / ") || "—"} />
+        {brief.preferences.length > 0 && (
+          <Row label="偏好" value={brief.preferences.join(" / ")} />
+        )}
+        {brief.assumptions.length > 0 && (
+          <Row label="暂定假设" value={brief.assumptions.join(" / ")} />
+        )}
       </dl>
 
-      {questions.length > 0 && (
-        <div className="mt-3 space-y-4 rounded-xl bg-mist/80 p-3">
-          {questions.map((q) => (
-            <div key={q.id}>
-              <p className="text-sm font-medium text-ink">{q.prompt}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {q.options.map((opt) => {
-                  const on = picks[q.id] === opt;
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      className={[
-                        "rounded-full px-2.5 py-1 text-xs",
-                        on
-                          ? "bg-ink text-cream"
-                          : "border border-line bg-cream/80 text-ink hover:border-ink/40",
-                      ].join(" ")}
-                      onClick={() =>
-                        setPicks((p) => ({ ...p, [q.id]: on ? null : opt }))
-                      }
-                    >
-                      {opt}
-                    </button>
-                  );
-                })}
-                <button
-                  type="button"
-                  className={[
-                    "rounded-full px-2.5 py-1 text-xs",
-                    picks[q.id] === null
-                      ? "bg-ink text-cream"
-                      : "border border-dashed border-line text-muted",
-                  ].join(" ")}
-                  onClick={() => setPicks((p) => ({ ...p, [q.id]: null }))}
-                >
-                  这题先不管
-                </button>
-              </div>
-            </div>
-          ))}
+      {questions.length > 0 ? (
+        <div className="mt-4">
+          <QuestionBlock
+            questions={questions}
+            stall={stall}
+            disabled={loading}
+            onSubmit={(answers, proceed) =>
+              void submitAnswers(answers, proceed, "brief")
+            }
+          />
         </div>
+      ) : (
+        <button
+          type="button"
+          className="btn-primary mt-4 w-full"
+          disabled={loading}
+          onClick={() => void confirmBriefAndContinue([])}
+        >
+          {loading ? "正在规划路线…" : "按这个理解继续"}
+        </button>
       )}
-
-      <button
-        type="button"
-        className="btn-primary mt-4 w-full"
-        disabled={loading}
-        onClick={() => {
-          const payload = questions.map((q) => ({
-            id: q.id,
-            prompt: q.prompt,
-            choice: picks[q.id] ?? null,
-          }));
-          void confirmBriefAndContinue(payload);
-          setPicks({});
-        }}
-      >
-        {loading
-          ? "正在根据你的选择想…"
-          : questions.length === 0
-            ? "确认，继续"
-            : pending.length
-              ? "按已选的继续（没点的当跳过）"
-              : "按这些选择继续"}
-      </button>
     </NodeShell>
   );
 }

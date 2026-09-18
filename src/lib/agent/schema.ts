@@ -2,6 +2,28 @@ import { z } from "zod";
 
 const nonEmpty = z.string().trim().min(1);
 
+export const QuestionOptionSchema = z.object({
+  id: nonEmpty,
+  label: nonEmpty,
+  rationale: z.string().optional(),
+  recommended: z.boolean().optional(),
+});
+
+export const AgentQuestionSchema = z.object({
+  id: nonEmpty,
+  stage: z.enum(["brief", "routes", "platform", "chat"]),
+  cardId: z.string().nullable().optional(),
+  prompt: nonEmpty,
+  options: z.array(QuestionOptionSchema).min(2).max(4),
+});
+
+export const AgentAnswerSchema = z.object({
+  questionId: nonEmpty,
+  kind: z.enum(["option", "custom", "uncertain"]),
+  optionId: z.string().optional(),
+  custom: z.string().optional(),
+});
+
 export const ClarifyQuestionSchema = z.object({
   id: nonEmpty,
   prompt: nonEmpty,
@@ -12,16 +34,13 @@ export const BriefSchema = z.object({
   goal: nonEmpty,
   targetUser: nonEmpty,
   known: z.array(nonEmpty),
-  unknown: z.array(nonEmpty),
+  unknown: z.array(z.string().trim()),
   constraints: z.array(z.string().trim()),
   deliverable: nonEmpty,
+  preferences: z.array(z.string().trim()).default([]),
+  assumptions: z.array(z.string().trim()).default([]),
   openQuestions: z.array(nonEmpty).max(3).default([]),
   clarifyQuestions: z.array(ClarifyQuestionSchema).max(4).default([]),
-});
-
-export const ClarifyResultSchema = z.object({
-  brief: BriefSchema,
-  ready: z.boolean(),
 });
 
 export const RouteSchema = z.object({
@@ -108,6 +127,9 @@ export const CanvasChatCardSchema = z.object({
 export const CanvasChatSchema = z.object({
   reply: nonEmpty,
   cards: z.array(CanvasChatCardSchema).max(3).default([]),
+  intent: z
+    .enum(["answer", "ask", "edit", "compare", "deepen"])
+    .optional(),
 });
 
 export function parseOrThrow<T>(

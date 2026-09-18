@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { liveCanvasChat } from "@/lib/agent/canvas-chat";
-import { agentInfo } from "@/lib/agent";
+import { wrap } from "@/lib/agent";
 import type { VBEdge, VBNode } from "@/types";
 
 export const maxDuration = 60;
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "请输入内容" }, { status: 400 });
     }
 
-    const data = await liveCanvasChat(
+    const parsed = await liveCanvasChat(
       message,
       body.nodes ?? [],
       body.edges ?? [],
@@ -28,7 +28,13 @@ export async function POST(request: Request) {
       body.nodeIds
     );
 
-    return NextResponse.json({ data, ...agentInfo() });
+    return NextResponse.json(
+      wrap(
+        { reply: parsed.reply, cards: parsed.cards },
+        parsed.questions,
+        Number((body as { sessionVersion?: number }).sessionVersion ?? 0) + 1
+      )
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : "对话失败";
     return NextResponse.json({ error: message }, { status: 500 });

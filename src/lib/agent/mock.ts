@@ -27,14 +27,10 @@ export function mockParseBrief(raw: string): Brief {
         "避免廉价感",
       ]),
       deliverable: "视觉探索方向",
-      openQuestions: ["你更想先搞清哪件事？"],
-      clarifyQuestions: [
-        {
-          id: "q1",
-          prompt: "你更想先搞清哪件事？",
-          options: ["瓶子和包装长什么样", "人怎么用、怎么拍", "别的品牌在卖什么样子"],
-        },
-      ],
+      preferences: [],
+      assumptions: [],
+      openQuestions: [],
+      clarifyQuestions: [],
     };
   }
 
@@ -46,6 +42,8 @@ export function mockParseBrief(raw: string): Brief {
     unknown: ["还不知道先去搜什么"],
     constraints: [],
     deliverable: "视觉探索方向",
+    preferences: [],
+    assumptions: [],
     openQuestions: short
       ? ["这是做什么？", "先看哪一块？"]
       : ["你更想先搞清哪件事？"],

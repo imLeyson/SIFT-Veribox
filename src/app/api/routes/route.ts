@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { agentInfo, generateRoutes } from "@/lib/agent";
-import type { Brief, StartingState } from "@/types";
+import { generateRoutes, wrap } from "@/lib/agent";
+import type { AgentAnswer, Brief } from "@/types";
 
 export const maxDuration = 60;
 
@@ -8,23 +8,23 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       brief?: Brief;
-      starting_state?: StartingState;
       user_initial_idea?: string[];
+      answers?: AgentAnswer[];
+      sessionVersion?: number;
     };
 
-    if (!body.brief || !body.starting_state) {
-      return NextResponse.json(
-        { error: "缺少 brief 或 starting_state" },
-        { status: 400 }
-      );
+    if (!body.brief) {
+      return NextResponse.json({ error: "缺少 brief" }, { status: 400 });
     }
 
-    const data = await generateRoutes(
+    const parsed = await generateRoutes(
       body.brief,
-      body.starting_state,
+      body.user_initial_idea?.length ? "has_idea" : "no_idea",
       body.user_initial_idea ?? []
     );
-    return NextResponse.json({ data, ...agentInfo() });
+    return NextResponse.json(
+      wrap(parsed.payload, parsed.questions, (body.sessionVersion ?? 0) + 1)
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : "路线生成失败";
     return NextResponse.json({ error: message }, { status: 500 });

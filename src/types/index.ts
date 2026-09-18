@@ -1,5 +1,31 @@
 import type { Edge, Node } from "@xyflow/react";
 
+export type QuestionStage = "brief" | "routes" | "platform" | "chat";
+
+export interface QuestionOption {
+  id: string;
+  label: string;
+  rationale?: string;
+  recommended?: boolean;
+}
+
+export interface AgentQuestion {
+  id: string;
+  stage: QuestionStage;
+  cardId?: string | null;
+  prompt: string;
+  options: QuestionOption[];
+}
+
+export type AnswerKind = "option" | "custom" | "uncertain";
+
+export interface AgentAnswer {
+  questionId: string;
+  kind: AnswerKind;
+  optionId?: string;
+  custom?: string;
+}
+
 export interface ClarifyQuestion {
   id: string;
   prompt: string;
@@ -13,6 +39,8 @@ export interface Brief {
   unknown: string[];
   constraints: string[];
   deliverable: string;
+  preferences: string[];
+  assumptions: string[];
   openQuestions: string[];
   clarifyQuestions: ClarifyQuestion[];
 }
@@ -53,7 +81,6 @@ export interface PlatformPlan {
 export type FlowStep =
   | "brief_input"
   | "brief_confirm"
-  | "starting_state"
   | "routes"
   | "platform_plan"
   | "canvas_chat";
@@ -105,7 +132,11 @@ export interface VeriboxState {
   userChanges: string[];
   loading: boolean;
   error: string | null;
-  clarifyRound: number;
+  pendingQuestions: AgentQuestion[];
+  answers: AgentAnswer[];
+  sessionVersion: number;
+  lastRequestId: string | null;
+  staleFlags: { routes: boolean; platform: boolean };
   nodes: VBNode[];
   edges: VBEdge[];
   selectedNodeId: string | null;

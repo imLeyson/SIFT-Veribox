@@ -11,6 +11,8 @@ import {
   type NodeChange,
 } from "@xyflow/react";
 import type {
+  AgentAnswer,
+  AgentQuestion,
   Brief,
   ChatMessage,
   ExplorationRoute,
@@ -24,10 +26,10 @@ import type {
 import {
   BRIEF_ID,
   BRIEF_INPUT_ID,
-  STATE_ID,
   childPosition,
   link,
   seedNodes,
+  stripStateCards,
 } from "@/lib/canvas-graph";
 
 function newSessionId() {
@@ -56,7 +58,10 @@ type Actions = {
   setStep: (step: FlowStep) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  setClarifyRound: (round: number) => void;
+  setPendingQuestions: (questions: AgentQuestion[]) => void;
+  addAnswers: (answers: AgentAnswer[]) => void;
+  bumpSession: (requestId: string) => void;
+  setStale: (flags: Partial<{ routes: boolean; platform: boolean }>) => void;
   goBack: () => void;
   reset: () => void;
   recordChange: (change: string) => void;
@@ -89,7 +94,11 @@ const initial: VeriboxState = {
   userChanges: [],
   loading: false,
   error: null,
-  clarifyRound: 0,
+  pendingQuestions: [],
+  answers: [],
+  sessionVersion: 0,
+  lastRequestId: null,
+  staleFlags: { routes: false, platform: false },
   nodes: seedNodes(),
   edges: [],
   selectedNodeId: BRIEF_INPUT_ID,
@@ -175,33 +184,20 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
         });
       },
       setUserInitialIdea: (userInitialIdea) => set({ userInitialIdea }),
-      setStartingState: (startingState, ideas = []) => {
-        const parent = get().nodes.find((n) => n.id === BRIEF_ID);
-        const label =
-          startingState === "has_idea"
-            ? `已有想法：${ideas.join(" / ") || "未写词"}`
-            : startingState === "no_idea"
-              ? "暂时没有明确想法"
-              : "选择入口后才会生成路线";
-        const node: VBNode = {
-          id: STATE_ID,
-          type: "state",
-          position: childPosition(parent, 0, 1),
-          data: { kind: "state", title: "当前状态", body: label },
-          dragHandle: ".card-drag",
-        };
+      setStartingState: (startingState, ideas = []) =>
+        set({ startingState, userInitialIdea: ideas, error: null }),
+      setPendingQuestions: (pendingQuestions) => set({ pendingQuestions }),
+      addAnswers: (answers) =>
+        set({ answers: [...get().answers, ...answers] }),
+      bumpSession: (requestId) =>
         set({
-          startingState,
-          userInitialIdea: ideas,
-          step: "starting_state",
-          error: null,
-          nodes: upsertNode(get().nodes, node),
-          edges: upsertEdge(get().edges, link(BRIEF_ID, STATE_ID, "状态")),
-          selectedNodeId: STATE_ID,
-        });
-      },
+          lastRequestId: requestId,
+          sessionVersion: get().sessionVersion + 1,
+        }),
+      setStale: (flags) =>
+        set({ staleFlags: { ...get().staleFlags, ...flags } }),
       setRoutes: (routes, recommendedRouteId) => {
-        const parent = get().nodes.find((n) => n.id === STATE_ID) ?? get().nodes.find((n) => n.id === BRIEF_ID);
+        const parent = get().nodes.find((n) => n.id === BRIEF_ID);
         let nodes = get().nodes;
         let edges = get().edges;
         routes.forEach((route, i) => {
@@ -221,7 +217,7 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
           nodes = upsertNode(nodes, node);
           edges = upsertEdge(
             edges,
-            link(STATE_ID, id, route.id === recommendedRouteId ? "推荐" : "方案")
+            link(BRIEF_ID, id, route.id === recommendedRouteId ? "推荐" : "方案")
           );
         });
         set({
@@ -287,7 +283,6 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
       setStep: (step) => set({ step }),
       setLoading: (loading) => set({ loading }),
       setError: (error) => set({ error }),
-      setClarifyRound: (clarifyRound) => set({ clarifyRound }),
       goBack: () => {
         const current = get().step;
         if (current === "platform_plan" || current === "canvas_chat") {
@@ -304,7 +299,8 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
             edges: get().edges.filter((e) => ids.has(e.source) && ids.has(e.target)),
             selectedNodeId: get().routes[0]
               ? `card-route-${get().routes[0].id}`
-              : STATE_ID,
+              : BRIEF_ID,
+            pendingQuestions: get().pendingQuestions.filter((q) => q.stage !== "platform"),
           });
           return;
         }
@@ -312,25 +308,13 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
           const nodes = get().nodes.filter((n) => n.data.kind !== "route");
           const ids = new Set(nodes.map((n) => n.id));
           set({
-            step: "starting_state",
+            step: "brief_confirm",
             routes: [],
             recommendedRouteId: null,
             nodes,
             edges: get().edges.filter((e) => ids.has(e.source) && ids.has(e.target)),
-            selectedNodeId: STATE_ID,
-          });
-          return;
-        }
-        if (current === "starting_state") {
-          const nodes = get().nodes.filter((n) => n.id !== STATE_ID);
-          const ids = new Set(nodes.map((n) => n.id));
-          set({
-            step: "brief_confirm",
-            startingState: null,
-            userInitialIdea: [],
-            nodes,
-            edges: get().edges.filter((e) => ids.has(e.source) && ids.has(e.target)),
             selectedNodeId: BRIEF_ID,
+            pendingQuestions: get().pendingQuestions.filter((q) => q.stage === "brief"),
           });
           return;
         }
@@ -456,7 +440,27 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
     }),
     {
       name: "sift-agent-v1",
-      version: 1,
+      version: 2,
+      migrate: (persisted) => {
+        const prev = (persisted ?? {}) as Partial<VeriboxState> & {
+          nodes?: VBNode[];
+          edges?: VBEdge[];
+        };
+        const stripped = stripStateCards(prev.nodes ?? [], prev.edges ?? []);
+        return {
+          ...prev,
+          ...stripped,
+          pendingQuestions: prev.pendingQuestions ?? [],
+          answers: prev.answers ?? [],
+          sessionVersion: prev.sessionVersion ?? 0,
+          lastRequestId: null,
+          staleFlags: { routes: false, platform: false },
+          step:
+            (prev.step as string) === "starting_state"
+              ? "brief_confirm"
+              : prev.step,
+        } as VeriboxState;
+      },
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         state.loading = false;
@@ -492,7 +496,10 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
         activeStep: state.activeStep,
         platformPlan: state.platformPlan,
         userChanges: state.userChanges,
-        clarifyRound: state.clarifyRound,
+        pendingQuestions: state.pendingQuestions,
+        answers: state.answers,
+        sessionVersion: state.sessionVersion,
+        staleFlags: state.staleFlags,
         nodes: state.nodes,
         edges: state.edges,
         selectedNodeId: state.selectedNodeId,

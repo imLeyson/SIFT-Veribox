@@ -3,13 +3,14 @@
 import type { Node, NodeProps } from "@xyflow/react";
 import { Loader2 } from "lucide-react";
 import { NodeShell } from "../NodeShell";
+import { QuestionBlock } from "../QuestionBlock";
 import { useVeriboxStore } from "@/lib/store";
 import { useVeriboxActions } from "@/hooks/useVeriboxActions";
 import type { VBData } from "@/types";
 
 export function RouteNode({ data, selected }: NodeProps<Node<VBData, "route">>) {
-  const { loading, nodes } = useVeriboxStore();
-  const { chooseRoute } = useVeriboxActions();
+  const { loading, nodes, pendingQuestions } = useVeriboxStore();
+  const { chooseRoute, submitAnswers } = useVeriboxActions();
   const route = data.route;
   if (!route) return null;
   const branched = nodes.some(
@@ -33,6 +34,17 @@ export function RouteNode({ data, selected }: NodeProps<Node<VBData, "route">>) 
       <p className="text-sm">
         <span className="text-muted">△</span> {route.watchOut}
       </p>
+      {pendingQuestions.some((q) => q.stage === "routes") && (
+        <div className="mt-3">
+          <QuestionBlock
+            questions={pendingQuestions.filter((q) => q.stage === "routes")}
+            disabled={loading}
+            onSubmit={(answers, proceed) =>
+              void submitAnswers(answers, proceed, "routes")
+            }
+          />
+        </div>
+      )}
       <button
         type="button"
         className="btn-primary mt-4 w-full"

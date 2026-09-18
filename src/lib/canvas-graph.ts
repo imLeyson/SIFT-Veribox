@@ -4,6 +4,24 @@ export const BRIEF_INPUT_ID = "card-brief-input";
 export const BRIEF_ID = "card-brief";
 export const STATE_ID = "card-state";
 
+export function stripStateCards(nodes: VBNode[], edges: VBEdge[]) {
+  const removed = new Set(
+    nodes
+      .filter((n) => n.type === "state" || n.id === STATE_ID || n.data.kind === "state")
+      .map((n) => n.id)
+  );
+  if (!removed.size) return { nodes, edges };
+  const nextNodes = nodes.filter((n) => !removed.has(n.id));
+  const outgoing = edges.filter((e) => removed.has(e.source));
+  const kept = edges.filter(
+    (e) => !removed.has(e.source) && !removed.has(e.target)
+  );
+  const extra = outgoing.map((e) =>
+    link(BRIEF_ID, e.target, typeof e.label === "string" ? e.label : undefined)
+  );
+  return { nodes: nextNodes, edges: [...kept, ...extra] };
+}
+
 const COL = 420;
 const ROW = 460;
 

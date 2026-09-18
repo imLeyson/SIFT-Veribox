@@ -2,7 +2,13 @@
 
 import { useVeriboxStore } from "@/lib/store";
 import { serializeCanvas } from "@/lib/canvas-graph";
-import type { Brief, ExplorationRoute, PlatformPlan } from "@/types";
+import type {
+  AgentAnswer,
+  AgentQuestion,
+  Brief,
+  ExplorationRoute,
+  PlatformPlan,
+} from "@/types";
 
 const CLIENT_TIMEOUT_MS = 50000;
 let inflight: AbortController | null = null;
@@ -15,7 +21,16 @@ export function cancelInflight() {
   useVeriboxStore.getState().setLoading(false);
 }
 
-async function postJson<T>(url: string, body: unknown): Promise<T> {
+type Envelope<T> = {
+  data?: T | null;
+  questions?: AgentQuestion[];
+  requestId?: string;
+  sessionVersion?: number;
+  stall?: boolean;
+  error?: string;
+};
+
+async function postJson<T>(url: string, body: unknown): Promise<Envelope<T>> {
   inflight?.abort();
   userCancel = false;
   const ac = new AbortController();
@@ -48,19 +63,64 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     );
   }
 
-  let json: { error?: string; data?: T };
+  let json: Envelope<T>;
   try {
-    json = JSON.parse(raw) as { error?: string; data?: T };
+    json = JSON.parse(raw) as Envelope<T>;
   } catch {
     throw new Error("服务返回了无法解析的内容，请再试一次");
   }
 
   if (!res.ok) throw new Error(json.error ?? "请求失败");
-  if (json.data === undefined) throw new Error(json.error ?? "模型没有返回结果");
-  return json.data;
+  return json;
+}
+
+function applyEnvelope(requestId?: string) {
+  if (requestId) useVeriboxStore.getState().bumpSession(requestId);
 }
 
 export function useVeriboxActions() {
+  async function requestRoutes() {
+    const store = useVeriboxStore.getState();
+    const brief = store.brief;
+    if (!brief) return;
+    const ideas = [
+      ...store.userInitialIdea,
+      ...brief.preferences,
+      ...brief.known,
+    ].filter(Boolean);
+    store.setLoading(true);
+    store.setStep("routes");
+    store.setError(null);
+    try {
+      const env = await postJson<{
+        recommendedRouteId: string | null;
+        routes: ExplorationRoute[];
+      }>("/api/routes", {
+        brief,
+        user_initial_idea: ideas,
+        answers: store.answers,
+        sessionVersion: store.sessionVersion,
+      });
+      const next = useVeriboxStore.getState();
+      applyEnvelope(env.requestId);
+      next.setPendingQuestions([
+        ...next.pendingQuestions.filter((q) => q.stage !== "routes"),
+        ...(env.questions ?? []),
+      ]);
+      if (env.data?.routes?.length === 3) {
+        next.setRoutes(env.data.routes, env.data.recommendedRouteId ?? null);
+        next.setPendingQuestions(
+          next.pendingQuestions.filter((q) => q.stage !== "routes")
+        );
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "方案生成失败";
+      if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
+    } finally {
+      useVeriboxStore.getState().setLoading(false);
+    }
+  }
+
   async function analyzeBrief() {
     const store = useVeriboxStore.getState();
     const raw = store.rawBrief.trim();
@@ -72,8 +132,17 @@ export function useVeriboxActions() {
     store.setStep("brief_input");
     store.setError(null);
     try {
-      const brief = await postJson<Brief>("/api/brief", { brief: raw });
-      useVeriboxStore.getState().setBrief(brief);
+      const env = await postJson<Brief>("/api/brief", {
+        brief: raw,
+        sessionVersion: store.sessionVersion,
+      });
+      const next = useVeriboxStore.getState();
+      applyEnvelope(env.requestId);
+      if (env.data) next.setBrief(env.data);
+      next.setPendingQuestions(env.questions ?? []);
+      if (!(env.questions ?? []).length && env.data) {
+        await requestRoutes();
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "解析失败";
       if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
@@ -99,12 +168,20 @@ export function useVeriboxActions() {
     store.setStep("platform_plan");
     store.setError(null);
     try {
-      const plan = await postJson<PlatformPlan>("/api/platform-plan", {
+      const env = await postJson<PlatformPlan>("/api/platform-plan", {
         brief,
         selected_route: route,
         active_step: step,
+        sessionVersion: store.sessionVersion,
+        answers: store.answers,
       });
-      useVeriboxStore.getState().setPlatformPlan(plan, route.id, step);
+      const next = useVeriboxStore.getState();
+      applyEnvelope(env.requestId);
+      next.setPendingQuestions([
+        ...next.pendingQuestions.filter((q) => q.stage !== "platform"),
+        ...(env.questions ?? []),
+      ]);
+      if (env.data) next.setPlatformPlan(env.data, route.id, step);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "搜索计划生成失败";
       if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
@@ -126,12 +203,20 @@ export function useVeriboxActions() {
     store.setStep("platform_plan");
     store.setError(null);
     try {
-      const plan = await postJson<PlatformPlan>("/api/platform-plan", {
+      const env = await postJson<PlatformPlan>("/api/platform-plan", {
         brief,
         selected_route: route,
         active_step: next,
+        sessionVersion: store.sessionVersion,
+        answers: store.answers,
       });
-      useVeriboxStore.getState().setPlatformPlan(plan, route.id, next);
+      const st = useVeriboxStore.getState();
+      applyEnvelope(env.requestId);
+      st.setPendingQuestions([
+        ...st.pendingQuestions.filter((q) => q.stage !== "platform"),
+        ...(env.questions ?? []),
+      ]);
+      if (env.data) st.setPlatformPlan(env.data, route.id, next);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "搜索计划生成失败";
       if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
@@ -151,7 +236,7 @@ export function useVeriboxActions() {
     store.setStep("canvas_chat");
     store.setError(null);
     try {
-      const data = await postJson<{
+      const env = await postJson<{
         reply: string;
         cards: { title: string; body: string; parentId: string | null }[];
       }>("/api/canvas-chat", {
@@ -192,12 +277,21 @@ export function useVeriboxActions() {
           label: e.label,
         })),
         selectedId: store.selectedNodeId,
+        sessionVersion: store.sessionVersion,
+        answers: store.answers,
       });
       const next = useVeriboxStore.getState();
-      next.addMessage({ role: "assistant", content: data.reply });
-      if (data.cards.length) {
+      applyEnvelope(env.requestId);
+      next.setPendingQuestions([
+        ...next.pendingQuestions.filter((q) => q.stage !== "chat"),
+        ...(env.questions ?? []),
+      ]);
+      if (env.data?.reply) {
+        next.addMessage({ role: "assistant", content: env.data.reply });
+      }
+      if (env.data?.cards?.length) {
         next.addInsightCards(
-          data.cards.map((c) => ({
+          env.data.cards.map((c) => ({
             title: c.title,
             body: c.body,
             parentId: c.parentId ?? next.selectedNodeId,
@@ -212,85 +306,88 @@ export function useVeriboxActions() {
     }
   }
 
-  async function confirmBriefAndContinue(
-    picks: { id: string; prompt: string; choice: string | null }[] = []
+  async function submitAnswers(
+    answers: AgentAnswer[],
+    proceed: boolean,
+    stage: "brief" | "routes" | "platform" | "chat" = "brief"
   ) {
     const store = useVeriboxStore.getState();
-    const brief = store.brief;
-    if (!brief) return;
-
-    const hasChoices = picks.some((p) => p.choice);
-    const hasQuestions = (brief.clarifyQuestions?.length ?? 0) > 0;
-
-    if (hasQuestions && (hasChoices || store.clarifyRound < 2)) {
-      store.setLoading(true);
-      store.setError(null);
-      try {
-        const data = await postJson<{ brief: Brief; ready: boolean }>(
-          "/api/clarify",
-          {
-            brief,
-            picks,
-            round: store.clarifyRound + 1,
-          }
-        );
-        const next = useVeriboxStore.getState();
-        next.setBrief(data.brief);
-        next.setClarifyRound(data.ready ? 2 : store.clarifyRound + 1);
-        if (data.ready || data.brief.clarifyQuestions.length === 0) {
-          next.setStartingState(null, []);
-        }
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "确认失败";
-        if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
-        useVeriboxStore.getState().setStartingState(null, []);
-      } finally {
-        useVeriboxStore.getState().setLoading(false);
-      }
+    store.addAnswers(answers);
+    const pending = store.pendingQuestions.filter((q) => q.stage === stage);
+    if (!pending.length && proceed) {
+      if (stage === "brief") await requestRoutes();
       return;
     }
-
-    useVeriboxStore.getState().setStartingState(null, []);
-  }
-
-  async function chooseStartingState(
-    startingState: "has_idea" | "no_idea",
-    ideas: string[] = []
-  ) {
-    const store = useVeriboxStore.getState();
-    const brief = store.brief;
-    if (!brief) {
-      store.setError("缺少 Brief");
-      return;
-    }
-    store.setStartingState(startingState, ideas);
     store.setLoading(true);
     store.setError(null);
     try {
-      const data = await postJson<{
-        recommendedRouteId: string | null;
-        routes: ExplorationRoute[];
-      }>("/api/routes", {
-        brief,
-        starting_state: startingState,
-        user_initial_idea: ideas,
-      });
-      useVeriboxStore.getState().setRoutes(data.routes, data.recommendedRouteId);
+      if (stage === "brief") {
+        const env = await postJson<Brief>("/api/clarify", {
+          brief: store.brief,
+          answers,
+          round: Math.floor(store.answers.length / 3) + 1,
+          sessionVersion: store.sessionVersion,
+        });
+        const next = useVeriboxStore.getState();
+        applyEnvelope(env.requestId);
+        if (env.data) next.setBrief(env.data);
+        const qs = env.questions ?? [];
+        next.setPendingQuestions([
+          ...next.pendingQuestions.filter((q) => q.stage !== "brief"),
+          ...qs,
+        ]);
+        if (proceed && (env.stall || qs.length === 0)) {
+          next.setPendingQuestions(
+            next.pendingQuestions.filter((q) => q.stage !== "brief")
+          );
+          await requestRoutes();
+        }
+        return;
+      }
+      if (stage === "routes") {
+        await requestRoutes();
+        return;
+      }
+      if (stage === "platform" && store.selectedRoute) {
+        await chooseRoute(store.selectedRoute);
+        return;
+      }
+      if (stage === "chat") {
+        const summary = answers
+          .map((a) => a.custom ?? a.kind)
+          .filter(Boolean)
+          .join("；");
+        await sendCanvasChat(`对刚才的问题：${summary || "按假设继续"}`);
+      }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "方案生成失败";
+      const msg = e instanceof Error ? e.message : "提交失败";
       if (msg !== "已取消") useVeriboxStore.getState().setError(msg);
     } finally {
       useVeriboxStore.getState().setLoading(false);
     }
   }
 
+  async function confirmBriefAndContinue(answers: AgentAnswer[] = []) {
+    const store = useVeriboxStore.getState();
+    if (store.pendingQuestions.some((q) => q.stage === "brief")) {
+      await submitAnswers(answers, true, "brief");
+      return;
+    }
+    await requestRoutes();
+  }
+
   return {
     analyzeBrief,
-    generateSchemes: async () => {
-      await chooseStartingState("no_idea", []);
-    },
+    generateSchemes: requestRoutes,
     confirmBriefAndContinue,
-    chooseStartingState,
+    submitAnswers,
+    chooseStartingState: async (
+      _startingState: "has_idea" | "no_idea",
+      ideas: string[] = []
+    ) => {
+      useVeriboxStore.getState().setUserInitialIdea(ideas);
+      await requestRoutes();
+    },
     chooseRoute,
     advanceStep,
     sendCanvasChat,

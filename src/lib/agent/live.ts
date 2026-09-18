@@ -8,19 +8,21 @@ import type {
 import { completeJson } from "./llm";
 import { rankSources, SOURCE_REGISTRY, withSearchUrl } from "./sources";
 import { craftGuide, craftLabel, inferCraft } from "./craft";
+import { normalizeQuestions } from "./questions";
+import type { AgentQuestion } from "@/types";
 import {
   BriefSchema,
   CanvasChatSchema,
-  ClarifyResultSchema,
   parseOrThrow,
   PlatformPlanSchema,
   RoutesPayloadSchema,
 } from "./schema";
 
-const TONE = `说话像工作室里带组员的设计师，不要提案腔，也不要模板腔。
-禁止：品质感如何落地、视觉语言、探索切口、可执行分支、调性边界、系统性、方法论、酒店感、仪式感（除非用户原话里有）、高级感、氛围感。
-标题不超过 8 个字。句子短。步骤必须是这个 Brief 里真能去搜的东西。
-工种要对：包装才写货架/瓶型；App/小程序写页面和流程；交互写任务和反馈；品牌写字体色彩应用。禁止把所有 Brief 都收成包装搜图。`;
+const TONE = `直接说理解、具体问题和下一步。不要固定以「我看到了」开头。
+不要提案腔、空泛赞美、口号、亲昵称呼。
+专业词该用就用，不要为了去 AI 味牺牲准确性。
+不要强制八字标题，不要把所有未知都写成「不知道搜什么」。
+区分：用户已经说的事实、你的建议、还没确认的假设。`;
 
 function list(value: unknown) {
   if (!Array.isArray(value)) return [];
@@ -42,9 +44,11 @@ function camelBrief(data: Record<string, unknown>) {
     goal: text(data.goal, "寻找视觉方向"),
     targetUser: text(data.target_user ?? data.targetUser, "待确认目标用户"),
     known: list(data.known),
-    unknown: unknown.length ? unknown : ["还不知道先去搜什么"],
+    unknown,
     constraints: list(data.constraints),
     deliverable: text(data.deliverable, "先找到能搜的方向"),
+    preferences: list(data.preferences),
+    assumptions: list(data.assumptions),
     openQuestions: openQuestions.length
       ? openQuestions
       : clarifyQuestions.map((q) => q.prompt),
@@ -105,68 +109,85 @@ function camelRoutes(data: Record<string, unknown>) {
   };
 }
 
-export async function liveParseBrief(raw: string): Promise<Brief> {
+export async function liveParseBrief(
+  raw: string
+): Promise<{ brief: Brief; questions: AgentQuestion[] }> {
   const data = await completeJson<Record<string, unknown>>(
-    `你是 SIFT。把设计师随口说的 Brief 收成一张工作卡。
+    `你是 SIFT。整理 Brief。只保留用户明确说过的事实。把缺失信息和探索问题分开。
 ${TONE}
-只返回 JSON：goal, target_user, known[], unknown[], constraints[], deliverable, open_questions[], clarify_questions[]。
+只返回 JSON：
+{
+  "goal": "",
+  "target_user": "",
+  "known": [],
+  "unknown": [],
+  "constraints": [],
+  "deliverable": "",
+  "preferences": [],
+  "assumptions": [],
+  "questions": [
+    {
+      "id": "brief_q1",
+      "prompt": "",
+      "options": [
+        { "id": "a", "label": "", "rationale": "选这个会怎样", "recommended": false }
+      ]
+    }
+  ]
+}
 
-clarify_questions 每项：{ id, prompt, options[] }。这是给用户点的，不要让人填空。
-
-规则：
-- 只用用户原话里的词，不拔高。
-- known 用短词。unknown 写「还不知道先看什么」。
-- 不要给风格结论。不要默认当成包装。
-- 题量按情况变，不要每次三道：
-  · Brief 已经能开工：0 题
-  · 缺一两处：1 题，2–4 个选项
-  · 很糊：最多 3 题，每题 2–4 个选项
-- 选项必须具体、能点、贴这个工种。App 问「先看首页还是先看流程」；包装问「先看瓶子还是货架」。禁止开放填空。
-- open_questions 与 clarify 的 prompt 对齐即可。`,
+提问规则：
+- 只有答案会改变后续规划时才问。优先：目标、受众、交付范围、互相打架的限制。
+- 用户已经写清的受众、不要项、产品类型不要再问。信息够就 questions=[]。
+- 每轮 1–3 题，每题 2–4 个有实际差异的选项。
+- 选项贴这个 Brief 的工种，不要把所有项目都问成「先看页面还是流程」。
+- 不要替用户提交推荐项。`,
     raw,
     "low"
   );
-  return parseOrThrow(BriefSchema, camelBrief(data), "Brief");
+  const brief = parseOrThrow(BriefSchema, camelBrief(data), "Brief");
+  const questions = normalizeQuestions(
+    data.questions ?? data.clarify_questions,
+    "brief",
+    "card-brief"
+  );
+  return { brief, questions };
 }
 
 export async function liveClarifyBrief(
   brief: Brief,
-  picks: { id: string; prompt: string; choice: string | null }[],
+  answers: unknown[],
   round: number
-): Promise<{ brief: Brief; ready: boolean }> {
+): Promise<{ brief: Brief; questions: AgentQuestion[]; stall: boolean }> {
   const data = await completeJson<Record<string, unknown>>(
-    `你是 SIFT。用户没有填空，只点了选项。根据选择更新 Brief，并决定还要不要再问。
+    `你是 SIFT。用户用选项/自定义/暂不确定做了回答。更新理解，决定还要不要问。
 ${TONE}
-只返回 JSON：{ "brief": { ...Brief字段, clarify_questions[] }, "ready": true|false }
+只返回 JSON：{ "brief": { goal, target_user, known, unknown, constraints, deliverable, preferences, assumptions }, "questions": [] }
 
 规则：
-- 把用户点过的选项写进 known，从 unknown 里划掉已经选清的。
-- 跳过的题不要编答案。
-- ready=true：已经够出 3 条搜法，clarify_questions 必须 []。
-- ready=false：再出 1–2 道点选题（每题 2–4 选项），不要重复刚问过的。
-- 第 ${round} 轮了。超过 2 轮必须 ready=true。
-- 题量和选项数随还缺什么变，不要凑数。
-- 选项继续贴工种，禁止填空题。`,
-    JSON.stringify({ brief, picks, round }, null, 2),
+- 选项进 preferences 或 known：用户明确的事实进 known；偏好进 preferences；你提出的未确认内容进 assumptions。不要一律写成 known。
+- 暂不确定不要编答案。
+- 只有还会改变路线时才继续问。questions 1–3 题，每题 2–4 选项，不要重复。
+- 信息够则 questions=[]。
+- 不要强制在第 2 轮结束。`,
+    JSON.stringify({ brief, answers, round }, null, 2),
     "low"
   );
   const briefRaw = (data.brief ?? data) as Record<string, unknown>;
   const next = parseOrThrow(BriefSchema, camelBrief(briefRaw), "Brief");
-  const ready =
-    round >= 2 ||
-    Boolean(data.ready) ||
-    next.clarifyQuestions.length === 0;
-  if (ready) next.clarifyQuestions = [];
-  next.openQuestions = next.clarifyQuestions.map((q) => q.prompt);
-  parseOrThrow(ClarifyResultSchema, { brief: next, ready }, "确认结果");
-  return { brief: next, ready };
+  const questions = normalizeQuestions(data.questions, "brief", "card-brief");
+  const stall = round >= 2 && questions.length > 0;
+  return { brief: next, questions, stall };
 }
 
 export async function liveGenerateRoutes(
   brief: Brief,
   startingState: StartingState,
   userInitialIdea: string[]
-): Promise<{ recommendedRouteId: string | null; routes: ExplorationRoute[] }> {
+): Promise<{
+  payload: { recommendedRouteId: string | null; routes: ExplorationRoute[] } | null;
+  questions: AgentQuestion[];
+}> {
   const craft = inferCraft(
     brief.goal,
     brief.deliverable,
@@ -174,36 +195,21 @@ export async function liveGenerateRoutes(
     brief.unknown.join(" ")
   );
   const data = await completeJson<Record<string, unknown>>(
-    `你是 SIFT。根据这份 Brief 临时想 3 套搜法，不要套固定模板。
+    `你是 SIFT。根据主要不确定性生成三种不同探索方法。不要套固定模板。
 ${TONE}
-判断：这份 Brief 更像「${craftLabel(craft)}」。${craftGuide(craft)}
+判断：更像「${craftLabel(craft)}」。${craftGuide(craft)}
 
-只返回 JSON：
-{
-  "recommended_route_id": "route_01" | "route_02" | "route_03" | null,
-  "routes": [{
-    "id": "route_01",
-    "title": "先看竞品怎么走",
-    "question": "别人核心任务怎么走完？",
-    "steps": ["竞品首页", "核心任务", "空状态", "设置页"],
-    "purpose": "先摸清别人怎么走流程",
-    "advantage": "下手快",
-    "watch_out": "别直接抄结构",
-    "recommendation_reason": "你还没说先看页面还是先看流程。"
-  }]
-}
+只返回 JSON。如果有一个未决选择会改变三条路线，先问，不要硬编路线：
+{ "questions": [{ "id": "routes_q1", "prompt": "", "options": [{ "id": "a", "label": "", "rationale": "" }] }], "routes": [] }
+
+信息够则：
+{ "questions": [], "recommended_route_id": "route_01", "routes": [ ...正好 3 条 ] }
 
 硬性规则：
-1. 正好 3 条。id 为 route_01 / route_02 / route_03。
-2. 标题像口令，必须贴这份 Brief，禁止每次都是货架/瓶型/拍照。
-3. 不是三个风格方案。steps 是这个工种要搜的东西。
-   App/小程序例子：首页、列表、详情、空状态、组件。
-   交互例子：任务路径、反馈、失败态、动效。
-   包装例子：货架、瓶型、盒、材质。
-4. 三条起点必须不同。
-5. 每条 3-5 步。各字段一句大白话。
-6. 最多推荐 1 条。理由挂钩 Brief 里没想清的那件事。
-7. Brief 不是包装时，出现货架/瓶型/罐/盒型视为错误。`,
+1. 只有未决选择会改变路线时才提问。不能把「先看页面还是流程」当成所有项目的固定问题。
+2. 有路线时正好 3 条，起点不同，不是三个风格名。
+3. 推荐理由对应这份 Brief，区分事实和建议。
+4. 非包装不要出现货架/瓶型。`,
     JSON.stringify(
       {
         brief,
@@ -216,14 +222,19 @@ ${TONE}
     ),
     "low"
   );
-  return parseOrThrow(RoutesPayloadSchema, camelRoutes(data), "探索路线");
+  const questions = normalizeQuestions(data.questions, "routes");
+  if (questions.length) return { payload: null, questions };
+  return {
+    payload: parseOrThrow(RoutesPayloadSchema, camelRoutes(data), "探索路线"),
+    questions: [],
+  };
 }
 
 export async function livePlatformPlan(
   brief: Brief,
   selectedRoute: { title: string; steps: string[]; purpose: string } | undefined,
   activeStep: string
-): Promise<PlatformPlan> {
+): Promise<{ plan: PlatformPlan | null; questions: AgentQuestion[] }> {
   const ranked = rankSources(activeStep, brief);
   const craft = inferCraft(
     brief.goal,
@@ -232,9 +243,12 @@ export async function livePlatformPlan(
     activeStep
   );
   const data = await completeJson<Record<string, unknown>>(
-    `你是 SIFT。告诉设计师这一步去哪个站、打什么字。词必须贴这份 Brief，不要套护肤/包装模板。
+    `你是 SIFT。结合选定路线、当前步骤和用户偏好生成搜索任务。
 ${TONE}
-工种判断：${craftLabel(craft)}。${craftGuide(craft)}
+工种：${craftLabel(craft)}。${craftGuide(craft)}
+仅在语言、地区、平台能不能用会改变结果时提问：
+{ "questions": [{ "id": "platform_q1", "prompt": "", "options": [{ "id": "a", "label": "", "rationale": "" }] }], "sources": [] }
+信息够则 questions=[] 并给出 sources。
 参考来源（按当前步骤粗排，必须按目的重排）：
 ${ranked
   .map((s, i) => `${i + 1}. ${s.name}｜${s.capabilities.join("/")}｜${s.language}`)
@@ -356,41 +370,61 @@ ${ranked
   }
   alternatives = alternatives.slice(0, 4).map((s, i) => withSearchUrl({ ...s, rank: i + 4 }));
 
+  const questions = normalizeQuestions(data.questions, "platform");
+  if (questions.length && sources.length < 3) {
+    return { plan: null, questions };
+  }
   const parsed = parseOrThrow(
     PlatformPlanSchema,
     {
-      goal: text(data.goal, `探索「${activeStep}」`),
+      goal: text(data.goal, `这一步搜「${activeStep}」`),
       sources,
       alternatives,
     },
     "平台搜索计划"
   );
-  return parsed;
+  return { plan: parsed, questions: [] };
 }
 
 export async function liveCanvasChatRaw(
   message: string,
   canvas: unknown
-): Promise<{ reply: string; cards: { title: string; body: string; parentId: string | null }[] }> {
+): Promise<{
+  reply: string;
+  cards: { title: string; body: string; parentId: string | null }[];
+  questions: AgentQuestion[];
+  intent: "answer" | "ask" | "edit" | "compare" | "deepen";
+}> {
   const data = await completeJson<Record<string, unknown>>(
-    `你是 SIFT。画布上坐着的搜图搭子。先看已有卡片和连线，再说话。
+    `你是 SIFT。先判断用户是在询问、解释、修改、比较还是深化。
 ${TONE}
 只返回 JSON：
 {
-  "reply": "两三句。先说你看见画布上有什么，再说你补了哪两张卡。",
-  "cards": [{ "title": "先搜瓶型", "body": "小红书：独立香薰 瓶身\\nPinterest：stone vessel perfume\\n别搜酒店房间。", "parentId": "已有id" }]
+  "intent": "answer" | "ask" | "edit" | "compare" | "deepen",
+  "reply": "",
+  "questions": [],
+  "cards": []
 }
 
-硬性规则：
-1. 先读 cards[] / links[]，别装没看见。
-2. 默认加 1-3 张新卡，挂在焦点上。不要重做 Brief 和三条路线。
-3. 卡片要能马上拿去搜：站点 + 中文词 + 英文词。
-4. parentId 必须是已有 id。
-5. 不替用户定风格。禁止提案腔。`,
+规则：
+- 普通问答：intent=answer，只回复，cards=[]。
+- 需要澄清：intent=ask，给 1–3 道点选题，先问再做。
+- 明确要求新增内容：intent=deepen，只在相关分支加卡，不要每次默认 1–3 张。
+- 不要重做 Brief 和三条主路线。
+- parentId 必须是已有卡片 id。`,
     JSON.stringify({ message, canvas }, null, 2),
     "low"
   );
-  return parseOrThrow(CanvasChatSchema, data, "画布对话");
+  const parsed = parseOrThrow(CanvasChatSchema, data, "画布对话");
+  const intent =
+    parsed.intent ??
+    (Array.isArray(data.questions) && data.questions.length ? "ask" : parsed.cards.length ? "deepen" : "answer");
+  return {
+    reply: parsed.reply,
+    cards: parsed.cards,
+    questions: normalizeQuestions(data.questions, "chat"),
+    intent,
+  };
 }
 
 export type { PlatformSource };
