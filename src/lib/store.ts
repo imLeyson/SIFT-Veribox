@@ -42,6 +42,8 @@ type Actions = {
   setRawBrief: (value: string) => void;
   setBrief: (brief: Brief) => void;
   updateBriefField: <K extends keyof Brief>(key: K, value: Brief[K]) => void;
+  answerOpenQuestion: (index: number, answer: string) => void;
+  skipOpenQuestion: (index: number) => void;
   setUserInitialIdea: (ideas: string[]) => void;
   setStartingState: (state: StartingState, ideas?: string[]) => void;
   setRoutes: (
@@ -133,6 +135,36 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
         const brief = get().brief;
         if (!brief) return;
         const next = { ...brief, [key]: value };
+        set({
+          brief: next,
+          nodes: get().nodes.map((n) =>
+            n.id === BRIEF_ID ? { ...n, data: { ...n.data, brief: next } } : n
+          ),
+        });
+      },
+      answerOpenQuestion: (index: number, answer: string) => {
+        const brief = get().brief;
+        if (!brief) return;
+        const question = brief.openQuestions[index];
+        if (!question) return;
+        const trimmed = answer.trim();
+        const openQuestions = brief.openQuestions.filter((_, i) => i !== index);
+        const known = trimmed
+          ? [...brief.known, trimmed]
+          : brief.known;
+        const next = { ...brief, openQuestions, known };
+        set({
+          brief: next,
+          nodes: get().nodes.map((n) =>
+            n.id === BRIEF_ID ? { ...n, data: { ...n.data, brief: next } } : n
+          ),
+        });
+      },
+      skipOpenQuestion: (index: number) => {
+        const brief = get().brief;
+        if (!brief) return;
+        const openQuestions = brief.openQuestions.filter((_, i) => i !== index);
+        const next = { ...brief, openQuestions };
         set({
           brief: next,
           nodes: get().nodes.map((n) =>

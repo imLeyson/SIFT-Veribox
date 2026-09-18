@@ -213,6 +213,11 @@ export function useVeriboxActions() {
   }
 
   async function confirmBriefAndContinue() {
+    const store = useVeriboxStore.getState();
+    const remaining = store.brief?.openQuestions.length ?? 0;
+    for (let i = remaining - 1; i >= 0; i -= 1) {
+      store.skipOpenQuestion(i);
+    }
     useVeriboxStore.getState().setStartingState(null, []);
   }
 
