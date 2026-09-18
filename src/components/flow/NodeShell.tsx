@@ -52,7 +52,7 @@ export function NodeShell({
           disabled={loading}
           onClick={() =>
             void sendCanvasChat(
-              `从「${title}」这张卡片深化。请读整张画布，再长出 2 个不同方向的新分支卡片。`
+              `从「${title}」接着往下搜。说话短、具体。给我 2 个能马上打开网站搜的方向，不要写得高大上。`
             )
           }
         >

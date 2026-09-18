@@ -15,6 +15,11 @@ import {
   RoutesPayloadSchema,
 } from "./schema";
 
+const TONE = `说话像工作室里带组员搜图的设计师，不要像品牌提案、也不要像大模型。
+禁止：品质感如何落地、视觉语言、探索切口、可执行分支、调性边界、系统性、方法论、酒店感、仪式感（除非用户原话里有）。
+要用：先看货架 / 先看瓶型 / 先看别人怎么拍 / 别一上来搜氛围图。
+标题不超过 8 个字。句子短。能指向具体该搜什么。`;
+
 function list(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value
@@ -28,9 +33,9 @@ function camelBrief(data: Record<string, unknown>) {
     goal: text(data.goal, "寻找视觉方向"),
     targetUser: text(data.target_user ?? data.targetUser, "待确认目标用户"),
     known: list(data.known),
-    unknown: unknown.length ? unknown : ["当前最大的视觉不确定性是什么"],
+    unknown: unknown.length ? unknown : ["还不知道先去搜什么"],
     constraints: list(data.constraints),
-    deliverable: text(data.deliverable, "视觉探索方向"),
+    deliverable: text(data.deliverable, "先找到能搜的方向"),
     openQuestions: list(data.open_questions ?? data.openQuestions).slice(0, 3),
   };
 }
@@ -51,14 +56,14 @@ function camelRoutes(data: Record<string, unknown>) {
         return {
           id: text(row.id, `route_0${i + 1}`),
           title: text(row.title, `探索方法 ${i + 1}`),
-          question: text(row.question, "这一步要先搞清什么？"),
+          question: text(row.question, "这一步先去搜什么？"),
           steps,
-          purpose: text(row.purpose, "按顺序搜索，避免同时铺开。"),
-          advantage: text(row.advantage, "判断更具体。"),
-          watchOut: text(row.watch_out ?? row.watchOut, "不要当成最终风格。"),
+          purpose: text(row.purpose, "一次只搜一类东西。"),
+          advantage: text(row.advantage, "比较好下手。"),
+          watchOut: text(row.watch_out ?? row.watchOut, "别把搜到的图当成最终方案。"),
           recommendationReason: text(
             row.recommendation_reason ?? row.recommendationReason,
-            "对应当前 Brief 里还不清楚的部分。"
+            "Brief 里这块还没想清楚。"
           ),
         };
       })
@@ -72,18 +77,17 @@ function camelRoutes(data: Record<string, unknown>) {
 
 export async function liveParseBrief(raw: string): Promise<Brief> {
   const data = await completeJson<Record<string, unknown>>(
-    `你是 SIFT 的 Brief Parser。把设计师的自然语言 Brief 结构化。
-只返回 JSON：
-goal, target_user, known[], unknown[], constraints[], deliverable, open_questions[]。
+    `你是 SIFT。把设计师随口说的 Brief 收成一张工作卡。
+${TONE}
+只返回 JSON：goal, target_user, known[], unknown[], constraints[], deliverable, open_questions[]。
 
 规则：
-- 只提取用户明确说出的内容，不编造品牌名、产品成分、包装结构或视觉结论。
-- known：已明确的调性 / 用户 / 事实。
-- unknown：仍需通过视觉探索回答的问题，不是执行清单。
-- constraints：明确不要什么。
-- 信息不足时，open_questions 最多 3 个待确认问题；信息充分则为 []。
-- 不要给出最终风格方案。
-- 中文输出。`,
+- 只用用户原话里的词，不拔高、不翻译成提案腔。
+- known 用短词：自然、年轻、不要太粉。
+- unknown 写成「还不知道先看瓶还是先看场景」这种，不要「视觉语言如何表达」。
+- constraints 保留「不要…」。
+- open_questions 最多 3 个，像同事追问：有没有现成包装？主要做包装还是主图？
+- 不要给风格结论。`,
     raw,
     "low"
   );
@@ -96,31 +100,31 @@ export async function liveGenerateRoutes(
   userInitialIdea: string[]
 ): Promise<{ recommendedRouteId: string | null; routes: ExplorationRoute[] }> {
   const data = await completeJson<Record<string, unknown>>(
-    `你是 SIFT 的 Route Generator。根据 Brief 的最大视觉不确定性，生成 3 条不同的探索方法。
+    `你是 SIFT。给马上要打开 Pinterest / 小红书搜图的设计师 3 套搜法。
+${TONE}
 只返回 JSON：
 {
   "recommended_route_id": "route_01" | "route_02" | "route_03" | null,
   "routes": [{
     "id": "route_01",
-    "title": "",
-    "question": "",
-    "steps": ["", "", ""],
-    "purpose": "",
-    "advantage": "",
-    "watch_out": "",
-    "recommendation_reason": ""
+    "title": "先看货架",
+    "question": "同类产品现在长什么样？",
+    "steps": ["货架", "瓶型", "材质", "拍照"],
+    "purpose": "先看市场上都在卖什么样子",
+    "advantage": "下手快，不容易飘",
+    "watch_out": "别看完就被大牌带跑",
+    "recommendation_reason": "你还不知道先看产品还是先看氛围，建议先看货。"
   }]
 }
 
 硬性规则：
-1. 正好 3 条，id 为 route_01 / route_02 / route_03。
-2. 三条是三种探索方法，不是三个最终风格。禁止标题或步骤使用「自然/极简/高级/甜美」等风格名冒充路线。
-3. 三条起点必须不同。起点可来自：品类、元素、竞品、场景、材质、跨品类。
-4. 每条 3-5 步，优先 4 步。steps 是要去搜的对象。
-5. 每条 question 回答一个明确的探索问题。
-6. purpose / advantage / watch_out 各一句。
-7. 最多推荐 1 条；推荐理由必须挂钩当前 Brief 的未知项。推荐不等于自动选择。
-8. 中文输出。`,
+1. 正好 3 条。id 为 route_01 / route_02 / route_03。
+2. 标题像口令：先看货架 / 先看瓶和材质 / 先看别人怎么拍。不要「从禁忌边界找切口」。
+3. 不是三个风格方案。steps 是要搜的东西：货架、瓶型、材质、字体、竞品官网、使用场景。
+4. 三条起点必须不同。
+5. 每条 3-5 步。purpose / advantage / watch_out / question 各一句大白话。
+6. 最多推荐 1 条。理由说人话，挂钩 Brief 里没想清的那件事。
+7. 禁止书面词：落地、视觉语言、叙事、气质框架。`,
     JSON.stringify({ brief, starting_state: startingState, user_initial_idea: userInitialIdea }, null, 2),
     "low"
   );
@@ -134,35 +138,34 @@ export async function livePlatformPlan(
 ): Promise<PlatformPlan> {
   const ranked = rankSources(activeStep, brief);
   const data = await completeJson<Record<string, unknown>>(
-    `你是 SIFT 的 Platform Planner。为当前探索步骤推荐先去哪里搜、搜什么。
-参考来源（已按当前步骤粗排，你必须按当前目的重排，不能每次固定同一顺序）：
+    `你是 SIFT。告诉设计师这一步去哪个站、打什么字。
+${TONE}
+参考来源（按当前步骤粗排，你必须按目的重排，不能每次同一顺序）：
 ${ranked
-  .map((s, i) => `${i + 1}. ${s.name}｜能力：${s.capabilities.join("/")}｜语言：${s.language}`)
+  .map((s, i) => `${i + 1}. ${s.name}｜${s.capabilities.join("/")}｜${s.language}`)
   .join("\n")}
 
 只返回 JSON：
 {
-  "goal": "",
+  "goal": "这一步去搜货架图",
   "sources": [{
     "rank": 1,
-    "name": "Pinterest",
-    "label": "视觉扩散",
-    "reason": "",
-    "queries": [{"query": "search terms", "translation": "中文释义"}]
+    "name": "小红书",
+    "label": "国内货架",
+    "reason": "先看国内实际在卖的长什么样",
+    "queries": [{"query": "独立香薰 包装", "translation": "搜国内独立香薰包装"}]
   }],
   "alternatives": []
 }
 
 硬性规则：
-1. sources 正好 3 个，角色必须不同。
-2. alternatives 2-4 个备选。
-3. name 只能来自：${SOURCE_REGISTRY.join("、")}。
-4. 排序必须随当前 Route 步骤和 Brief 变化，禁止永远 Pinterest 第一。
-5. 每个来源 2-4 个可执行关键词。外文必须有中文释义；中文关键词的 translation 写用途，不要重复。
-6. 不要空泛词或机械中英互译。
-7. reason 解释「为什么现在先看这里」。
-8. 不要求用户访问所有平台。
-9. 中文输出（query 可用英文）。`,
+1. sources 正好 3 个，角色不同。alternatives 2-4 个。
+2. name 只能来自：${SOURCE_REGISTRY.join("、")}。
+3. 排序跟着当前步骤走。看货架就国内站靠前；看项目就 Behance 靠前。
+4. 每源 2-4 个词。英文词要能直接粘进 Pinterest。中文释义写「拿去搜什么」，不要复读关键词。
+5. 禁止空词：aesthetic, vibe, premium, luxury, editorial, 高级感, 氛围感。
+6. reason 一句：为什么现在先来这个站。
+7. 不要让用户跑遍所有站。`,
     JSON.stringify(
       {
         brief,
@@ -274,20 +277,20 @@ export async function liveCanvasChatRaw(
   canvas: unknown
 ): Promise<{ reply: string; cards: { title: string; body: string; parentId: string | null }[] }> {
   const data = await completeJson<Record<string, unknown>>(
-    `你是 SIFT，画布上的视觉探索智能体。你会看见整张无限画布：卡片、连线、当前焦点。
-先思考：已有什么、缺什么、用户这句话是开新枝还是收窄。
+    `你是 SIFT。画布上坐着的搜图搭子。先看已有卡片和连线，再说话。
+${TONE}
 只返回 JSON：
 {
-  "reply": "短，像同事。先点明你从画布读到了什么，再说你加了什么。",
-  "cards": [{ "title": "", "body": "可执行。若是搜索任务，写出中文词+英文词+建议网站。", "parentId": "已有卡片id" }]
+  "reply": "两三句。先说你看见画布上有什么，再说你补了哪两张卡。",
+  "cards": [{ "title": "先搜瓶型", "body": "小红书：独立香薰 瓶身\\nPinterest：stone vessel perfume\\n别搜酒店房间。", "parentId": "已有id" }]
 }
 
 硬性规则：
-1. 先读 cards[] 和 links[]，禁止伪造不存在的上下文。
-2. 默认生成 1-3 张新分支，不重写主流程，不重复已有卡片。
-3. 卡片必须可执行。parentId 必须是画布已有 id。
-4. 不替用户做最终视觉判断。
-5. 中文。`,
+1. 先读 cards[] / links[]，别装没看见。
+2. 默认加 1-3 张新卡，挂在焦点上。不要重做 Brief 和三条路线。
+3. 卡片要能马上拿去搜：站点 + 中文词 + 英文词。
+4. parentId 必须是已有 id。
+5. 不替用户定风格。禁止提案腔。`,
     JSON.stringify({ message, canvas }, null, 2),
     "low"
   );

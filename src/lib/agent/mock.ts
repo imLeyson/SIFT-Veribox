@@ -19,7 +19,7 @@ export function mockParseBrief(raw: string): Brief {
       goal: "寻找护肤品牌视觉方向",
       targetUser: isYoung ? "20–30 岁女性" : "目标消费者",
       known: extractKnown(raw, ["自然", "年轻", "有品质感", "清新", "克制"]),
-      unknown: ["什么视觉语言可以表达自然但不传统有机"],
+      unknown: ["还不知道先看瓶子还是先看使用场景"],
       constraints: extractKnown(raw, [
         "不要太少女",
         "不要传统有机品牌感",
@@ -34,7 +34,7 @@ export function mockParseBrief(raw: string): Brief {
     goal: summarizeGoal(raw),
     targetUser: "待确认目标用户",
     known: extractTokens(raw).slice(0, 4),
-    unknown: ["当前最大的视觉不确定性是什么"],
+    unknown: ["还不知道先去搜什么"],
     constraints: [],
     deliverable: "视觉探索方向",
     openQuestions:
@@ -66,41 +66,40 @@ export function mockGenerateRoutes(
 ): { recommendedRouteId: string | null; routes: ExplorationRoute[] } {
   const ideaHint =
     startingState === "has_idea" && userInitialIdea.length > 0
-      ? `结合你已有的感觉（${userInitialIdea.join(" / ")}）`
-      : "从 Brief 的未知项出发";
+      ? `你已经有词：${userInitialIdea.join(" / ")}。`
+      : "你还没想清楚先看什么。";
 
   const routes: ExplorationRoute[] = [
     {
       id: "route_01",
-      title: "先找整体感觉",
-      question: "我想要什么整体视觉感觉？",
-      steps: ["风格", "色彩", "摄影", "字体"],
-      purpose: "快速建立整体视觉边界",
-      advantage: "快速看到完整方向",
-      watchOut: "容易被成熟案例锚定",
-      recommendationReason: `${ideaHint}，若你更想先框住整体调性，这条路线最直接。`,
+      title: "先看货架",
+      question: "同类产品现在都长什么样？",
+      steps: ["货架", "瓶型", "包装细节", "使用场景"],
+      purpose: "先看市场上在卖的，别一上来搜氛围",
+      advantage: "下手快",
+      watchOut: "看完容易被大牌带跑",
+      recommendationReason: `${ideaHint}先看货比较稳。`,
     },
     {
       id: "route_02",
-      title: "先拆关键视觉元素",
-      question: "究竟是什么元素构成了想要的感觉？",
-      steps: ["摄影", "构图", "字体", "色彩"],
-      purpose: "弄清楚喜欢的感觉由哪些元素构成",
-      advantage: "判断更具体、更可解释",
-      watchOut: "前期看到的信息比较碎",
+      title: "先看瓶和材质",
+      question: "喜欢的感觉到底是瓶子、材料还是拍照？",
+      steps: ["瓶型", "材质", "拍照", "字体"],
+      purpose: "把喜欢的东西拆开看",
+      advantage: "比较说得清",
+      watchOut: "前期图会比较碎",
       recommendationReason:
-        brief.unknown[0] ??
-        "Brief 已有调性词，但具体视觉元素还不清楚，建议先拆元素验证。",
+        brief.unknown[0] ?? "调性词有了，但还不知道先看哪一层。",
     },
     {
       id: "route_03",
-      title: "先看行业，再跳出去",
-      question: "行业怎么做，我又能如何不同？",
-      steps: ["同类品牌", "行业共性", "跨品类", "差异元素"],
-      purpose: "先理解行业惯例，再寻找差异表达",
-      advantage: "更容易发现差异机会",
-      watchOut: "可能被行业现有视觉框架限制",
-      recommendationReason: `围绕「${brief.goal}」，若你担心同质化，可先扫行业再跨品类。`,
+      title: "先看别人怎么做",
+      question: "同行都在用哪套套路？",
+      steps: ["竞品官网", "货架共性", "跨品类", "可抄的细节"],
+      purpose: "先摸清套路，再决定哪点不一样",
+      advantage: "不容易做成和别人一样",
+      watchOut: "别看完只会跟",
+      recommendationReason: `${ideaHint}如果你怕撞款，走这条。`,
     },
   ];
 

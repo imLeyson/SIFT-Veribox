@@ -5,7 +5,7 @@ import { Loader2, MessageSquare, Send } from "lucide-react";
 import { useVeriboxStore } from "@/lib/store";
 import { useVeriboxActions } from "@/hooks/useVeriboxActions";
 
-const CHIPS = ["从这里深化", "再开一个对照分支", "把搜索词写得更具体"];
+const CHIPS = ["词再具体点", "换个搜法", "先看国内货架"];
 
 export function ChatDock() {
   const { messages, selectedNodeId, nodes, chatOpen, setChatOpen, loading } =
