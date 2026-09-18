@@ -38,12 +38,11 @@ function FlowInner() {
 
   useEffect(() => {
     if (nodes.length > countRef.current) {
-      const newest = nodes[nodes.length - 1];
       const t = window.setTimeout(() => {
         void fitView({
-          nodes: newest ? [{ id: newest.id }] : undefined,
-          padding: 0.55,
+          padding: 0.16,
           duration: 500,
+          maxZoom: 0.85,
         });
       }, 80);
       countRef.current = nodes.length;
