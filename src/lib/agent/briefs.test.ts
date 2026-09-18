@@ -38,6 +38,18 @@ const CASES: { name: string; brief: string; hasIdea: boolean }[] = [
     hasIdea: false,
   },
   {
+    name: "记账 App",
+    brief:
+      "做一款给刚上班的人记开销的 App，希望干净好填，不要理财 app 那种金色图表。还不知道先看首页还是先看记账流程。",
+    hasIdea: false,
+  },
+  {
+    name: "小程序点餐",
+    brief:
+      "给社区小馆做点餐小程序，要老人也能用，不要花里胡哨的运营弹窗。",
+    hasIdea: true,
+  },
+  {
     name: "约束冲突",
     brief:
       "高端礼品包装，要奢华又要便宜好做，面向年轻人又要像传统老字号，风格还没想好。",
@@ -70,6 +82,10 @@ describe("brief regression set", () => {
       for (const route of payload.routes) {
         expect(route.steps.length).toBeGreaterThanOrEqual(3);
         expect(["自然", "极简", "高级"]).not.toContain(route.title);
+      }
+      if (/App|小程序/.test(item.name)) {
+        const blob = payload.routes.flatMap((r) => [r.title, ...r.steps]).join(" ");
+        expect(blob).not.toMatch(/货架|瓶型/);
       }
 
       const plan = parseOrThrow(
