@@ -21,6 +21,7 @@ export function RouteNode({ data, selected }: NodeProps<Node<VBData, "route">>) 
       kicker={data.recommended ? "方案 · 推荐" : "搜索方案"}
       title={route.title}
       selected={selected}
+      dimmed={data.dimmed}
     >
       <p className="text-sm leading-relaxed text-ink/80">
         {route.steps.join(" → ")}

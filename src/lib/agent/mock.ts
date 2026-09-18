@@ -26,6 +26,7 @@ export function mockParseBrief(raw: string): Brief {
         "避免廉价感",
       ]),
       deliverable: "视觉探索方向",
+      openQuestions: [],
     };
   }
 
@@ -36,6 +37,8 @@ export function mockParseBrief(raw: string): Brief {
     unknown: ["当前最大的视觉不确定性是什么"],
     constraints: [],
     deliverable: "视觉探索方向",
+    openQuestions:
+      raw.trim().length < 20 ? ["目标用户是谁？", "有哪些明确不要的方向？"] : [],
   };
 }
 
@@ -202,8 +205,8 @@ export function mockPlatformPlan(
         label: "国内语境",
         reason: "了解本土护肤品牌的视觉表达",
         queries: [
-          { query: "护肤品牌视觉", translation: "护肤品牌视觉" },
-          { query: "小众护肤包装", translation: "小众护肤包装" },
+          { query: "护肤品牌视觉", translation: "看国内货架上的品牌表达" },
+          { query: "小众护肤包装", translation: "看小众包装如何避开大牌套路" },
         ],
       },
       {
@@ -237,6 +240,7 @@ export function mockPlatformPlan(
       reason: "基于视觉相似继续扩展",
       queries: [
         { query: "natural editorial photography", translation: "自然编辑感摄影" },
+        { query: "quiet still life", translation: "克制静物" },
       ],
     },
     {
@@ -246,6 +250,7 @@ export function mockPlatformPlan(
       reason: "补充平面与摄影交叉参考",
       queries: [
         { query: "beauty art direction", translation: "美妆艺术指导" },
+        { query: "packaging layout", translation: "包装排版参考" },
       ],
     },
     {
@@ -253,7 +258,10 @@ export function mockPlatformPlan(
       name: "收集箱",
       label: "历史偏好",
       reason: "先回顾你已有收藏，避免重复搜索",
-      queries: [{ query: "my saved references", translation: "我的已存参考" }],
+      queries: [
+        { query: "my saved references", translation: "回看自己已存参考" },
+        { query: "board review", translation: "整理收藏夹里的重复方向" },
+      ],
     },
   ];
 

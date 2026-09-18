@@ -6,16 +6,25 @@ import { Check, Copy, ExternalLink } from "lucide-react";
 import { NodeShell } from "../NodeShell";
 import { useVeriboxStore } from "@/lib/store";
 import { useVeriboxActions } from "@/hooks/useVeriboxActions";
-import type { VBData } from "@/types";
+import type { PlatformSource, VBData } from "@/types";
 
 export function PlatformNode({
+  id,
   data,
   selected,
 }: NodeProps<Node<VBData, "platform">>) {
   const plan = data.plan;
-  const { selectedRoute, activeStep, loading } = useVeriboxStore();
+  const { selectedRoute, activeStep, loading, skipSource, replaceSource, toggleMoreSources } =
+    useVeriboxStore();
   const { advanceStep } = useVeriboxActions();
   if (!plan) return null;
+
+  const skipped = new Set(data.skippedSources ?? []);
+  const replaced = data.replacedSources ?? {};
+  const sources = plan.sources
+    .map((s) => replaced[s.name] ?? s)
+    .filter((s) => !skipped.has(s.name));
+
   const hasNext =
     selectedRoute &&
     activeStep &&
@@ -26,45 +35,90 @@ export function PlatformNode({
     <NodeShell kicker="去搜" title={data.title} selected={selected}>
       <p className="text-xs text-muted">{plan.goal}</p>
       <ol className="mt-3 space-y-3">
-        {plan.sources.map((source) => (
-          <li key={source.name} className="rounded-xl bg-cream/80 p-3">
-            <p className="text-sm font-medium text-ink">
-              {String(source.rank).padStart(2, "0")} {source.name}
-              <span className="ml-2 text-xs font-normal text-muted">
-                {source.label}
-              </span>
-            </p>
-            <p className="mt-1 text-xs text-muted">{source.reason}</p>
-            <ul className="mt-2 space-y-1">
-              {source.queries.slice(0, 3).map((q) => (
-                <QueryRow key={q.query} query={q.query} translation={q.translation} />
-              ))}
-            </ul>
-            {source.searchUrl && source.searchUrl !== "#" && (
-              <a
-                href={source.searchUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-xs text-accent-ink"
-              >
-                <ExternalLink className="h-3 w-3" />
-                打开搜索
-              </a>
-            )}
-          </li>
+        {sources.map((source) => (
+          <SourceBlock
+            key={source.name}
+            source={source}
+            onSkip={() => skipSource(id, source.name)}
+            onReplace={() => replaceSource(id, source.name)}
+          />
         ))}
       </ol>
-      {hasNext && (
+      <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
-          className="btn-primary mt-3 w-full"
-          disabled={loading}
-          onClick={() => void advanceStep()}
+          className="btn-ghost !px-3 !py-1 text-xs"
+          onClick={() => toggleMoreSources(id)}
         >
-          {loading ? "准备下一步…" : "搜完了，下一步"}
+          {data.showMoreSources ? "收起更多" : "更多来源"}
         </button>
+        {hasNext && (
+          <button
+            type="button"
+            className="btn-primary !px-3 !py-1 text-xs"
+            disabled={loading}
+            onClick={() => void advanceStep()}
+          >
+            {loading ? "准备下一步…" : "下一步"}
+          </button>
+        )}
+      </div>
+      {data.showMoreSources && (
+        <ol className="mt-3 space-y-3">
+          {plan.alternatives.map((source) => (
+            <SourceBlock key={source.name} source={source} />
+          ))}
+        </ol>
       )}
     </NodeShell>
+  );
+}
+
+function SourceBlock({
+  source,
+  onSkip,
+  onReplace,
+}: {
+  source: PlatformSource;
+  onSkip?: () => void;
+  onReplace?: () => void;
+}) {
+  return (
+    <li className="rounded-xl bg-cream/80 p-3">
+      <p className="text-sm font-medium text-ink">
+        {String(source.rank).padStart(2, "0")} {source.name}
+        <span className="ml-2 text-xs font-normal text-muted">{source.label}</span>
+      </p>
+      <p className="mt-1 text-xs text-muted">{source.reason}</p>
+      <ul className="mt-2 space-y-1">
+        {source.queries.slice(0, 4).map((q) => (
+          <QueryRow key={q.query} query={q.query} translation={q.translation} />
+        ))}
+      </ul>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {source.searchUrl && source.searchUrl !== "#" && (
+          <a
+            href={source.searchUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-accent-ink"
+          >
+            <ExternalLink className="h-3 w-3" />
+            打开搜索
+          </a>
+        )}
+        {onSkip && (
+          <button type="button" className="text-xs text-muted" onClick={onSkip}>
+            跳过
+          </button>
+        )}
+        {onReplace && (
+          <button type="button" className="text-xs text-muted" onClick={onReplace}>
+            换一个
+          </button>
+        )}
+      </div>
+    </li>
   );
 }
 

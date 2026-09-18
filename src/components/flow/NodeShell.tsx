@@ -9,11 +9,13 @@ export function NodeShell({
   kicker,
   title,
   selected,
+  dimmed,
   children,
 }: {
   kicker: string;
   title: string;
   selected?: boolean;
+  dimmed?: boolean;
   children: React.ReactNode;
 }) {
   const { sendCanvasChat } = useVeriboxActions();
@@ -24,6 +26,7 @@ export function NodeShell({
       className={[
         "vb-node card w-[320px] overflow-visible",
         selected ? "vb-node-selected" : "",
+        dimmed ? "opacity-40" : "",
       ].join(" ")}
     >
       <Handle

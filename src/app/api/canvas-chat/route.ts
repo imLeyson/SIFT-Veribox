@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { liveCanvasChat } from "@/lib/agent/canvas-chat";
-import { mockCanvasChat } from "@/lib/agent/canvas-chat-mock";
 import { agentInfo } from "@/lib/agent";
 import type { VBEdge, VBNode } from "@/types";
 
@@ -19,14 +18,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "请输入内容" }, { status: 400 });
     }
 
-    const data = agentInfo().mode === "live"
-      ? await liveCanvasChat(
-          message,
-          body.nodes ?? [],
-          body.edges ?? [],
-          body.selectedId ?? null
-        )
-      : mockCanvasChat(message, body.selectedId ?? null);
+    const data = await liveCanvasChat(
+      message,
+      body.nodes ?? [],
+      body.edges ?? [],
+      body.selectedId ?? null
+    );
 
     return NextResponse.json({ data, ...agentInfo() });
   } catch (e) {

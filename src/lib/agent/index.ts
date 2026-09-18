@@ -15,6 +15,12 @@ import {
   liveGenerateRoutes,
   livePlatformPlan,
 } from "./live";
+import {
+  BriefSchema,
+  parseOrThrow,
+  PlatformPlanSchema,
+  RoutesPayloadSchema,
+} from "./schema";
 
 export type AgentMode = "live" | "mock";
 
@@ -25,7 +31,7 @@ export function agentInfo(): { mode: AgentMode; model: string | null } {
 
 export async function parseBrief(raw: string): Promise<Brief> {
   if (llmConfigured()) return liveParseBrief(raw);
-  return mockParseBrief(raw);
+  return parseOrThrow(BriefSchema, mockParseBrief(raw), "Brief");
 }
 
 export async function generateRoutes(
@@ -36,7 +42,11 @@ export async function generateRoutes(
   if (llmConfigured()) {
     return liveGenerateRoutes(brief, startingState, userInitialIdea);
   }
-  return mockGenerateRoutes(brief, startingState, userInitialIdea);
+  return parseOrThrow(
+    RoutesPayloadSchema,
+    mockGenerateRoutes(brief, startingState, userInitialIdea),
+    "探索路线"
+  );
 }
 
 export async function planPlatforms(
@@ -47,5 +57,9 @@ export async function planPlatforms(
   if (llmConfigured()) {
     return livePlatformPlan(brief, selectedRoute, activeStep);
   }
-  return mockPlatformPlan(brief, activeStep);
+  return parseOrThrow(
+    PlatformPlanSchema,
+    mockPlatformPlan(brief, activeStep),
+    "平台搜索计划"
+  );
 }

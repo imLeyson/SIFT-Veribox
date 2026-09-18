@@ -59,38 +59,6 @@ export function useVeriboxActions() {
     }
   }
 
-  async function generateSchemes() {
-    const store = useVeriboxStore.getState();
-    const brief = store.brief;
-    if (!brief) {
-      store.setError("缺少 Brief");
-      return;
-    }
-    const ideas = store.userInitialIdea;
-    const startingState = ideas.length ? "has_idea" : "no_idea";
-    store.setStartingState(startingState, ideas);
-    store.setLoading(true);
-    store.setStep("routes");
-    store.setError(null);
-    try {
-      const data = await postJson<{
-        recommendedRouteId: string | null;
-        routes: ExplorationRoute[];
-      }>("/api/routes", {
-        brief,
-        starting_state: startingState,
-        user_initial_idea: ideas,
-      });
-      useVeriboxStore.getState().setRoutes(data.routes, data.recommendedRouteId);
-    } catch (e) {
-      useVeriboxStore.getState().setError(
-        e instanceof Error ? e.message : "方案生成失败"
-      );
-    } finally {
-      useVeriboxStore.getState().setLoading(false);
-    }
-  }
-
   async function chooseRoute(route: ExplorationRoute) {
     const store = useVeriboxStore.getState();
     const brief = store.brief;
@@ -191,17 +159,49 @@ export function useVeriboxActions() {
     }
   }
 
+  async function confirmBriefAndContinue() {
+    useVeriboxStore.getState().setStartingState(null, []);
+  }
+
+  async function chooseStartingState(
+    startingState: "has_idea" | "no_idea",
+    ideas: string[] = []
+  ) {
+    const store = useVeriboxStore.getState();
+    const brief = store.brief;
+    if (!brief) {
+      store.setError("缺少 Brief");
+      return;
+    }
+    store.setStartingState(startingState, ideas);
+    store.setLoading(true);
+    store.setError(null);
+    try {
+      const data = await postJson<{
+        recommendedRouteId: string | null;
+        routes: ExplorationRoute[];
+      }>("/api/routes", {
+        brief,
+        starting_state: startingState,
+        user_initial_idea: ideas,
+      });
+      useVeriboxStore.getState().setRoutes(data.routes, data.recommendedRouteId);
+    } catch (e) {
+      useVeriboxStore.getState().setError(
+        e instanceof Error ? e.message : "方案生成失败"
+      );
+    } finally {
+      useVeriboxStore.getState().setLoading(false);
+    }
+  }
+
   return {
     analyzeBrief,
-    generateSchemes,
-    confirmBriefAndContinue: generateSchemes,
-    chooseStartingState: async (
-      _startingState: "has_idea" | "no_idea",
-      ideas: string[] = []
-    ) => {
-      useVeriboxStore.getState().setUserInitialIdea(ideas);
-      await generateSchemes();
+    generateSchemes: async () => {
+      await chooseStartingState("no_idea", []);
     },
+    confirmBriefAndContinue,
+    chooseStartingState,
     chooseRoute,
     advanceStep,
     sendCanvasChat,

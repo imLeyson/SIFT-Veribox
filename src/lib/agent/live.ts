@@ -3,48 +3,72 @@ import type {
   ExplorationRoute,
   PlatformPlan,
   PlatformSource,
-  SearchQuery,
   StartingState,
 } from "@/types";
 import { completeJson } from "./llm";
-import { SOURCE_REGISTRY, withSearchUrl } from "./sources";
+import { rankSources, SOURCE_REGISTRY, withSearchUrl } from "./sources";
+import {
+  BriefSchema,
+  CanvasChatSchema,
+  parseOrThrow,
+  PlatformPlanSchema,
+  RoutesPayloadSchema,
+} from "./schema";
 
-function asString(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value.trim() : fallback;
+function camelBrief(data: Record<string, unknown>) {
+  return {
+    goal: data.goal,
+    targetUser: data.target_user ?? data.targetUser,
+    known: data.known,
+    unknown: data.unknown,
+    constraints: data.constraints,
+    deliverable: data.deliverable,
+    openQuestions: data.open_questions ?? data.openQuestions ?? [],
+  };
 }
 
-function asStringList(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => (typeof item === "string" ? item.trim() : ""))
-    .filter(Boolean);
+function camelRoutes(data: Record<string, unknown>) {
+  const routes = Array.isArray(data.routes)
+    ? data.routes.map((item) => {
+        const row = (item ?? {}) as Record<string, unknown>;
+        return {
+          id: row.id,
+          title: row.title,
+          question: row.question,
+          steps: row.steps,
+          purpose: row.purpose,
+          advantage: row.advantage,
+          watchOut: row.watch_out ?? row.watchOut,
+          recommendationReason:
+            row.recommendation_reason ?? row.recommendationReason,
+        };
+      })
+    : [];
+  return {
+    recommendedRouteId:
+      data.recommended_route_id ?? data.recommendedRouteId ?? null,
+    routes,
+  };
 }
 
 export async function liveParseBrief(raw: string): Promise<Brief> {
   const data = await completeJson<Record<string, unknown>>(
-    `你是 Veribox 的 Brief Parser。把设计师的自然语言 Brief 结构化。
-只返回 JSON，字段：
-goal, target_user, known[], unknown[], constraints[], deliverable。
+    `你是 SIFT 的 Brief Parser。把设计师的自然语言 Brief 结构化。
+只返回 JSON：
+goal, target_user, known[], unknown[], constraints[], deliverable, open_questions[]。
 
 规则：
-- 只提取 Brief 里已经说清或明确未决的信息，不要编造品牌名、成分、包装结构。
-- known：已明确的调性 / 用户 / 事实，短词或短句。
-- unknown：仍需通过视觉探索回答的问题，不是项目执行清单。
+- 只提取用户明确说出的内容，不编造品牌名、产品成分、包装结构或视觉结论。
+- known：已明确的调性 / 用户 / 事实。
+- unknown：仍需通过视觉探索回答的问题，不是执行清单。
 - constraints：明确不要什么。
+- 信息不足时，open_questions 最多 3 个待确认问题；信息充分则为 []。
 - 不要给出最终风格方案。
 - 中文输出。`,
     raw,
     "low"
   );
-
-  return {
-    goal: asString(data.goal) || "寻找视觉方向",
-    targetUser: asString(data.target_user ?? data.targetUser) || "待确认目标用户",
-    known: asStringList(data.known),
-    unknown: asStringList(data.unknown),
-    constraints: asStringList(data.constraints),
-    deliverable: asString(data.deliverable) || "视觉探索方向",
-  };
+  return parseOrThrow(BriefSchema, camelBrief(data), "Brief");
 }
 
 export async function liveGenerateRoutes(
@@ -53,106 +77,35 @@ export async function liveGenerateRoutes(
   userInitialIdea: string[]
 ): Promise<{ recommendedRouteId: string | null; routes: ExplorationRoute[] }> {
   const data = await completeJson<Record<string, unknown>>(
-    `你是 Veribox 的搜索方案生成器。设计师马上要去 Pinterest / Behance / 小红书搜参考。
-根据 Brief 生成 3 套「搜索顺序方案」，让人勾选一套后就能按顺序去搜。
+    `你是 SIFT 的 Route Generator。根据 Brief 的最大视觉不确定性，生成 3 条不同的探索方法。
 只返回 JSON：
 {
   "recommended_route_id": "route_01" | "route_02" | "route_03" | null,
-  "routes": [
-    {
-      "id": "route_01",
-      "title": "",
-      "question": "",
-      "steps": ["", "", "", ""],
-      "purpose": "",
-      "advantage": "",
-      "watch_out": "",
-      "recommendation_reason": ""
-    }
-  ]
+  "routes": [{
+    "id": "route_01",
+    "title": "",
+    "question": "",
+    "steps": ["", "", ""],
+    "purpose": "",
+    "advantage": "",
+    "watch_out": "",
+    "recommendation_reason": ""
+  }]
 }
 
 硬性规则：
-1. 必须正好 3 套方案，id 为 route_01 / route_02 / route_03。
-2. 三套的起点必须不同。常见起点：品类/竞品、气质/调性、结构/材质、摄影/画面、字体/图形。
-3. 每套 3-4 步。steps 是要去搜的对象（短词），不是最终风格名。禁止「自然/极简/高级」当步骤。
-4. 这是搜索顺序，不是三个设计方案。
-5. purpose、advantage、watch_out 各一句，短。
-6. 最多推荐 1 套；推荐不等于自动选择。
-7. recommendation_reason 说明为什么这套顺序更适合当前任务。
+1. 正好 3 条，id 为 route_01 / route_02 / route_03。
+2. 三条是三种探索方法，不是三个最终风格。禁止标题或步骤使用「自然/极简/高级/甜美」等风格名冒充路线。
+3. 三条起点必须不同。起点可来自：品类、元素、竞品、场景、材质、跨品类。
+4. 每条 3-5 步，优先 4 步。steps 是要去搜的对象。
+5. 每条 question 回答一个明确的探索问题。
+6. purpose / advantage / watch_out 各一句。
+7. 最多推荐 1 条；推荐理由必须挂钩当前 Brief 的未知项。推荐不等于自动选择。
 8. 中文输出。`,
-    JSON.stringify(
-      {
-        brief,
-        starting_state: startingState,
-        user_initial_idea: userInitialIdea,
-      },
-      null,
-      2
-    ),
+    JSON.stringify({ brief, starting_state: startingState, user_initial_idea: userInitialIdea }, null, 2),
     "medium"
   );
-
-  const routesRaw = Array.isArray(data.routes) ? data.routes : [];
-  const routes: ExplorationRoute[] = routesRaw.slice(0, 3).map((item, i) => {
-    const row = (item ?? {}) as Record<string, unknown>;
-    const steps = asStringList(row.steps).slice(0, 5);
-    return {
-      id: asString(row.id) || `route_0${i + 1}`,
-      title: asString(row.title) || `探索路线 ${i + 1}`,
-      question: asString(row.question),
-      steps: steps.length >= 3 ? steps : ["风格", "色彩", "摄影", "字体"],
-      purpose: asString(row.purpose),
-      advantage: asString(row.advantage),
-      watchOut: asString(row.watch_out ?? row.watchOut),
-      recommendationReason: asString(
-        row.recommendation_reason ?? row.recommendationReason
-      ),
-    };
-  });
-
-  if (routes.length !== 3) {
-    throw new Error("模型没有生成 3 条探索路线");
-  }
-
-  const rec = asString(data.recommended_route_id ?? data.recommendedRouteId);
-  const recommendedRouteId = routes.some((r) => r.id === rec) ? rec : routes[0].id;
-
-  return { recommendedRouteId, routes };
-}
-
-function normalizeSource(
-  item: unknown,
-  rank: number
-): PlatformSource | null {
-  const row = (item ?? {}) as Record<string, unknown>;
-  const name = asString(row.name ?? row.source);
-  if (!name) return null;
-  const queryObjs: SearchQuery[] = Array.isArray(row.queries)
-    ? row.queries
-        .map((q) => {
-          if (typeof q === "string") {
-            return { query: q, translation: q };
-          }
-          const obj = (q ?? {}) as Record<string, unknown>;
-          const query = asString(obj.query);
-          if (!query) return null;
-          return {
-            query,
-            translation: asString(obj.translation) || query,
-          };
-        })
-        .filter((q): q is SearchQuery => Boolean(q))
-        .slice(0, 4)
-    : [];
-
-  return {
-    rank: Number(row.rank) || rank,
-    name,
-    label: asString(row.label) || "参考来源",
-    reason: asString(row.reason),
-    queries: queryObjs,
-  };
+  return parseOrThrow(RoutesPayloadSchema, camelRoutes(data), "探索路线");
 }
 
 export async function livePlatformPlan(
@@ -160,33 +113,37 @@ export async function livePlatformPlan(
   selectedRoute: { title: string; steps: string[]; purpose: string } | undefined,
   activeStep: string
 ): Promise<PlatformPlan> {
+  const ranked = rankSources(activeStep, brief);
   const data = await completeJson<Record<string, unknown>>(
-    `你是 Veribox 的搜索执行器。设计师选好了搜索顺序，现在要执行其中一步。
-为当前步骤给出「去哪个站、打什么中文/英文词」。人会复制关键词并离开去搜，不要替他决定风格。
+    `你是 SIFT 的 Platform Planner。为当前探索步骤推荐先去哪里搜、搜什么。
+参考来源（已按当前步骤粗排，你必须按当前目的重排，不能每次固定同一顺序）：
+${ranked
+  .map((s, i) => `${i + 1}. ${s.name}｜能力：${s.capabilities.join("/")}｜语言：${s.language}`)
+  .join("\n")}
+
 只返回 JSON：
 {
   "goal": "",
-  "sources": [
-    {
-      "rank": 1,
-      "name": "Pinterest",
-      "label": "视觉扩散",
-      "reason": "",
-      "queries": [{"query": "english or native search terms", "translation": "中文释义"}]
-    }
-  ],
+  "sources": [{
+    "rank": 1,
+    "name": "Pinterest",
+    "label": "视觉扩散",
+    "reason": "",
+    "queries": [{"query": "search terms", "translation": "中文释义"}]
+  }],
   "alternatives": []
 }
 
 硬性规则：
-1. sources 正好 3 个，rank 1-3，角色必须不同。
-2. alternatives 2-4 个备选来源。
+1. sources 正好 3 个，角色必须不同。
+2. alternatives 2-4 个备选。
 3. name 只能来自：${SOURCE_REGISTRY.join("、")}。
-4. 顺序必须跟随当前探索目的变化，不要每次都是固定排行榜。
-5. 每个来源 2-4 个关键词。外文关键词必须有中文释义；若关键词本身是中文，translation 用一句用途说明，不要重复关键词。
-6. 关键词要平台化，不要机械中英互译，也不要一次生成大量词。
-7. reason 必须解释「为什么现在先看这里」，短句。
-8. 中文输出（query 可用英文）。`,
+4. 排序必须随当前 Route 步骤和 Brief 变化，禁止永远 Pinterest 第一。
+5. 每个来源 2-4 个可执行关键词。外文必须有中文释义；中文关键词的 translation 写用途，不要重复。
+6. 不要空泛词或机械中英互译。
+7. reason 解释「为什么现在先看这里」。
+8. 不要求用户访问所有平台。
+9. 中文输出（query 可用英文）。`,
     JSON.stringify(
       {
         brief,
@@ -199,39 +156,49 @@ export async function livePlatformPlan(
     "low"
   );
 
-  const sources = (Array.isArray(data.sources) ? data.sources : [])
-    .map((item, i) => normalizeSource(item, i + 1))
-    .filter((s): s is PlatformSource => Boolean(s))
-    .slice(0, 3)
+  const parsed = parseOrThrow(PlatformPlanSchema, data, "平台搜索计划");
+  const names = new Set(SOURCE_REGISTRY);
+  const sources = parsed.sources
+    .filter((s) => names.has(s.name))
     .map((s, i) => withSearchUrl({ ...s, rank: i + 1 }));
-
-  let alternatives = (Array.isArray(data.alternatives) ? data.alternatives : [])
-    .map((item, i) => normalizeSource(item, i + 4))
-    .filter((s): s is PlatformSource => Boolean(s))
+  const alternatives = parsed.alternatives
+    .filter((s) => names.has(s.name) && !sources.some((x) => x.name === s.name))
+    .slice(0, 4)
     .map((s, i) => withSearchUrl({ ...s, rank: i + 4 }));
 
-  if (alternatives.length === 0) {
-    const used = new Set(sources.map((s) => s.name));
-    alternatives = SOURCE_REGISTRY.filter((name) => !used.has(name))
-      .slice(0, 3)
-      .map((name, i) =>
-        withSearchUrl({
-          rank: i + 4,
-          name,
-          label: "备选来源",
-          reason: "当前步骤的补充入口",
-          queries: sources[0]?.queries?.slice(0, 2) ?? [],
-        })
-      );
+  if (sources.length !== 3) {
+    throw new Error("平台计划来源必须正好 3 个，且名称在来源表内");
+  }
+  if (alternatives.length < 2) {
+    throw new Error("平台计划备选来源必须 2–4 个");
   }
 
-  if (sources.length < 3) {
-    throw new Error("模型没有生成足够的搜索来源");
-  }
-
-  return {
-    goal: asString(data.goal) || `探索「${activeStep}」`,
-    sources,
-    alternatives,
-  };
+  return { goal: parsed.goal, sources, alternatives };
 }
+
+export async function liveCanvasChatRaw(
+  message: string,
+  canvas: unknown
+): Promise<{ reply: string; cards: { title: string; body: string; parentId: string | null }[] }> {
+  const data = await completeJson<Record<string, unknown>>(
+    `你是 SIFT，画布上的视觉探索智能体。你会看见整张无限画布：卡片、连线、当前焦点。
+先思考：已有什么、缺什么、用户这句话是开新枝还是收窄。
+只返回 JSON：
+{
+  "reply": "短，像同事。先点明你从画布读到了什么，再说你加了什么。",
+  "cards": [{ "title": "", "body": "可执行。若是搜索任务，写出中文词+英文词+建议网站。", "parentId": "已有卡片id" }]
+}
+
+硬性规则：
+1. 先读 cards[] 和 links[]，禁止伪造不存在的上下文。
+2. 默认生成 1-3 张新分支，不重写主流程，不重复已有卡片。
+3. 卡片必须可执行。parentId 必须是画布已有 id。
+4. 不替用户做最终视觉判断。
+5. 中文。`,
+    JSON.stringify({ message, canvas }, null, 2),
+    "medium"
+  );
+  return parseOrThrow(CanvasChatSchema, data, "画布对话");
+}
+
+export type { PlatformSource };

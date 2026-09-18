@@ -6,6 +6,7 @@ import type { FlowStep } from "@/types";
 const PHASES: Record<string, string[]> = {
   brief_input: ["读取任务", "提取已知与未知", "写成可确认的卡片"],
   brief_confirm: ["判断先搜什么", "编排 3 套顺序", "配上推荐理由"],
+  starting_state: ["判断先搜什么", "编排 3 套顺序", "配上推荐理由"],
   routes: ["判断先搜什么", "编排 3 套顺序", "配上推荐理由"],
   platform_plan: ["匹配网站", "写中英搜索词", "排好复制顺序"],
   canvas_chat: ["阅读整张画布", "判断缺口与焦点", "长出可执行的新卡片"],
