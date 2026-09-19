@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { completeJson } from "./llm";
 import { runConvergenceTurn } from "./convergence";
 import { mockConvergence } from "./convergence-mock";
-import { normalizeLivePayload } from "./convergence-live";
+import { liveConvergence, normalizeLivePayload } from "./convergence-live";
 import { EXAMPLES } from "./examples";
 import type { ConvergenceInput } from "@/types/convergence";
 vi.mock("./llm", () => ({ llmConfigured: () => true, llmModelName: () => "test-live", completeJson: vi.fn() }));
@@ -35,6 +35,12 @@ describe("live contract guards", () => {
     expect(["questioning", "checkpoint", "confirmed"]).toContain(normalized.state.status);
     expect(normalized.state.direction).toBeTruthy();
     expect(normalized.next).toBeTruthy();
+  });
+
+  it("disables hidden reasoning so the structured response is not empty", async () => {
+    vi.mocked(completeJson).mockResolvedValue(mockConvergence(initial()));
+    await liveConvergence(initial());
+    expect(vi.mocked(completeJson).mock.calls[0]?.[2]).toBe("none");
   });
 
   it("rejects a model that confirms on the user's behalf", async () => { const payload = mockConvergence(initial()); payload.state.status = "confirmed"; payload.next = { type: "checkpoint", reason: "ready" }; vi.mocked(completeJson).mockResolvedValue(payload); await expect(runConvergenceTurn(initial())).rejects.toThrow(/用户确认/); });

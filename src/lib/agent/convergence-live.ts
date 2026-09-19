@@ -246,7 +246,11 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
 }
 
 export function liveConvergence(input: ConvergenceInput): Promise<unknown> {
-  return completeJson(SYSTEM, JSON.stringify(input), "low").then((payload) =>
+  // This contract is a bounded state transition, not an open-ended reasoning
+  // task. DeepSeek Flash can spend a small token budget entirely in
+  // reasoning_content, leaving message.content empty; disable hidden reasoning
+  // so the JSON contract is actually returned.
+  return completeJson(SYSTEM, JSON.stringify(input), "none").then((payload) =>
     normalizeLivePayload(payload, input),
   );
 }
