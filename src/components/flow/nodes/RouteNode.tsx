@@ -32,13 +32,19 @@ export function RouteNode({ data, selected }: NodeProps<Node<VBData, "route">>) 
       <p className="text-sm leading-relaxed text-ink/80">
         {route.steps.join(" → ")}
       </p>
-      <p className="mt-2 text-sm text-muted">{route.purpose}</p>
-      <p className="mt-3 text-sm">
-        <span className="text-accent-ink">＋</span> {route.advantage}
-      </p>
-      <p className="text-sm">
-        <span className="text-muted">△</span> {route.watchOut}
-      </p>
+      {route.purpose ? (
+        <p className="mt-2 text-sm text-muted">{route.purpose}</p>
+      ) : null}
+      {route.advantage ? (
+        <p className="mt-3 text-sm">
+          <span className="text-accent-ink">＋</span> {route.advantage}
+        </p>
+      ) : null}
+      {route.watchOut ? (
+        <p className="text-sm">
+          <span className="text-muted">△</span> {route.watchOut}
+        </p>
+      ) : null}
       {openAsk ? (
         <p className="mt-4 text-xs text-muted">先答旁边的问题卡。</p>
       ) : (

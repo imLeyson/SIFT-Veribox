@@ -2,6 +2,8 @@
 
 SIFT 是一个帮助设计师把模糊 Brief 编排成视觉探索路线和搜索行动的 Agent。
 
+产品需求见 [`docs/SIFT_PRD_v1.0.md`](docs/SIFT_PRD_v1.0.md)。
+
 ```text
 Brief → 理解任务 → 选择当前状态 → 3 条探索路线 → 平台搜索计划 → 画布对话深化
 ```

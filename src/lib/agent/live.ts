@@ -78,27 +78,55 @@ function text(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
+// 模型不总是照抄 prompt 里的字段名。这里只做同义映射，绝不替它编内容：
+// 缺字段就留空，让卡片少显示一行，而不是填一句放在任何项目都成立的话。
+const ROUTE_KEYS = {
+  title: ["title", "origin", "name"],
+  question: ["question", "exploration_question", "key_question"],
+  steps: ["steps", "next_steps", "actions"],
+  purpose: ["purpose", "why", "intent"],
+  advantage: ["advantage", "pros", "benefit", "strength"],
+  watchOut: ["watch_out", "watchOut", "risk", "pitfall", "cons"],
+  recommendationReason: [
+    "recommendation_reason",
+    "recommendationReason",
+    "rationale",
+  ],
+} as const;
+
+function pickText(row: Record<string, unknown>, keys: readonly string[]) {
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function pickList(row: Record<string, unknown>, keys: readonly string[]) {
+  for (const key of keys) {
+    const value = row[key];
+    if (!Array.isArray(value)) continue;
+    const items = value
+      .map((s) => (typeof s === "string" ? s.trim() : ""))
+      .filter(Boolean);
+    if (items.length) return items;
+  }
+  return [];
+}
+
 function camelRoutes(data: Record<string, unknown>) {
   const routes = Array.isArray(data.routes)
     ? data.routes.map((item, i) => {
         const row = (item ?? {}) as Record<string, unknown>;
-        const steps = Array.isArray(row.steps)
-          ? row.steps
-              .map((s) => (typeof s === "string" ? s.trim() : ""))
-              .filter(Boolean)
-          : [];
         return {
           id: text(row.id, `route_0${i + 1}`),
-          title: text(row.title, `探索方法 ${i + 1}`),
-          question: text(row.question, "这一步先去搜什么？"),
-          steps,
-          purpose: text(row.purpose, "一次只搜一类东西。"),
-          advantage: text(row.advantage, "比较好下手。"),
-          watchOut: text(row.watch_out ?? row.watchOut, "别把搜到的图当成最终方案。"),
-          recommendationReason: text(
-            row.recommendation_reason ?? row.recommendationReason,
-            "Brief 里这块还没想清楚。"
-          ),
+          title: pickText(row, ROUTE_KEYS.title) || `探索方法 ${i + 1}`,
+          question: pickText(row, ROUTE_KEYS.question),
+          steps: pickList(row, ROUTE_KEYS.steps),
+          purpose: pickText(row, ROUTE_KEYS.purpose),
+          advantage: pickText(row, ROUTE_KEYS.advantage),
+          watchOut: pickText(row, ROUTE_KEYS.watchOut),
+          recommendationReason: pickText(row, ROUTE_KEYS.recommendationReason),
         };
       })
     : [];
@@ -215,15 +243,33 @@ ${TONE}
 只返回 JSON。如果有一个未决选择会改变三条路线，先问，不要硬编路线：
 { "questions": [{ "id": "routes_q1", "prompt": "", "options": [{ "id": "a", "label": "", "rationale": "" }] }], "routes": [] }
 
-信息够则：
-{ "questions": [], "recommended_route_id": "route_01", "routes": [ ...正好 3 条 ] }
+信息够则按这个结构给三条路线，字段名照抄，不要改名、不要加字段：
+{
+  "questions": [],
+  "recommended_route_id": "route_01",
+  "routes": [
+    {
+      "id": "route_01",
+      "title": "从什么切入，一句话，不是风格名",
+      "question": "这条路线要回答的那个探索问题",
+      "steps": ["一个能直接去搜或去做的动作", "第二个动作", "第三个动作"],
+      "purpose": "为什么这条路线这么排",
+      "advantage": "这么探索的好处",
+      "watch_out": "这么探索容易踩的坑",
+      "recommendation_reason": "为什么推荐它，对应 Brief 的哪个未知项；不推荐就留空"
+    }
+  ]
+}
 
 硬性规则：
 1. 只有未决选择会改变路线时才提问。不能把「先看页面还是流程」当成所有项目的固定问题。
 2. 有路线时正好 3 条，起点不同，不是三个风格名。
-3. 推荐理由对应这份 Brief，区分事实和建议。
-4. 非包装不要出现货架/瓶型。
-5. 不要重复已经问过的题。force=true 时不要再问，直接给三条路线。`,
+3. steps 必须是字符串数组，每条路线 3-5 步。每步一句话、不超过 30 字，写清去哪里、看什么、比什么差异。不要写成一段话，不要只写「调研」「收集参考」这类空动作。
+4. title 不超过 18 字。purpose、advantage、watch_out 各一句话、不超过 40 字，都要跟这份 Brief 有关。写不出具体的就省略该字段，不要用「一次只搜一类东西」「比较好下手」这种放在任何项目都成立的话凑数。
+5. 整体保持短：三张卡要能一眼看完，不要写成长报告。
+6. 推荐理由对应这份 Brief，区分事实和建议。
+7. 非包装不要出现货架/瓶型。
+8. 不要重复已经问过的题。force=true 时不要再问，直接给三条路线。`,
     JSON.stringify(
       {
         brief,

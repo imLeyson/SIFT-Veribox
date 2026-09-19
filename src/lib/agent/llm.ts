@@ -5,7 +5,9 @@ const BASE_URL = (process.env.LLM_BASE_URL ?? "https://ai.tkapi.site/v1").replac
 const API_KEY = process.env.LLM_API_KEY ?? "";
 const MODEL = process.env.LLM_MODEL ?? "grok-4.6";
 const REASONING = process.env.LLM_REASONING_EFFORT ?? "medium";
-const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? 40000);
+// 服务端 45s 先于客户端 50s 超时，保证用户拿到可读错误而不是请求被掐断。
+// Vercel 函数上限 maxDuration=60s，留出余量。
+const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? 45000);
 
 export function llmConfigured() {
   return Boolean(API_KEY);
@@ -66,7 +68,7 @@ async function completeJsonOnce<T>(
       body: JSON.stringify({
         model: MODEL,
         temperature: 0.4,
-        max_tokens: 4096,
+        max_tokens: 5000,
         reasoning_effort: reasoningEffort,
         response_format: { type: "json_object" },
         messages: [
