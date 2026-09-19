@@ -21,20 +21,65 @@ export function llmModelName() {
   return MODEL;
 }
 
-function extractJson(text: string): unknown {
+function jsonCandidates(text: string) {
+  const candidates: string[] = [];
+  for (let start = 0; start < text.length; start += 1) {
+    if (text[start] !== "{") continue;
+    let depth = 0;
+    let quoted = false;
+    let escaped = false;
+    for (let index = start; index < text.length; index += 1) {
+      const char = text[index];
+      if (quoted) {
+        if (escaped) escaped = false;
+        else if (char === "\\") escaped = true;
+        else if (char === '"') quoted = false;
+        continue;
+      }
+      if (char === '"') {
+        quoted = true;
+        continue;
+      }
+      if (char === "{") depth += 1;
+      if (char === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          candidates.push(text.slice(start, index + 1));
+          break;
+        }
+      }
+    }
+  }
+  return candidates;
+}
+
+function repairJsonSyntax(candidate: string) {
+  return candidate
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/,\s*([}\]])/g, "$1");
+}
+
+export function extractJson(text: string): unknown {
   const trimmed = text.trim();
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = fenced?.[1]?.trim() ?? trimmed;
-  const start = candidate.indexOf("{");
-  const end = candidate.lastIndexOf("}");
-  if (start === -1 || end === -1 || end <= start) {
-    throw new Error("模型没有返回 JSON");
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
+  const sources = [fenced, trimmed].filter(
+    (source): source is string => Boolean(source),
+  );
+  const candidates = sources.flatMap(jsonCandidates);
+  if (!candidates.length) throw new Error("模型没有返回 JSON");
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      try {
+        return JSON.parse(repairJsonSyntax(candidate));
+      } catch {
+        // Try the next balanced JSON object before reporting a provider error.
+      }
+    }
   }
-  try {
-    return JSON.parse(candidate.slice(start, end + 1));
-  } catch {
-    throw new Error("模型返回了无法解析的 JSON");
-  }
+  throw new Error("模型返回了无法解析的 JSON");
 }
 
 export async function completeJson<T>(

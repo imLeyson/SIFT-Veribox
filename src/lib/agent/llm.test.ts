@@ -1,9 +1,17 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { extractJson } from "./llm";
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.resetModules();
+});
+describe("model JSON extraction", () => {
+  it("accepts fenced JSON with a trailing comma and surrounding prose", () => {
+    expect(
+      extractJson('结果如下：```json\n{"state":{"status":"questioning",},}\n```'),
+    ).toEqual({ state: { status: "questioning" } });
+  });
 });
 it("times out a stalled body after response headers have arrived", async () => {
   vi.resetModules();
