@@ -46,12 +46,14 @@ export const BriefSchema = z.object({
 export const RouteSchema = z.object({
   id: z.string().regex(/^route_0[1-3]$/),
   title: nonEmpty,
-  question: nonEmpty,
+  // 探索问题、目的、优势、风险、推荐理由由模型按需给。
+  // 缺了就留空、卡片不显示那一行 —— 宁可少一行，也不填通用话术。
+  question: z.string().trim().default(""),
   steps: z.array(nonEmpty).min(3).max(5),
-  purpose: nonEmpty,
-  advantage: nonEmpty,
-  watchOut: nonEmpty,
-  recommendationReason: nonEmpty,
+  purpose: z.string().trim().default(""),
+  advantage: z.string().trim().default(""),
+  watchOut: z.string().trim().default(""),
+  recommendationReason: z.string().trim().default(""),
 });
 
 const STYLE_AS_ROUTE =
@@ -148,7 +150,7 @@ export function parseOrThrow<T>(
   const result = schema.safeParse(data);
   if (!result.success) {
     const detail = result.error.issues
-      .map((i) => i.message)
+      .map((i) => `${i.path.join(".") || "响应"}：${i.message}`)
       .slice(0, 3)
       .join("；");
     throw new Error(`${label}不符合约定：${detail}`);

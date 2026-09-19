@@ -101,7 +101,9 @@ export function summarizeNode(node: VBNode): string {
     return `目标：${d.brief.goal}；已知：${d.brief.known.join(" / ")}；未知：${d.brief.unknown.join(" / ")}；避免：${d.brief.constraints.join(" / ")}`;
   }
   if (d.kind === "route" && d.route) {
-    return `${d.route.title}｜${d.route.steps.join(" → ")}｜${d.route.purpose}`;
+    return [d.route.title, d.route.steps.join(" → "), d.route.purpose]
+      .filter(Boolean)
+      .join("｜");
   }
   if (d.kind === "platform" && d.plan) {
     const names = d.plan.sources.map((s) => s.name).join(" → ");
