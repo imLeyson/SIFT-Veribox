@@ -3,14 +3,48 @@ import { runConvergenceTurn } from "./convergence";
 import { EXAMPLES } from "./examples";
 import type { ConvergenceInput, TurnResult } from "@/types/convergence";
 
-vi.mock("./llm", () => ({ llmConfigured: () => false, llmModelName: () => "test", completeJson: vi.fn() }));
+vi.mock("./llm", () => ({
+  llmConfigured: () => false,
+  llmModelName: () => "test",
+  completeJson: vi.fn(),
+}));
 
 function start(brief: string = EXAMPLES[0].brief): ConvergenceInput {
-  return { sessionId: "session-test", requestId: "request-1", rawBrief: brief, state: null, history: [], pendingQuestion: null, event: { type: "start" } };
+  return {
+    sessionId: "session-test",
+    requestId: "request-1",
+    rawBrief: brief,
+    state: null,
+    history: [],
+    pendingQuestion: null,
+    event: { type: "start" },
+  };
 }
-function answer(input: ConvergenceInput, result: TurnResult, kind: "option" | "uncertain" = "option", optionId?: string): ConvergenceInput {
+function answer(
+  input: ConvergenceInput,
+  result: TurnResult,
+  kind: "option" | "uncertain" = "option",
+  optionId?: string,
+): ConvergenceInput {
   if (result.next.type !== "ask") throw new Error("Expected a question");
-  return { ...input, requestId: `${input.requestId}-next`, state: result.state, history: result.history, pendingQuestion: result.next.question, event: { type: "answer", answer: kind === "uncertain" ? { questionId: result.next.question.id, kind } : { questionId: result.next.question.id, kind, optionId: optionId ?? result.next.question.options[0].id } } };
+  return {
+    ...input,
+    requestId: `${input.requestId}-next`,
+    state: result.state,
+    history: result.history,
+    pendingQuestion: result.next.question,
+    event: {
+      type: "answer",
+      answer:
+        kind === "uncertain"
+          ? { questionId: result.next.question.id, kind }
+          : {
+              questionId: result.next.question.id,
+              kind,
+              optionId: optionId ?? result.next.question.options[0].id,
+            },
+    },
+  };
 }
 
 describe("design convergence", () => {
@@ -21,19 +55,31 @@ describe("design convergence", () => {
     expect(result.next.question.prompt.length).toBeLessThanOrEqual(40);
     expect(result.next.question.uncertaintyId).toBe("quality_expression");
     expect(result.state.brief.audience).toBe("都市上班族");
-    expect(result.state.constraints.map(x => x.text).join()).toContain("荧光色");
+    expect(result.state.constraints.map((x) => x.text).join()).toContain(
+      "荧光色",
+    );
   });
 
   it("different answers change the direction and the next decision", async () => {
     const input = start();
     const first = await runConvergenceTurn(input);
-    const tactile = await runConvergenceTurn(answer(input, first, "option", "touch"));
-    const visual = await runConvergenceTurn(answer(input, first, "option", "layout"));
-    expect(tactile.state.direction.priorities).not.toEqual(visual.state.direction.priorities);
+    const tactile = await runConvergenceTurn(
+      answer(input, first, "option", "touch"),
+    );
+    const visual = await runConvergenceTurn(
+      answer(input, first, "option", "layout"),
+    );
+    expect(tactile.state.direction.priorities).not.toEqual(
+      visual.state.direction.priorities,
+    );
     expect(tactile.next).not.toEqual(visual.next);
-    expect(visual.state.direction.priorities[0].sourceIds).toContain("request-1-next");
+    expect(visual.state.direction.priorities[0].sourceIds).toContain(
+      "request-1-next",
+    );
     expect(visual.state.constraints).toEqual(first.state.constraints);
-    expect(visual.state.uncertainties.some(u => u.id === "quality_expression")).toBe(false);
+    expect(
+      visual.state.uncertainties.some((u) => u.id === "quality_expression"),
+    ).toBe(false);
     expect(visual.history).toHaveLength(1);
     expect(visual.state.revision).toBe(first.state.revision + 1);
   });
@@ -48,12 +94,20 @@ describe("design convergence", () => {
     input = answer(input, second, "uncertain");
     const third = await runConvergenceTurn(input);
     expect(third.state.direction.priorities).toEqual([]);
-    expect(third.state.uncertainties.find(u => u.id === "quality_expression")?.status).toBe("deferred");
-    expect(third.next).toEqual({ type: "checkpoint", reason: "needs_evidence" });
+    expect(
+      third.state.uncertainties.find((u) => u.id === "quality_expression")
+        ?.status,
+    ).toBe("deferred");
+    expect(third.next).toEqual({
+      type: "checkpoint",
+      reason: "needs_evidence",
+    });
   });
 
   it("a complete brief can go directly to human checkpoint", async () => {
-    const result = await runConvergenceTurn(start(EXAMPLES.find(x => x.id === "complete")!.brief));
+    const result = await runConvergenceTurn(
+      start(EXAMPLES.find((x) => x.id === "complete")!.brief),
+    );
     expect(result.next).toEqual({ type: "checkpoint", reason: "ready" });
     expect(result.state.status).toBe("checkpoint");
   });
@@ -63,7 +117,10 @@ describe("design convergence", () => {
     const first = await runConvergenceTurn(input);
     const next = answer(input, first, "option", "made-up");
     await expect(runConvergenceTurn(next)).rejects.toThrow(/选项/);
-    next.event = { type: "answer", answer: { kind: "uncertain", questionId: "old-question" } };
+    next.event = {
+      type: "answer",
+      answer: { kind: "uncertain", questionId: "old-question" },
+    };
     await expect(runConvergenceTurn(next)).rejects.toThrow(/当前问题/);
   });
 
@@ -72,11 +129,55 @@ describe("design convergence", () => {
     const first = await runConvergenceTurn(input);
     const secondInput = answer(input, first, "option", "layout");
     const second = await runConvergenceTurn(secondInput);
-    const corrected = await runConvergenceTurn({ ...secondInput, requestId: "correction-1", state: second.state, history: second.history, pendingQuestion: second.next.type === "ask" ? second.next.question : null, event: { type: "correct", text: "改为通过表面触感体现品质感" } });
+    const corrected = await runConvergenceTurn({
+      ...secondInput,
+      requestId: "correction-1",
+      state: second.state,
+      history: second.history,
+      pendingQuestion: second.next.type === "ask" ? second.next.question : null,
+      event: { type: "correct", text: "改为通过表面触感体现品质感" },
+    });
     expect(corrected.state.direction.priorities[0].text).toContain("表面触感");
     expect(corrected.history).toHaveLength(2);
     expect(corrected.history[0]).toEqual(second.history[0]);
     expect(corrected.state.constraints).toEqual(first.state.constraints);
+  });
+
+  it("rejects a pending question that no longer refers to an open judgment", async () => {
+    const input = start();
+    const first = await runConvergenceTurn(input);
+    const next = answer(input, first);
+    next.state!.uncertainties = next.state!.uncertainties.map((u) => ({
+      ...u,
+      status: "deferred",
+    }));
+    await expect(runConvergenceTurn(next)).rejects.toThrow(/未决判断/);
+  });
+
+  it("resolves conflicting constraints while preserving the unrelated budget limit", async () => {
+    const input = start(EXAMPLES.find((x) => x.id === "conflict")!.brief);
+    const first = await runConvergenceTurn(input);
+    const result = await runConvergenceTurn(
+      answer(input, first, "option", "metal"),
+    );
+    expect(result.state.constraints.map((c) => c.text).join()).not.toContain(
+      "必须只用现成纸盒",
+    );
+    expect(result.state.constraints.map((c) => c.text).join()).toContain(
+      "预算不能增加",
+    );
+    expect(
+      result.state.constraints.some((c) =>
+        c.sourceIds.includes("request-1-next"),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps stated exclusions visible in the direction state", async () => {
+    const result = await runConvergenceTurn(start());
+    expect(result.state.direction.avoid.map((j) => j.text).join()).toContain(
+      "荧光色",
+    );
   });
 
   for (const example of EXAMPLES) {

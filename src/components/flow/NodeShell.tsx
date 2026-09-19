@@ -1,77 +1,49 @@
 "use client";
-
-import { Handle, NodeToolbar, Position } from "@xyflow/react";
-import { GitBranch, GripHorizontal } from "lucide-react";
-import { useVeriboxActions } from "@/hooks/useVeriboxActions";
-import { useVeriboxStore } from "@/lib/store";
+import { Handle, Position } from "@xyflow/react";
+import { GripHorizontal } from "lucide-react";
 
 export function NodeShell({
   kicker,
   title,
   selected,
-  dimmed,
   children,
 }: {
   kicker: string;
   title: string;
   selected?: boolean;
-  dimmed?: boolean;
   children: React.ReactNode;
 }) {
-  const { sendCanvasChat } = useVeriboxActions();
-  const loading = useVeriboxStore((s) => s.loading);
-
   return (
     <article
-      className={[
-        "vb-node card w-[320px] overflow-visible",
-        selected ? "vb-node-selected" : "",
-        dimmed ? "opacity-40" : "",
-      ].join(" ")}
+      className={`vb-node card w-[360px] ${selected ? "vb-node-selected" : ""}`}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="vb-handle vb-handle-in"
+        isConnectable={false}
+        className="!pointer-events-none !opacity-0"
       />
       <Handle
         type="source"
         position={Position.Right}
-        className="vb-handle vb-handle-out"
+        isConnectable={false}
+        className="!pointer-events-none !opacity-0"
       />
-
-      <NodeToolbar
-        isVisible={selected}
-        position={Position.Top}
-        align="center"
-        offset={12}
-      >
-        <button
-          type="button"
-          className="btn-primary !py-1.5 !text-xs shadow-sm"
-          disabled={loading}
-          onClick={() =>
-            void sendCanvasChat(
-              `从「${title}」接着往下搜。说话短、具体。给我 2 个能马上打开网站搜的方向，不要写得高大上。`
-            )
-          }
-        >
-          <GitBranch className="h-3.5 w-3.5" />
-          从这里深化
-        </button>
-      </NodeToolbar>
-
       <div className="overflow-hidden rounded-[1.25rem]">
-        <div className="card-drag cursor-grab border-b border-line/70 bg-white/40 px-4 py-3 active:cursor-grabbing">
+        <div className="card-drag cursor-grab border-b border-line/70 bg-white/40 px-5 py-4 active:cursor-grabbing">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted">
+            <p className="text-[11px] font-medium tracking-wide text-muted">
               {kicker}
             </p>
-            <GripHorizontal className="h-3.5 w-3.5 text-muted/70" aria-hidden />
+            <GripHorizontal className="h-3.5 w-3.5 text-muted" aria-hidden />
           </div>
-          <h3 className="mt-1 font-serif text-lg leading-snug text-ink">{title}</h3>
+          <h2 className="mt-1 font-serif text-xl leading-snug text-ink">
+            {title}
+          </h2>
         </div>
-        <div className="nowheel nodrag bg-[var(--card)] p-4">{children}</div>
+        <div className="nowheel nodrag break-words bg-[var(--card)] p-5">
+          {children}
+        </div>
       </div>
     </article>
   );

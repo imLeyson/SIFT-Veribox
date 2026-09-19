@@ -1,126 +1,94 @@
 "use client";
-
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { useVeriboxStore } from "@/lib/store";
-import { ThinkingProgress } from "@/components/canvas/ThinkingProgress";
-import { InfiniteCanvas } from "@/components/flow/InfiniteCanvas";
-import { ChatDock } from "@/components/flow/ChatDock";
-import { cancelInflight, useVeriboxActions } from "@/hooks/useVeriboxActions";
+import { useSiftStore } from "@/lib/convergence-store";
+import { siftActions } from "@/lib/convergence-client";
+import { InfiniteCanvas } from "./flow/InfiniteCanvas";
+import { ThinkingProgress } from "./canvas/ThinkingProgress";
 
-function subscribeHydration(onStoreChange: () => void) {
-  const unsub = useVeriboxStore.persist.onFinishHydration(onStoreChange);
-  if (useVeriboxStore.persist.hasHydrated()) onStoreChange();
-  return unsub;
+function subscribeHydration(onChange: () => void) {
+  return useSiftStore.persist.onFinishHydration(onChange);
 }
-
 export function Workspace() {
-  const { step, error, reset, loading, nodes, goBack, staleFlags, selectedRoute } =
-    useVeriboxStore();
-  const { generateSchemes, chooseRoute } = useVeriboxActions();
+  const { state, error, storageWarning, activeRequest, mode } = useSiftStore();
   const ready = useSyncExternalStore(
     subscribeHydration,
-    () => useVeriboxStore.persist.hasHydrated(),
-    () => false
+    () => useSiftStore.persist.hasHydrated(),
+    () => false,
   );
-  const [agentLabel, setAgentLabel] = useState("Exploration Agent");
-
+  const [runtimeMode, setRuntimeMode] = useState<"live" | "mock" | null>(null);
   useEffect(() => {
-    void fetch("/api/status")
+    void useSiftStore.persist.rehydrate();
+    const ac = new AbortController();
+    void fetch("/api/status", { signal: ac.signal })
       .then((r) => r.json())
-      .then((info: { mode?: string; model?: string | null }) => {
-        if (info.mode === "live" && info.model) {
-          setAgentLabel("Grok 4.6");
-        } else if (info.mode === "live") {
-          setAgentLabel("Live Agent");
-        } else {
-          setAgentLabel("Mock Agent");
-        }
-      })
-      .catch(() => undefined);
+      .then((info) => setRuntimeMode(info.mode))
+      .catch(() => {});
+    return () => ac.abort();
   }, []);
-
-  if (!ready) {
+  if (!ready)
     return (
-      <div className="flex min-h-full flex-1 items-center justify-center text-sm text-muted">
-        加载画布…
+      <div className="flex h-dvh items-center justify-center text-sm text-muted">
+        正在恢复当前会话…
       </div>
     );
-  }
-
   return (
-    <div className="flex h-dvh min-h-full flex-1 flex-col overflow-hidden">
-      <header className="z-10 border-b border-line/70 bg-white/50 backdrop-blur-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <div>
-            <p className="text-sm font-semibold tracking-wide text-ink">
-              SIFT
-            </p>
-            <p className="text-xs text-muted">
-              {loading
-                ? `${agentLabel} · 正在思考`
-                : `${agentLabel} · 无限画布 · ${nodes.length} 张卡片`}
-            </p>
-          </div>
-          <p className="hidden text-xs text-muted sm:block">
-            拖画布平移 · 拖标题移动卡片 · 拉线连接 · 对话会读整张画布
+    <main className="flex h-dvh flex-col overflow-hidden">
+      <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-line/70 bg-white/60 px-4 py-3 backdrop-blur-sm sm:px-6">
+        <div>
+          <h1 className="text-sm font-semibold tracking-wide text-ink">SIFT</h1>
+          <p className="mt-0.5 text-xs text-muted">
+            设计方向收敛 · 少问一点，判断清楚一点
           </p>
-          <div className="flex items-center gap-2">
-            {step !== "brief_input" && (
-              <button type="button" className="btn-ghost text-xs" onClick={goBack}>
-                返回上一步
-              </button>
-            )}
-            <button type="button" className="btn-ghost text-xs" onClick={reset}>
-              新建探索
+        </div>
+        <div className="flex items-center gap-2">
+          {state?.status === "questioning" && (
+            <button
+              className="btn-ghost text-xs"
+              onClick={siftActions.checkpoint}
+            >
+              先确认当前状态
             </button>
-          </div>
+          )}
+          <button className="btn-ghost text-xs" onClick={siftActions.reset}>
+            新建收敛
+          </button>
         </div>
       </header>
-
-      {loading && (
-        <div className="relative">
-          <ThinkingProgress step={step} />
+      {(runtimeMode ?? mode) === "mock" && (
+        <p className="border-b border-line/60 bg-mist/60 px-4 py-2 text-xs text-muted">
+          Mock 示例模式 · 用预设示例演示闭环；真实项目的判断需要配置模型。
+        </p>
+      )}
+      {storageWarning && (
+        <p
+          role="status"
+          className="border-b border-line px-4 py-2 text-xs text-muted"
+        >
+          {storageWarning}
+        </p>
+      )}
+      {error && (
+        <div
+          role="alert"
+          className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800"
+        >
+          {error}。输入已保留，可再次提交。
+        </div>
+      )}
+      {activeRequest && (
+        <div className="flex items-center justify-between border-b border-line/70 bg-white/60 px-4 py-2">
+          <ThinkingProgress key={activeRequest.id} initial={!state} />
           <button
-            type="button"
-            className="btn-ghost absolute right-4 top-3 z-20 !px-3 !py-1 text-xs"
-            onClick={() => cancelInflight()}
+            className="btn-ghost !py-1 text-xs"
+            onClick={siftActions.cancel}
           >
             取消
           </button>
         </div>
       )}
-
-      {error && (
-        <div
-          role="alert"
-          className="z-10 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800"
-        >
-          {error}
-        </div>
-      )}
-
-      {(staleFlags.routes || staleFlags.platform) && (
-        <div className="z-10 flex flex-wrap items-center justify-between gap-2 border-b border-line/70 bg-mist/80 px-4 py-2 text-sm text-ink">
-          <p>理解改过了，现有路线或搜索计划可能过时。</p>
-          <button
-            type="button"
-            className="btn-ghost !px-3 !py-1 text-xs"
-            onClick={() => {
-              if (staleFlags.routes) void generateSchemes();
-              else if (selectedRoute) void chooseRoute(selectedRoute, true);
-            }}
-          >
-            重新生成
-          </button>
-        </div>
-      )}
-
-      <div className="flex min-h-0 flex-1">
-        <div className="relative min-w-0 flex-1">
-          <InfiniteCanvas />
-        </div>
-        <ChatDock />
+      <div className="relative min-h-0 flex-1">
+        <InfiniteCanvas />
       </div>
-    </div>
+    </main>
   );
 }

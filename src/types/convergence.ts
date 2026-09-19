@@ -1,5 +1,16 @@
 import type { z } from "zod";
-import type { AnswerSchema, ConvergenceInputSchema, DesignStateSchema, EventSchema, HistoryEntrySchema, JudgmentSchema, NextSchema, QuestionSchema, TurnPayloadSchema, TurnResultSchema } from "@/lib/agent/convergence-schema";
+import type {
+  AnswerSchema,
+  ConvergenceInputSchema,
+  DesignStateSchema,
+  EventSchema,
+  HistoryEntrySchema,
+  JudgmentSchema,
+  NextSchema,
+  QuestionSchema,
+  TurnPayloadSchema,
+  TurnResultSchema,
+} from "@/lib/agent/convergence-schema";
 
 export type Judgment = z.infer<typeof JudgmentSchema>;
 export type DesignState = z.infer<typeof DesignStateSchema>;
@@ -15,9 +26,13 @@ export type TurnResult = z.infer<typeof TurnResultSchema>;
 export function answerText(question: Question, answer: Answer): string {
   if (answer.kind === "uncertain") return "暂不确定";
   if (answer.kind === "custom") return answer.text;
-  return question.options.find(o => o.id === answer.optionId)?.label ?? "";
+  return question.options.find((o) => o.id === answer.optionId)?.label ?? "";
 }
 
 export function hasDirection(state: DesignState): boolean {
-  return Boolean(state.direction.intent || state.direction.priorities.length || state.direction.criteria.length);
+  return Boolean(
+    state.direction.intent ||
+    state.direction.priorities.length ||
+    state.direction.criteria.length,
+  );
 }

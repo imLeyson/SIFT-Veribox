@@ -1,98 +1,133 @@
 "use client";
-
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Background,
   BackgroundVariant,
-  ConnectionLineType,
   Controls,
   MarkerType,
-  MiniMap,
+  Panel,
   ReactFlow,
   ReactFlowProvider,
+  useNodesInitialized,
+  useNodesState,
   useReactFlow,
-  type OnSelectionChangeParams,
+  type Edge,
+  type Node,
 } from "@xyflow/react";
-import { useVeriboxStore } from "@/lib/store";
+import { useSiftStore } from "@/lib/convergence-store";
 import { nodeTypes } from "./nodeTypes";
-import type { CardKind } from "@/types";
-
-const KIND_COLOR: Record<CardKind, string> = {
-  briefInput: "#1f1c18",
-  brief: "#8b7db5",
-  state: "#6f675e",
-  route: "#5b4d86",
-  platform: "#3d4a3a",
-  insight: "#8a5a3b",
-  ask: "#7a5c48",
-};
+import type { FlowData } from "./nodes/AskNode";
 
 function FlowInner() {
-  const nodes = useVeriboxStore((s) => s.nodes);
-  const edges = useVeriboxStore((s) => s.edges);
-  const onNodesChange = useVeriboxStore((s) => s.onNodesChange);
-  const onEdgesChange = useVeriboxStore((s) => s.onEdgesChange);
-  const onConnect = useVeriboxStore((s) => s.onConnect);
-  const selectNode = useVeriboxStore((s) => s.selectNode);
+  const history = useSiftStore((s) => s.history);
+  const next = useSiftStore((s) => s.next);
+  const hasState = useSiftStore((s) => Boolean(s.state));
+  const positions = useSiftStore((s) => s.positions);
+  const sessionId = useSiftStore((s) => s.sessionId);
+  const setPosition = useSiftStore((s) => s.setPosition);
   const { fitView } = useReactFlow();
-  const countRef = useRef(nodes.length);
-
-  useEffect(() => {
-    if (nodes.length > countRef.current) {
-      const t = window.setTimeout(() => {
-        void fitView({
-          padding: 0.16,
-          duration: 500,
-          maxZoom: 0.85,
-        });
-      }, 80);
-      countRef.current = nodes.length;
-      return () => window.clearTimeout(t);
+  const initialized = useNodesInitialized();
+  const graph = useMemo(() => {
+    const nodes: Node<FlowData>[] = [
+      {
+        id: "brief",
+        type: "brief",
+        position: positions.brief ?? { x: 40, y: 60 },
+        data: {},
+      },
+    ];
+    const edges: Edge[] = [];
+    let parent = "brief";
+    for (const [index, turn] of history.entries()) {
+      const id = `turn-${turn.id}`;
+      nodes.push({
+        id,
+        type: "ask",
+        position: positions[id] ?? { x: 40 + index * 420, y: 1000 },
+        data: { historyId: turn.id },
+      });
+      edges.push({ id: `${parent}-${id}`, source: parent, target: id });
+      parent = id;
     }
-    countRef.current = nodes.length;
-  }, [nodes, fitView]);
+    if (next?.type === "ask") {
+      nodes.push({
+        id: next.question.id,
+        type: "ask",
+        position: positions[next.question.id] ?? { x: 460, y: 60 },
+        data: {},
+      });
+      edges.push({
+        id: `${parent}-current`,
+        source: parent,
+        target: next.question.id,
+      });
+      parent = next.question.id;
+    }
+    if (hasState) {
+      nodes.push({
+        id: "direction",
+        type: "state",
+        position: positions.direction ?? { x: 880, y: 60 },
+        data: {},
+      });
+      edges.push({
+        id: `${parent}-direction`,
+        source: parent,
+        target: "direction",
+      });
+    }
+    return {
+      nodes: nodes.map((n) => ({
+        ...n,
+        dragHandle: ".card-drag",
+        deletable: false,
+        connectable: false,
+      })),
+      edges,
+    };
+  }, [history, next, hasState, positions]);
+  const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
+  useEffect(() => {
+    setNodes(graph.nodes);
+  }, [graph.nodes, setNodes]);
 
-  const onSelectionChange = useCallback(
-    ({ nodes: selected }: OnSelectionChangeParams) => {
-      selectNode(selected[0]?.id ?? null);
-    },
-    [selectNode]
-  );
+  const currentId =
+    next?.type === "ask" ? next.question.id : hasState ? "direction" : "brief";
+  useEffect(() => {
+    if (!initialized) return;
+    const ids =
+      window.innerWidth < 840 || !hasState
+        ? [currentId]
+        : [currentId, "direction"];
+    void fitView({
+      nodes: ids.map((id) => ({ id })),
+      padding: 0.18,
+      duration: 350,
+      maxZoom: 1,
+    });
+  }, [initialized, currentId, hasState, sessionId, fitView]);
 
   return (
     <ReactFlow
       nodes={nodes}
-      edges={edges}
+      edges={graph.edges}
       nodeTypes={nodeTypes}
       onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onConnect={onConnect}
-      onSelectionChange={onSelectionChange}
-      fitView
-      minZoom={0.18}
-      maxZoom={1.75}
+      onNodeDragStop={(_e, node) => setPosition(node.id, node.position)}
+      nodesConnectable={false}
+      edgesReconnectable={false}
+      deleteKeyCode={null}
+      minZoom={0.2}
+      maxZoom={1.5}
       panOnScroll
       panOnDrag
-      zoomOnDoubleClick
-      selectionOnDrag={false}
       selectNodesOnDrag={false}
-      elevateNodesOnSelect
-      elevateEdgesOnSelect
-      connectionRadius={28}
-      connectionLineType={ConnectionLineType.SmoothStep}
-      connectionLineStyle={{ stroke: "#1f1c18", strokeWidth: 1.8 }}
-      deleteKeyCode={["Backspace", "Delete"]}
-      proOptions={{ hideAttribution: true }}
       defaultEdgeOptions={{
         type: "smoothstep",
-        animated: false,
-        style: { stroke: "#b7aa98", strokeWidth: 1.6 },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 14,
-          height: 14,
-          color: "#b7aa98",
-        },
+        style: { stroke: "#b7aa98", strokeWidth: 1.5 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: "#b7aa98" },
+        deletable: false,
+        selectable: false,
       }}
     >
       <Background
@@ -102,21 +137,47 @@ function FlowInner() {
         color="#d2c8ba"
       />
       <Controls showInteractive={false} position="bottom-left" />
-      <MiniMap
-        pannable
-        zoomable
-        position="bottom-left"
-        style={{ marginLeft: 52 }}
-        maskColor="rgba(247,243,236,0.78)"
-        nodeColor={(node) =>
-          KIND_COLOR[(node.type as CardKind) || "insight"] ?? "#c4b8a8"
-        }
-        className="!h-[92px] !w-[140px] !bg-cream/90"
-      />
+      <Panel position="top-left" className="flex flex-wrap gap-2">
+        <button
+          className="btn-ghost !bg-cream text-xs"
+          onClick={() =>
+            void fitView({
+              nodes: [{ id: currentId }],
+              padding: 0.2,
+              maxZoom: 1,
+              duration: 300,
+            })
+          }
+        >
+          {next?.type === "ask" ? "当前问题" : "当前状态"}
+        </button>
+        {hasState && (
+          <button
+            className="btn-ghost !bg-cream text-xs"
+            onClick={() =>
+              void fitView({
+                nodes: [{ id: "direction" }],
+                padding: 0.2,
+                maxZoom: 1,
+                duration: 300,
+              })
+            }
+          >
+            方向状态
+          </button>
+        )}
+        <button
+          className="btn-ghost !bg-cream text-xs"
+          onClick={() =>
+            void fitView({ padding: 0.15, maxZoom: 1, duration: 300 })
+          }
+        >
+          全部记录
+        </button>
+      </Panel>
     </ReactFlow>
   );
 }
-
 export function InfiniteCanvas() {
   return (
     <ReactFlowProvider>
