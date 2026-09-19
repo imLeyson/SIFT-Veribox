@@ -26,9 +26,11 @@ import type {
   VeriboxState,
 } from "@/types";
 import {
+  askParentId,
   BRIEF_ID,
   BRIEF_INPUT_ID,
   childPosition,
+  latestAskId,
   link,
   seedNodes,
   stripStateCards,
@@ -61,6 +63,7 @@ type Actions = {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setPendingQuestions: (questions: AgentQuestion[]) => void;
+  resolveAskCard: (stage: QuestionStage, answers: AgentAnswer[]) => void;
   addAnswers: (answers: AgentAnswer[]) => void;
   upsertDraft: (answer: AgentAnswer) => void;
   clearDrafts: (questionIds: string[]) => void;
@@ -205,16 +208,120 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
       setUserInitialIdea: (userInitialIdea) => set({ userInitialIdea }),
       setStartingState: (startingState, ideas = []) =>
         set({ startingState, userInitialIdea: ideas, error: null }),
-      setPendingQuestions: (pendingQuestions) =>
+      setPendingQuestions: (pendingQuestions) => {
+        const prev = get();
+        const askedQuestions = [
+          ...prev.askedQuestions,
+          ...pendingQuestions.filter(
+            (q) => !prev.askedQuestions.some((a) => a.id === q.id)
+          ),
+        ];
+        const stages: QuestionStage[] = ["brief", "routes", "platform", "chat"];
+        let nodes = prev.nodes;
+        let edges = prev.edges;
+        let selectedNodeId = prev.selectedNodeId;
+
+        for (const stage of stages) {
+          const qs = pendingQuestions.filter((q) => q.stage === stage);
+          const open = nodes.find(
+            (n) =>
+              n.data.kind === "ask" &&
+              n.data.ask?.status === "open" &&
+              n.data.ask.stage === stage
+          );
+          if (!qs.length) {
+            if (open && !(open.data.ask?.answers.length)) {
+              nodes = nodes.filter((n) => n.id !== open.id);
+              const ids = new Set(nodes.map((n) => n.id));
+              edges = edges.filter(
+                (e) => ids.has(e.source) && ids.has(e.target)
+              );
+              if (selectedNodeId === open.id) {
+                selectedNodeId = askParentId(nodes, stage, prev.selectedNodeId);
+              }
+            }
+            continue;
+          }
+          const same =
+            open &&
+            (open.data.ask?.questions.map((q) => q.id).join("|") ?? "") ===
+              qs.map((q) => q.id).join("|");
+          if (open && same) continue;
+          if (open) {
+            nodes = nodes.map((n) =>
+              n.id === open.id
+                ? {
+                    ...n,
+                    data: {
+                      ...n.data,
+                      ask: {
+                        status: "open",
+                        stage,
+                        questions: qs,
+                        answers: n.data.ask?.answers ?? [],
+                      },
+                    },
+                  }
+                : n
+            );
+            selectedNodeId = open.id;
+            continue;
+          }
+          const parentId = askParentId(nodes, stage, prev.selectedNodeId);
+          const parent = nodes.find((n) => n.id === parentId);
+          const childCount = edges.filter((e) => e.source === parentId).length;
+          const id = newId("card-ask");
+          const node: VBNode = {
+            id,
+            type: "ask",
+            position: childPosition(parent, childCount, childCount + 1),
+            data: {
+              kind: "ask",
+              title: "还需要确认",
+              ask: { status: "open", stage, questions: qs, answers: [] },
+            },
+            dragHandle: ".card-drag",
+          };
+          nodes = upsertNode(nodes, node);
+          edges = upsertEdge(edges, link(parentId, id, "询问"));
+          selectedNodeId = id;
+        }
+
         set({
           pendingQuestions,
-          askedQuestions: [
-            ...get().askedQuestions,
-            ...pendingQuestions.filter(
-              (q) => !get().askedQuestions.some((a) => a.id === q.id)
-            ),
-          ],
-        }),
+          askedQuestions,
+          nodes,
+          edges,
+          selectedNodeId,
+        });
+      },
+      resolveAskCard: (stage, answers) => {
+        const open = get().nodes.find(
+          (n) =>
+            n.data.kind === "ask" &&
+            n.data.ask?.status === "open" &&
+            n.data.ask.stage === stage
+        );
+        if (!open?.data.ask) return;
+        set({
+          nodes: get().nodes.map((n) =>
+            n.id === open.id
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    title: "已选",
+                    ask: {
+                      ...open.data.ask!,
+                      status: "answered",
+                      answers,
+                    },
+                  },
+                }
+              : n
+          ),
+        });
+      },
       addAnswers: (answers) =>
         set({ answers: [...get().answers, ...answers] }),
       upsertDraft: (answer) =>
@@ -250,7 +357,9 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
       setStale: (flags) =>
         set({ staleFlags: { ...get().staleFlags, ...flags } }),
       setRoutes: (routes, recommendedRouteId) => {
-        const parent = get().nodes.find((n) => n.id === BRIEF_ID);
+        const fromId =
+          latestAskId(get().nodes, ["brief", "routes"]) ?? BRIEF_ID;
+        const parent = get().nodes.find((n) => n.id === fromId);
         let nodes = get().nodes;
         let edges = get().edges;
         routes.forEach((route, i) => {
@@ -270,7 +379,7 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
           nodes = upsertNode(nodes, node);
           edges = upsertEdge(
             edges,
-            link(BRIEF_ID, id, route.id === recommendedRouteId ? "推荐" : "方案")
+            link(fromId, id, route.id === recommendedRouteId ? "推荐" : "方案")
           );
         });
         set({
@@ -306,7 +415,11 @@ export const useVeriboxStore = create<VeriboxState & Actions>()(
       setPlatformPlan: (platformPlan, routeId, stepName) => {
         const rid = routeId ?? get().selectedRoute?.id ?? "route";
         const step = stepName ?? get().activeStep ?? "search";
+        const fromId =
+          latestAskId(get().nodes, ["platform", "routes"]) ??
+          `card-route-${rid}`;
         const parent =
+          get().nodes.find((n) => n.id === fromId) ??
           get().nodes.find((n) => n.id === `card-route-${rid}`) ??
           get().nodes.find((n) => n.id === get().selectedNodeId);
         const id = `card-platform-${rid}-${step}`;

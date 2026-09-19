@@ -91,7 +91,17 @@ export type CardKind =
   | "state"
   | "route"
   | "platform"
-  | "insight";
+  | "insight"
+  | "ask";
+
+export type AskStatus = "open" | "answered";
+
+export interface AskTurn {
+  status: AskStatus;
+  stage: QuestionStage;
+  questions: AgentQuestion[];
+  answers: AgentAnswer[];
+}
 
 export type VBData = {
   kind: CardKind;
@@ -106,6 +116,7 @@ export type VBData = {
   skippedSources?: string[];
   replacedSources?: Record<string, PlatformSource>;
   showMoreSources?: boolean;
+  ask?: AskTurn;
 };
 
 export type VBNode = Node<VBData>;

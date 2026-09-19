@@ -4,7 +4,6 @@ import { useState } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { NodeShell } from "../NodeShell";
-import { QuestionBlock } from "../QuestionBlock";
 import { useVeriboxStore } from "@/lib/store";
 import { useVeriboxActions } from "@/hooks/useVeriboxActions";
 import type { PlatformSource, VBData } from "@/types";
@@ -22,12 +21,9 @@ export function PlatformNode({
     skipSource,
     replaceSource,
     toggleMoreSources,
-    pendingQuestions,
-    askRoundByStage,
   } = useVeriboxStore();
-  const { advanceStep, submitAnswers } = useVeriboxActions();
-  const platformQs = pendingQuestions.filter((q) => q.stage === "platform");
-  if (!plan && !platformQs.length) return null;
+  const { advanceStep } = useVeriboxActions();
+  if (!plan) return null;
 
   const skipped = new Set(data.skippedSources ?? []);
   const replaced = data.replacedSources ?? {};
@@ -45,21 +41,6 @@ export function PlatformNode({
 
   return (
     <NodeShell kicker="去搜" title={data.title} selected={selected}>
-      {platformQs.length > 0 && (
-        <div className="mb-3">
-          <QuestionBlock
-            key={platformQs.map((q) => q.id).join("|")}
-            questions={platformQs}
-            stall={askRoundByStage.platform >= 2}
-            disabled={loading}
-            onSubmit={(answers, proceed) =>
-              void submitAnswers(answers, proceed, "platform")
-            }
-          />
-        </div>
-      )}
-      {plan ? (
-        <>
       <p className="text-xs text-muted">{plan.goal}</p>
       <ol className="mt-3 space-y-3">
         {sources.map((source) => (
@@ -97,8 +78,6 @@ export function PlatformNode({
           ))}
         </ol>
       )}
-        </>
-      ) : null}
     </NodeShell>
   );
 }

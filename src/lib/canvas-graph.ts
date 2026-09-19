@@ -1,4 +1,4 @@
-import type { VBEdge, VBNode } from "@/types";
+import type { QuestionStage, VBEdge, VBNode } from "@/types";
 
 export const BRIEF_INPUT_ID = "card-brief-input";
 export const BRIEF_ID = "card-brief";
@@ -62,6 +62,39 @@ export function link(
   };
 }
 
+export function latestAskId(
+  nodes: VBNode[],
+  stages?: QuestionStage[]
+): string | null {
+  const match = [...nodes]
+    .reverse()
+    .find(
+      (n) =>
+        n.data.kind === "ask" &&
+        (!stages || (n.data.ask && stages.includes(n.data.ask.stage)))
+    );
+  return match?.id ?? null;
+}
+
+export function askParentId(
+  nodes: VBNode[],
+  stage: QuestionStage,
+  selectedId: string | null
+): string {
+  const chained = latestAskId(nodes);
+  if (chained) return chained;
+  if (stage === "platform") {
+    const route =
+      nodes.find((n) => n.data.kind === "route" && !n.data.dimmed) ??
+      nodes.find((n) => n.id === selectedId && n.data.kind === "route");
+    if (route) return route.id;
+  }
+  if (stage === "chat" && selectedId && nodes.some((n) => n.id === selectedId)) {
+    return selectedId;
+  }
+  return nodes.some((n) => n.id === BRIEF_ID) ? BRIEF_ID : BRIEF_INPUT_ID;
+}
+
 export function summarizeNode(node: VBNode): string {
   const d = node.data;
   if (d.kind === "brief" && d.brief) {
@@ -82,6 +115,20 @@ export function summarizeNode(node: VBNode): string {
   }
   if (d.kind === "insight") {
     return `${d.title}：${d.body ?? ""}`;
+  }
+  if (d.kind === "ask" && d.ask) {
+    return d.ask.questions
+      .map((q) => {
+        const answer = d.ask?.answers.find((a) => a.questionId === q.id);
+        const label =
+          answer?.kind === "uncertain"
+            ? "暂不确定"
+            : answer?.custom ||
+              q.options.find((o) => o.id === answer?.optionId)?.label ||
+              "未选";
+        return `${q.prompt} → ${label}`;
+      })
+      .join("；");
   }
   return d.title;
 }

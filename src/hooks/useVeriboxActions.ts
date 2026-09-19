@@ -347,6 +347,7 @@ export function useVeriboxActions() {
   ) {
     const store = useVeriboxStore.getState();
     store.addAnswers(answers);
+    store.resolveAskCard(stage, answers);
     store.clearDrafts(answers.map((a) => a.questionId));
     const pending = store.pendingQuestions.filter((q) => q.stage === stage);
     const round = store.bumpAskRound(stage);

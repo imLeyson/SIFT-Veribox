@@ -2,30 +2,18 @@
 
 import type { Node, NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
-import { QuestionBlock } from "../QuestionBlock";
 import { useVeriboxStore } from "@/lib/store";
 import { useVeriboxActions } from "@/hooks/useVeriboxActions";
 import type { VBData } from "@/types";
 
 export function BriefNode({ data, selected }: NodeProps<Node<VBData, "brief">>) {
-  const {
-    updateBriefField,
-    loading,
-    pendingQuestions,
-    routes,
-    askRoundByStage,
-  } = useVeriboxStore();
-  const { confirmBriefAndContinue, submitAnswers } = useVeriboxActions();
+  const { updateBriefField, loading, nodes } = useVeriboxStore();
+  const { confirmBriefAndContinue } = useVeriboxActions();
   const brief = data.brief;
   if (!brief) return null;
-  const questions = pendingQuestions.filter(
-    (q) => q.stage === "brief" || (routes.length === 0 && q.stage === "routes")
+  const openAsk = nodes.some(
+    (n) => n.data.kind === "ask" && n.data.ask?.status === "open"
   );
-  const stall =
-    questions.length > 0 &&
-    (questions.some((q) => q.stage === "routes")
-      ? askRoundByStage.routes >= 2
-      : askRoundByStage.brief >= 2);
 
   return (
     <NodeShell kicker="任务" title="当前理解" selected={selected}>
@@ -51,22 +39,8 @@ export function BriefNode({ data, selected }: NodeProps<Node<VBData, "brief">>) 
         )}
       </dl>
 
-      {questions.length > 0 ? (
-        <div className="mt-4">
-          <QuestionBlock
-            key={questions.map((q) => q.id).join("|")}
-            questions={questions}
-            stall={stall}
-            disabled={loading}
-            onSubmit={(answers, proceed) =>
-              void submitAnswers(
-                answers,
-                proceed,
-                questions.some((q) => q.stage === "routes") ? "routes" : "brief"
-              )
-            }
-          />
-        </div>
+      {openAsk ? (
+        <p className="mt-4 text-xs text-muted">先答旁边的问题卡。</p>
       ) : (
         <button
           type="button"

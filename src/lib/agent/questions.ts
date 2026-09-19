@@ -11,6 +11,19 @@ export function newRequestId() {
   return `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+export function formatAskAnswer(
+  question: AgentQuestion,
+  answer?: AgentAnswer
+): string {
+  if (!answer) return "未选";
+  if (answer.kind === "uncertain") return "暂不确定";
+  if (answer.kind === "custom" && answer.custom?.trim()) {
+    return answer.custom.trim();
+  }
+  const option = question.options.find((item) => item.id === answer.optionId);
+  return option?.label ?? answer.custom?.trim() ?? "未选";
+}
+
 export function parseAnswers(value: unknown): AgentAnswer[] {
   if (!Array.isArray(value)) return [];
   const out: AgentAnswer[] = [];

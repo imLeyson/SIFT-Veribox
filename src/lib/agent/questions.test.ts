@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyAnswersToBrief,
   dedupeQuestions,
+  formatAskAnswer,
   normalizeQuestions,
   parseAnswers,
 } from "./questions";
@@ -13,7 +14,7 @@ import {
 import { mockCanvasChat } from "./canvas-chat-mock";
 import { parseOrThrow, BriefSchema } from "./schema";
 import { wrap } from "./index";
-import { stripStateCards } from "@/lib/canvas-graph";
+import { askParentId, stripStateCards } from "@/lib/canvas-graph";
 import type { VBEdge, VBNode } from "@/types";
 
 describe("questions", () => {
@@ -100,6 +101,27 @@ describe("questions", () => {
       true
     );
     expect(next.known.join()).not.toContain("暂不确定");
+  });
+
+  it("formats selected option, custom text, and uncertain", () => {
+    const q = {
+      id: "q1",
+      stage: "brief" as const,
+      prompt: "先看哪边？",
+      options: [
+        { id: "a", label: "国内站" },
+        { id: "b", label: "英文站" },
+      ],
+    };
+    expect(
+      formatAskAnswer(q, { questionId: "q1", kind: "option", optionId: "a" })
+    ).toBe("国内站");
+    expect(
+      formatAskAnswer(q, { questionId: "q1", kind: "custom", custom: "都看" })
+    ).toBe("都看");
+    expect(formatAskAnswer(q, { questionId: "q1", kind: "uncertain" })).toBe(
+      "暂不确定"
+    );
   });
 
   it("parses answers with zod and drops junk", () => {
@@ -200,5 +222,30 @@ describe("persist migration helper", () => {
         (e) => e.source === "card-brief" && e.target === "card-route-route_01"
       )
     ).toBe(true);
+  });
+
+  it("chains a new ask card from the previous ask card", () => {
+    const nodes = [
+      {
+        id: "card-brief",
+        type: "brief",
+        data: { kind: "brief", title: "任务理解" },
+      },
+      {
+        id: "card-ask-1",
+        type: "ask",
+        data: {
+          kind: "ask",
+          title: "已选",
+          ask: {
+            status: "answered",
+            stage: "brief",
+            questions: [],
+            answers: [],
+          },
+        },
+      },
+    ] as VBNode[];
+    expect(askParentId(nodes, "brief", "card-brief")).toBe("card-ask-1");
   });
 });

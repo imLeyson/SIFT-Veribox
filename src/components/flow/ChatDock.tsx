@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, MessageSquare, Send } from "lucide-react";
 import { useVeriboxStore } from "@/lib/store";
 import { useVeriboxActions } from "@/hooks/useVeriboxActions";
-import { QuestionBlock } from "./QuestionBlock";
 
 const CHIPS = ["词再具体点", "换个搜法", "先看国内货架"];
 
@@ -16,10 +15,8 @@ export function ChatDock() {
     chatOpen,
     setChatOpen,
     loading,
-    pendingQuestions,
-    askRoundByStage,
   } = useVeriboxStore();
-  const { sendCanvasChat, cancelInflight, submitAnswers } = useVeriboxActions();
+  const { sendCanvasChat, cancelInflight } = useVeriboxActions();
   const [text, setText] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
   const focus = nodes.find((n) => n.id === selectedNodeId);
@@ -64,7 +61,7 @@ export function ChatDock() {
       <div ref={scroller} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {messages.length === 0 && (
           <p className="text-sm leading-relaxed text-muted">
-            点选卡片后提问。普通问题只回答；只有明确要求深化时才会加卡片。
+            点选卡片后提问。普通问题只回答；需要确认时会在画布上长出问题卡。
           </p>
         )}
         {messages.map((m) => (
@@ -79,20 +76,6 @@ export function ChatDock() {
             {m.content}
           </div>
         ))}
-        {pendingQuestions.some((q) => q.stage === "chat") && (
-          <QuestionBlock
-            key={pendingQuestions
-              .filter((q) => q.stage === "chat")
-              .map((q) => q.id)
-              .join("|")}
-            questions={pendingQuestions.filter((q) => q.stage === "chat")}
-            stall={askRoundByStage.chat >= 2}
-            disabled={loading}
-            onSubmit={(answers, proceed) =>
-              void submitAnswers(answers, proceed, "chat")
-            }
-          />
-        )}
         {loading && (
           <div className="flex items-center justify-between gap-2 text-xs text-muted">
             <p className="inline-flex items-center gap-2">

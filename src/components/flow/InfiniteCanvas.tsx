@@ -24,6 +24,7 @@ const KIND_COLOR: Record<CardKind, string> = {
   route: "#5b4d86",
   platform: "#3d4a3a",
   insight: "#8a5a3b",
+  ask: "#7a5c48",
 };
 
 function FlowInner() {

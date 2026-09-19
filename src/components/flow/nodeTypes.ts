@@ -4,6 +4,7 @@ import { BriefNode } from "./nodes/BriefNode";
 import { RouteNode } from "./nodes/RouteNode";
 import { PlatformNode } from "./nodes/PlatformNode";
 import { InsightNode } from "./nodes/InsightNode";
+import { AskNode } from "./nodes/AskNode";
 
 export const nodeTypes = {
   briefInput: BriefInputNode,
@@ -11,4 +12,5 @@ export const nodeTypes = {
   route: RouteNode,
   platform: PlatformNode,
   insight: InsightNode,
+  ask: AskNode,
 } satisfies NodeTypes;
