@@ -1,8 +1,9 @@
 const BASE_URL = (
-  process.env.LLM_BASE_URL ?? "https://maas.haoee.com/v1"
+  process.env.LLM_BASE_URL ?? "https://api.deepseek.com"
 ).replace(/\/$/, "");
 const API_KEY = process.env.LLM_API_KEY ?? "";
-const MODEL = process.env.LLM_MODEL ?? "gpt-5.6-terra";
+// DeepSeek-V4.1-Flash 的官方 API ID 是 deepseek-flash。
+const MODEL = process.env.LLM_MODEL ?? "deepseek-flash";
 const REASONING = process.env.LLM_REASONING_EFFORT ?? "medium";
 // 服务端 45s 先于客户端 50s 超时，保证用户拿到可读错误而不是请求被掐断。
 // Vercel 函数上限 maxDuration=60s，留出余量。
