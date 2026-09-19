@@ -1,13 +1,16 @@
-const BASE_URL = (process.env.LLM_BASE_URL ?? "https://ai.tkapi.site/v1").replace(
-  /\/$/,
-  ""
-);
+const BASE_URL = (
+  process.env.LLM_BASE_URL ?? "https://ai.tkapi.site/v1"
+).replace(/\/$/, "");
 const API_KEY = process.env.LLM_API_KEY ?? "";
 const MODEL = process.env.LLM_MODEL ?? "grok-4.6";
 const REASONING = process.env.LLM_REASONING_EFFORT ?? "medium";
 // 服务端 45s 先于客户端 50s 超时，保证用户拿到可读错误而不是请求被掐断。
 // Vercel 函数上限 maxDuration=60s，留出余量。
-const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? 45000);
+const configuredTimeout = Number(process.env.LLM_TIMEOUT_MS ?? 45000);
+const TIMEOUT_MS =
+  Number.isFinite(configuredTimeout) && configuredTimeout > 0
+    ? Math.min(configuredTimeout, 45000)
+    : 45000;
 
 export function llmConfigured() {
   return Boolean(API_KEY);
@@ -36,10 +39,18 @@ function extractJson(text: string): unknown {
 export async function completeJson<T>(
   system: string,
   user: string,
-  reasoningEffort = REASONING
+  reasoningEffort = REASONING,
 ): Promise<T> {
   if (!API_KEY) throw new Error("未配置 LLM_API_KEY");
-  return withRetry(() => completeJsonOnce<T>(system, user, reasoningEffort));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    return await withRetry(() =>
+      completeJsonOnce<T>(system, user, reasoningEffort, controller.signal),
+    );
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function isRetryable(error: unknown, status?: number): boolean {
@@ -52,11 +63,11 @@ function isRetryable(error: unknown, status?: number): boolean {
 async function completeJsonOnce<T>(
   system: string,
   user: string,
-  reasoningEffort: string
+  reasoningEffort: string,
+  signal: AbortSignal,
 ): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   let res: Response;
+  let raw: string;
   try {
     res = await fetch(`${BASE_URL}/chat/completions`, {
       method: "POST",
@@ -64,7 +75,7 @@ async function completeJsonOnce<T>(
         Authorization: `Bearer ${API_KEY}`,
         "Content-Type": "application/json",
       },
-      signal: controller.signal,
+      signal,
       body: JSON.stringify({
         model: MODEL,
         temperature: 0.4,
@@ -77,16 +88,14 @@ async function completeJsonOnce<T>(
         ],
       }),
     });
+    raw = await res.text();
   } catch {
-    if (controller.signal.aborted) {
+    if (signal.aborted) {
       throw new Error("模型请求超时，请再试一次");
     }
     throw new Error("模型网关网络错误，请再试一次");
-  } finally {
-    clearTimeout(timer);
   }
 
-  const raw = await res.text();
   if (!res.ok) {
     const err = new Error(`模型请求失败（${res.status}）`);
     (err as Error & { status?: number }).status = res.status;

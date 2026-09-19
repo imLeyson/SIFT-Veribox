@@ -1,191 +1,103 @@
 "use client";
+import { useEffect, useRef } from "react";
+import type { Question } from "@/types/convergence";
+import { useSiftStore } from "@/lib/convergence-store";
+import { siftActions } from "@/lib/convergence-client";
 
-import { useMemo, useState } from "react";
-import type { AgentAnswer, AgentQuestion } from "@/types";
-import { useVeriboxStore } from "@/lib/store";
-
-function seedFromDraft(
-  questions: AgentQuestion[],
-  drafts: AgentAnswer[]
-) {
-  const picked: Record<string, string> = {};
-  const custom: Record<string, string> = {};
-  const uncertain: Record<string, boolean> = {};
-  for (const q of questions) {
-    const draft = drafts.find((a) => a.questionId === q.id);
-    if (!draft) continue;
-    if (draft.kind === "uncertain") uncertain[q.id] = true;
-    else if (draft.kind === "custom") custom[q.id] = draft.custom ?? "";
-    else if (draft.kind === "option" && draft.optionId) picked[q.id] = draft.optionId;
-  }
-  return { picked, custom, uncertain };
-}
-
-export function QuestionBlock({
-  questions,
-  stall,
-  disabled,
-  onSubmit,
-}: {
-  questions: AgentQuestion[];
-  stall?: boolean;
-  disabled?: boolean;
-  onSubmit: (answers: AgentAnswer[], proceed: boolean) => void;
-}) {
-  const draftAnswers = useVeriboxStore((s) => s.draftAnswers);
-  const upsertDraft = useVeriboxStore((s) => s.upsertDraft);
-  const questionKey = questions.map((q) => q.id).join("|");
-  const seeded = useMemo(
-    () => seedFromDraft(questions, draftAnswers),
-    // hydrate once from persisted drafts for this question set
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [questionKey]
-  );
-  const [picked, setPicked] = useState<Record<string, string>>(seeded.picked);
-  const [custom, setCustom] = useState<Record<string, string>>(seeded.custom);
-  const [uncertain, setUncertain] = useState<Record<string, boolean>>(
-    seeded.uncertain
-  );
-
-  function persist(next: AgentAnswer) {
-    upsertDraft(next);
-  }
-
-  if (!questions.length && !stall) return null;
-
-  function build(): AgentAnswer[] {
-    return questions.map((q) => {
-      if (uncertain[q.id]) {
-        return { questionId: q.id, kind: "uncertain" as const };
-      }
-      const text = custom[q.id]?.trim();
-      if (text) {
-        return { questionId: q.id, kind: "custom" as const, custom: text };
-      }
-      if (picked[q.id]) {
-        return {
-          questionId: q.id,
-          kind: "option" as const,
-          optionId: picked[q.id],
-          custom: q.options.find((o) => o.id === picked[q.id])?.label,
-        };
-      }
-      return { questionId: q.id, kind: "uncertain" as const };
-    });
-  }
-
+export function QuestionBlock({ question }: { question: Question }) {
+  const { draft, activeRequest, setDraft } = useSiftStore();
+  const current = draft?.questionId === question.id ? draft : null;
+  const title = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    title.current?.focus({ preventScroll: true });
+  }, [question.id]);
+  const disabled = Boolean(activeRequest);
   return (
-    <div className="space-y-4">
-      {questions.map((q) => (
-        <div key={q.id}>
-          <p className="text-sm font-medium text-ink">{q.prompt}</p>
-          <div className="mt-2 flex flex-col gap-1.5">
-            {q.options.map((opt) => {
-              const on = picked[q.id] === opt.id && !uncertain[q.id];
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  disabled={disabled}
-                  className={[
-                    "rounded-xl border px-3 py-2 text-left text-sm",
-                    on
-                      ? "border-ink bg-ink text-cream"
-                      : "border-line bg-cream/70 text-ink hover:border-ink/40",
-                  ].join(" ")}
-                  onClick={() => {
-                    setUncertain((u) => ({ ...u, [q.id]: false }));
-                    setPicked((p) => ({ ...p, [q.id]: opt.id }));
-                    persist({
-                      questionId: q.id,
-                      kind: "option",
-                      optionId: opt.id,
-                      custom: opt.label,
-                    });
-                  }}
-                >
-                  <span className="font-medium">
-                    {opt.label}
-                    {opt.recommended ? (
-                      <span className="ml-2 text-[10px] opacity-80">建议</span>
-                    ) : null}
-                  </span>
-                  {opt.rationale ? (
-                    <span
-                      className={`mt-0.5 block text-xs ${on ? "text-cream/80" : "text-muted"}`}
-                    >
-                      {opt.rationale}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-          <input
-            value={custom[q.id] ?? ""}
-            disabled={disabled}
-            placeholder="自己补充一句"
-            className="mt-2 w-full rounded-lg border border-line bg-cream/80 px-2 py-1.5 text-sm outline-none focus:border-accent"
-            onChange={(e) => {
-              const value = e.target.value;
-              setCustom((c) => ({ ...c, [q.id]: value }));
-              setUncertain((u) => ({ ...u, [q.id]: false }));
-              persist({
-                questionId: q.id,
-                kind: value.trim() ? "custom" : "option",
-                optionId: picked[q.id],
-                custom: value,
-              });
-            }}
-          />
-          <button
-            type="button"
-            disabled={disabled}
-            className={`mt-1 text-xs ${uncertain[q.id] ? "text-ink" : "text-muted"}`}
-            onClick={() => {
-              const next = !uncertain[q.id];
-              setUncertain((u) => ({ ...u, [q.id]: next }));
-              persist({
-                questionId: q.id,
-                kind: next ? "uncertain" : picked[q.id] ? "option" : "custom",
-                optionId: picked[q.id],
-                custom: custom[q.id],
-              });
-            }}
-          >
-            暂不确定
-          </button>
-        </div>
-      ))}
-      {stall ? (
-        <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={disabled}
-            onClick={() => onSubmit(build(), true)}
-          >
-            按这些假设继续
-          </button>
-          <button
-            type="button"
-            className="btn-ghost"
-            disabled={disabled}
-            onClick={() => onSubmit(build(), false)}
-          >
-            继续补充
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="btn-primary w-full"
-          disabled={disabled}
-          onClick={() => onSubmit(build(), true)}
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void siftActions.answer();
+      }}
+      className="space-y-3"
+    >
+      <p
+        ref={title}
+        tabIndex={-1}
+        className="text-base font-medium leading-relaxed text-ink outline-none"
+      >
+        {question.prompt}
+      </p>
+      {question.options.length > 0 && (
+        <div
+          role="group"
+          aria-label="选择一个回答"
+          className="flex flex-col gap-2"
         >
-          按这些选择继续
-        </button>
+          {question.options.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={
+                current?.kind === "option" && current.optionId === option.id
+              }
+              disabled={disabled}
+              onClick={() =>
+                setDraft({
+                  questionId: question.id,
+                  kind: "option",
+                  optionId: option.id,
+                })
+              }
+              className={`rounded-xl border px-3 py-2.5 text-left text-sm ${current?.kind === "option" && current.optionId === option.id ? "border-ink bg-ink text-cream" : "border-line bg-cream/70 text-ink hover:border-ink/50"}`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       )}
-    </div>
+      <label className="block text-xs text-muted">
+        自己补充一句
+        <textarea
+          rows={2}
+          maxLength={2000}
+          value={current?.kind === "custom" ? current.text : ""}
+          disabled={disabled}
+          onChange={(e) =>
+            setDraft(
+              e.target.value.trim()
+                ? {
+                    questionId: question.id,
+                    kind: "custom",
+                    text: e.target.value,
+                  }
+                : null,
+            )
+          }
+          className="mt-1.5 w-full resize-y rounded-xl border border-line bg-cream/70 px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+        />
+      </label>
+      <button
+        type="button"
+        aria-pressed={current?.kind === "uncertain"}
+        disabled={disabled}
+        onClick={() =>
+          setDraft(
+            current?.kind === "uncertain"
+              ? null
+              : { questionId: question.id, kind: "uncertain" },
+          )
+        }
+        className={`btn-ghost w-full text-sm ${current?.kind === "uncertain" ? "!border-ink !bg-mist" : ""}`}
+      >
+        暂不确定
+      </button>
+      <button
+        type="submit"
+        className="btn-primary w-full"
+        disabled={disabled || !current}
+      >
+        {disabled ? "正在更新判断…" : "提交回答"}
+      </button>
+    </form>
   );
 }
