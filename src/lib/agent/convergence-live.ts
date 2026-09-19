@@ -56,6 +56,99 @@ priorities 是表达主次，avoid 是禁忌，criteria 是检验后续设计的
 示例：用户已说不要荧光色、大插画，不重复问禁忌。可以同时问“品质感主要靠表面触感，还是字体与版式？”和“包装正面先突出茶品，还是品牌？”。用户回答后，把两项选择合并成一句当前设计假设；必要时只给一个小型黑白对照验证。
 若目标是 SaaS 的专业感，应问“专业感更应来自功能实力，还是容易上手？”，不要问瓶型或材质。`;
 
+type RecordLike = Record<string, unknown>;
+
+function record(value: unknown): RecordLike {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as RecordLike)
+    : {};
+}
+
+function nonEmpty(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+/**
+ * DeepSeek occasionally returns an uncertainty with omitted descriptive fields
+ * or a natural-language status such as "resolved". Repair only those model
+ * boundary issues; the strict Zod contract still validates the repaired result.
+ */
+export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
+  const payload = record(raw);
+  const state = record(payload.state);
+  const previous = input.state;
+  const previousById = new Map(
+    (previous?.uncertainties ?? []).map((item) => [item.id, item]),
+  );
+  const answeredIds = new Set(
+    input.event.type === "answer"
+      ? input.event.answers
+          .filter((answer) => answer.kind !== "uncertain")
+          .map((answer) =>
+            input.pendingQuestions?.find((question) => question.id === answer.questionId)
+              ?.uncertaintyId,
+          )
+          .filter((id): id is string => Boolean(id))
+      : [],
+  );
+  const nextRecord = record(payload.next);
+  const rawQuestions = Array.isArray(nextRecord.questions)
+    ? nextRecord.questions
+    : [];
+  const questions = rawQuestions.map(record);
+  const rawUncertainties = Array.isArray(state.uncertainties)
+    ? state.uncertainties.map(record)
+    : [];
+  const uncertainties = rawUncertainties.map((item, index) => {
+    const fallbackId =
+      typeof item.id === "string" && item.id.trim()
+        ? item.id.trim()
+        : typeof questions[index]?.uncertaintyId === "string"
+          ? questions[index].uncertaintyId
+          : `uncertainty_${index + 1}`;
+    const old = previousById.get(fallbackId);
+    const topic = nonEmpty(
+      item.topic,
+      old?.topic ?? nonEmpty(item.decisionAffected, "待确认的设计判断"),
+    );
+    const decisionAffected = nonEmpty(
+      item.decisionAffected,
+      old?.decisionAffected ?? topic,
+    );
+    const status =
+      item.status === "deferred" || item.status === "open"
+        ? item.status
+        : old?.status ?? "open";
+    const impact =
+      item.impact === "blocking" ||
+      item.impact === "material" ||
+      item.impact === "minor"
+        ? item.impact
+        : old?.impact ?? "material";
+    return {
+      ...item,
+      id: fallbackId,
+      topic,
+      decisionAffected,
+      impact,
+      status,
+    };
+  });
+  const seen = new Set(uncertainties.map((item) => item.id));
+  for (const old of previous?.uncertainties ?? []) {
+    if (!seen.has(old.id) && !answeredIds.has(old.id)) uncertainties.push(old);
+  }
+  return {
+    ...payload,
+    state: {
+      ...state,
+      uncertainties,
+    },
+  };
+}
+
 export function liveConvergence(input: ConvergenceInput): Promise<unknown> {
-  return completeJson(SYSTEM, JSON.stringify(input), "low");
+  return completeJson(SYSTEM, JSON.stringify(input), "low").then((payload) =>
+    normalizeLivePayload(payload, input),
+  );
 }
