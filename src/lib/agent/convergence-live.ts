@@ -68,6 +68,29 @@ function nonEmpty(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
+function nullableText(value: unknown, fallback: string | null) {
+  return value === null
+    ? null
+    : typeof value === "string" && value.trim()
+      ? value.trim()
+      : fallback;
+}
+
+function judgment(value: unknown, fallback: RecordLike | null) {
+  const item = record(value);
+  const old = fallback ?? {};
+  return {
+    text: nonEmpty(item.text, nonEmpty(old.text, "待确认的设计判断")),
+    basis: item.basis === "assumption" ? "assumption" : "user",
+    sourceIds:
+      Array.isArray(item.sourceIds) && item.sourceIds.every((id) => typeof id === "string" && id.trim())
+        ? item.sourceIds
+        : Array.isArray(old.sourceIds) && old.sourceIds.length
+          ? old.sourceIds
+          : ["brief"],
+  };
+}
+
 /**
  * DeepSeek occasionally returns an uncertainty with omitted descriptive fields
  * or a natural-language status such as "resolved". Repair only those model
@@ -138,12 +161,87 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
   for (const old of previous?.uncertainties ?? []) {
     if (!seen.has(old.id) && !answeredIds.has(old.id)) uncertainties.push(old);
   }
+  const previousBrief = record(previous?.brief);
+  const brief = record(state.brief);
+  const previousDirection = record(previous?.direction);
+  const direction = record(state.direction);
+  const normalizeJudgments = (value: unknown, oldValue: unknown) => {
+    const values = Array.isArray(value) ? value : Array.isArray(oldValue) ? oldValue : [];
+    return values.map((item, index) => judgment(item, Array.isArray(oldValue) ? record(oldValue[index]) : null));
+  };
+  const intentValue =
+    state.direction && Object.prototype.hasOwnProperty.call(direction, "intent")
+      ? direction.intent
+      : previousDirection.intent;
+  const normalizedDirection = {
+    intent: intentValue === null || intentValue === undefined ? null : judgment(intentValue, record(previousDirection.intent)),
+    priorities: normalizeJudgments(direction.priorities, previousDirection.priorities),
+    avoid: normalizeJudgments(direction.avoid, previousDirection.avoid),
+    criteria: normalizeJudgments(direction.criteria, previousDirection.criteria),
+  };
+  const normalizedQuestions = questions.map((item, index) => {
+    const old = input.pendingQuestions?.[index];
+    const options = Array.isArray(item.options)
+      ? item.options
+          .map(record)
+          .filter((option) => typeof option.id === "string" && typeof option.label === "string")
+          .map((option) => ({ id: option.id as string, label: option.label as string }))
+      : old?.options ?? [];
+    return {
+      id: nonEmpty(item.id, old?.id ?? `q_${input.requestId}_${index + 1}`),
+      uncertaintyId: nonEmpty(item.uncertaintyId, old?.uncertaintyId ?? uncertainties[index]?.id ?? `uncertainty_${index + 1}`),
+      prompt: nonEmpty(item.prompt, old?.prompt ?? "这项判断会怎样改变设计方向？"),
+      constraintRefs: Array.isArray(item.constraintRefs)
+        ? item.constraintRefs.filter(
+            (ref): ref is string => typeof ref === "string" && Boolean(ref.trim()),
+          )
+        : old?.constraintRefs ?? [],
+      options,
+    };
+  });
+  const canAsk = normalizedQuestions.length >= 2 && normalizedQuestions.length <= 3;
+  const rawNextType = nextRecord.type;
+  const next = canAsk && rawNextType === "ask"
+    ? { type: "ask" as const, questions: normalizedQuestions }
+    : {
+        type: "checkpoint" as const,
+        reason:
+          nextRecord.reason === "needs_evidence" || nextRecord.reason === "user_requested"
+            ? nextRecord.reason
+            : "ready" as const,
+      };
+  const rawStatus = state.status;
+  const status =
+    rawStatus === "confirmed"
+      ? "confirmed"
+      : next.type === "ask"
+        ? "questioning"
+        : "checkpoint";
+  const validation = record(state.validationAction);
   return {
     ...payload,
     state: {
       ...state,
+      revision: typeof state.revision === "number" ? state.revision : 0,
+      status,
+      brief: {
+        goal: nullableText(brief.goal, nullableText(previousBrief.goal, null)),
+        audience: nullableText(brief.audience, nullableText(previousBrief.audience, null)),
+        deliverable: nullableText(brief.deliverable, nullableText(previousBrief.deliverable, null)),
+      },
+      constraints: normalizeJudgments(state.constraints, previous?.constraints),
+      direction: normalizedDirection,
+      currentHypothesis: nullableText(state.currentHypothesis, previous?.currentHypothesis ?? null),
+      validationAction:
+        validation.label || validation.instruction
+          ? {
+              label: nonEmpty(validation.label, "轻量验证"),
+              instruction: nonEmpty(validation.instruction, "用一个小型对照观察验证当前假设。"),
+            }
+          : previous?.validationAction ?? null,
       uncertainties,
     },
+    next,
   };
 }
 
