@@ -50,18 +50,19 @@ function FlowInner() {
       parent = id;
     }
     if (next?.type === "ask") {
+      const currentId = `round-${next.questions.map((question) => question.id).join("-")}`;
       nodes.push({
-        id: next.question.id,
+        id: currentId,
         type: "ask",
-        position: positions[next.question.id] ?? { x: 460, y: 60 },
+        position: positions[currentId] ?? { x: 460, y: 60 },
         data: {},
       });
       edges.push({
         id: `${parent}-current`,
         source: parent,
-        target: next.question.id,
+        target: currentId,
       });
-      parent = next.question.id;
+      parent = currentId;
     }
     if (hasState) {
       nodes.push({
@@ -92,7 +93,11 @@ function FlowInner() {
   }, [graph.nodes, setNodes]);
 
   const currentId =
-    next?.type === "ask" ? next.question.id : hasState ? "direction" : "brief";
+    next?.type === "ask"
+      ? `round-${next.questions.map((question) => question.id).join("-")}`
+      : hasState
+        ? "direction"
+        : "brief";
   useEffect(() => {
     if (!initialized) return;
     const ids =

@@ -26,7 +26,7 @@ export function BriefInputNode({ selected }: NodeProps) {
           }}
         >
           <p className="mb-4 text-sm leading-relaxed text-muted">
-            从最影响方向的一个判断开始。每次只问一题。
+            先分析任务，再一次问 2–3 个最影响方向的问题。
           </p>
           {importedBrief && (
             <p className="mb-3 text-xs text-muted">

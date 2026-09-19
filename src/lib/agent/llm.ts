@@ -58,7 +58,7 @@ function isRetryable(error: unknown, status?: number): boolean {
   if (status && status >= 500 && status !== 504) return true;
   const msg = error instanceof Error ? error.message : String(error);
   if (/超时|AbortError/i.test(msg)) return false;
-  return /为空|SSL|ECONNRESET|network/i.test(msg);
+  return /为空|无法解析|没有返回 JSON|SSL|ECONNRESET|network/i.test(msg);
 }
 
 async function completeJsonOnce<T>(

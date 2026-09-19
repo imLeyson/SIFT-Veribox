@@ -21,7 +21,7 @@ import {
   type TurnResult,
 } from "@/types/convergence";
 
-export const STORAGE_KEY = "sift-convergence-v1";
+export const STORAGE_KEY = "sift-convergence-v2";
 const SessionSchema = z
   .object({
     sessionId: z.string().min(1),
@@ -29,7 +29,7 @@ const SessionSchema = z
     state: DesignStateSchema.nullable(),
     next: NextSchema.nullable(),
     history: z.array(HistoryEntrySchema),
-    draft: AnswerSchema.nullable(),
+    drafts: z.array(AnswerSchema),
     correctionDraft: z.string(),
     importedBrief: z.boolean(),
     positions: z.record(
@@ -56,7 +56,7 @@ type SiftStore = Session & {
   error: string | null;
   storageWarning: string | null;
   setRawBrief: (text: string) => void;
-  setDraft: (answer: Answer | null) => void;
+  setDrafts: (answers: Answer[]) => void;
   setCorrectionDraft: (text: string) => void;
   setPosition: (id: string, position: { x: number; y: number }) => void;
   setError: (text: string | null) => void;
@@ -75,7 +75,7 @@ function emptySession(): Session {
     state: null,
     next: null,
     history: [],
-    draft: null,
+    drafts: [],
     correctionDraft: "",
     importedBrief: false,
     positions: {},
@@ -137,7 +137,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
         storageWarning: null,
         setRawBrief: (rawBrief) =>
           set({ rawBrief, error: null, importedBrief: false }),
-        setDraft: (draft) => set({ draft }),
+        setDrafts: (drafts) => set({ drafts }),
         setCorrectionDraft: (correctionDraft) => set({ correctionDraft }),
         setPosition: (id, position) =>
           set({ positions: { ...get().positions, [id]: position } }),
@@ -184,7 +184,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
             model: response.model,
             activeRequest: null,
             error: null,
-            draft: null,
+            drafts: [],
             correctionDraft: "",
             importedBrief: false,
           });
@@ -232,7 +232,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
           state,
           next,
           history,
-          draft,
+          drafts,
           correctionDraft,
           importedBrief,
           positions,
@@ -244,7 +244,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
           state,
           next,
           history,
-          draft,
+          drafts,
           correctionDraft,
           importedBrief,
           positions,

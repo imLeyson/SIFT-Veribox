@@ -35,7 +35,7 @@ export function createConvergenceActions(
         rawBrief: s.rawBrief,
         state: s.state,
         history: s.history,
-        pendingQuestion: s.next?.type === "ask" ? s.next.question : null,
+        pendingQuestions: s.next?.type === "ask" ? s.next.questions : null,
         event,
       });
       const response = await fetcher(
@@ -85,9 +85,9 @@ export function createConvergenceActions(
   return {
     start: () => send({ type: "start" }),
     answer: () => {
-      const draft = store.getState().draft;
-      return draft
-        ? send({ type: "answer", answer: draft })
+      const drafts = store.getState().drafts;
+      return drafts.length
+        ? send({ type: "answer", answers: drafts })
         : Promise.resolve();
     },
     correct: () => {
@@ -102,6 +102,7 @@ export function createConvergenceActions(
       cancel();
       store.getState().enterCheckpoint();
     },
+    deepen: () => send({ type: "checkpoint", action: "deepen" }),
     confirm: () => {
       cancel();
       store.getState().confirm();

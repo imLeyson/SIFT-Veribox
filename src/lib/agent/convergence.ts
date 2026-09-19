@@ -2,6 +2,7 @@ import type {
   ConvergenceInput,
   DesignState,
   HistoryEntry,
+  Question,
   TurnResult,
 } from "@/types/convergence";
 import {
@@ -31,6 +32,28 @@ function judgments(state: DesignState) {
   ];
 }
 
+function questionHistory(history: HistoryEntry[]) {
+  return history.flatMap((entry) => entry.questions ?? []);
+}
+
+function answeredUncertainty(history: HistoryEntry[], uncertaintyId: string) {
+  return history.some((entry) => {
+    if (entry.event.type !== "answer") return false;
+    const answers = entry.event.answers;
+    return Boolean(
+      entry.questions?.some(
+        (question) =>
+          question.uncertaintyId === uncertaintyId &&
+          answers.some((answer) => answer.kind !== "uncertain"),
+      ),
+    );
+  });
+}
+
+function questionKey(question: Question) {
+  return question.prompt.replace(/[\s？?，,。]/g, "");
+}
+
 export async function runConvergenceTurn(
   value: ConvergenceInput,
 ): Promise<TurnResult> {
@@ -42,112 +65,125 @@ export async function runConvergenceTurn(
   );
   if (result.state.status === "confirmed")
     throw new Error("方向必须由用户确认");
+
   const revision = (previous?.revision ?? 0) + 1;
   const history: HistoryEntry[] = [...input.history];
   if (event.type !== "start") {
     history.push({
       id: input.requestId,
-      question: event.type === "answer" ? input.pendingQuestion : null,
+      questions: event.type === "answer" ? input.pendingQuestions : null,
       event,
       beforeRevision: previous!.revision,
       afterRevision: revision,
     });
   }
+
   const allowedSources = new Set(["brief", ...history.map((h) => h.id)]);
   if (
-    judgments(result.state).some((j) =>
-      j.sourceIds.some((id) => !allowedSources.has(id)),
+    judgments(result.state).some((judgment) =>
+      judgment.sourceIds.some((id) => !allowedSources.has(id)),
     )
   ) {
     throw new Error("状态引用了不存在的回答，请重试");
   }
+
   if (previous && event.type === "answer") {
+    const answers = event.answers;
     for (const constraint of previous.constraints) {
-      const explicitlyReconsidered =
-        event.answer.kind !== "uncertain" &&
-        input.pendingQuestion!.constraintRefs.includes(constraint.text);
+      const reconsidered = answers.some((answer) => {
+        if (answer.kind === "uncertain") return false;
+        const question = input.pendingQuestions?.find(
+          (item) => item.id === answer.questionId,
+        );
+        return question?.constraintRefs.includes(constraint.text) ?? false;
+      });
       if (
-        !explicitlyReconsidered &&
-        !result.state.constraints.some((c) => c.text === constraint.text)
+        !reconsidered &&
+        !result.state.constraints.some((item) => item.text === constraint.text)
       )
         throw new Error("模型丢失了已有约束，请重试");
     }
-    if (event.answer.kind === "uncertain") {
-      // Uncertainty is not permission to invent a preference, even if the model does so.
+    if (answers.some((answer) => answer.kind === "uncertain")) {
       result.state.direction = previous.direction;
       result.state.constraints = previous.constraints;
-      const pending = previous.uncertainties.find(
-        (u) => u.id === input.pendingQuestion!.uncertaintyId,
-      );
-      if (
-        pending &&
-        !result.state.uncertainties.some((u) => u.id === pending.id)
-      )
-        result.state.uncertainties.push({ ...pending });
     }
   }
+
   const lastCorrection = history.findLastIndex(
-    (h) => h.event.type === "correct",
+    (entry) => entry.event.type === "correct",
   );
   const recent = history.slice(lastCorrection + 1);
-  for (const u of result.state.uncertainties) {
-    if (
-      recent.filter(
-        (h) =>
-          h.question?.uncertaintyId === u.id &&
-          h.event.type === "answer" &&
-          h.event.answer.kind === "uncertain",
-      ).length >= 2
-    )
-      u.status = "deferred";
+  for (const uncertainty of result.state.uncertainties) {
+    const uncertainCount = recent.reduce((count, entry) => {
+      if (entry.event.type !== "answer") return count;
+      const answers = entry.event.answers;
+      return (
+        count +
+        (entry.questions ?? []).filter(
+          (question) =>
+            question.uncertaintyId === uncertainty.id &&
+            answers.some((answer) => answer.kind === "uncertain"),
+        ).length
+      );
+    }, 0);
+    if (uncertainCount >= 2) uncertainty.status = "deferred";
   }
+
   if (result.next.type === "ask") {
-    const q = result.next.question;
-    const repeats = recent.filter(
-      (h) => h.question?.uncertaintyId === q.uncertaintyId,
-    );
-    if (
-      repeats.some(
-        (h) => h.event.type === "answer" && h.event.answer.kind !== "uncertain",
-      ) ||
-      repeats.length >= 2
-    ) {
-      throw new Error("模型重复询问已处理的判断，请重试或先确认当前状态");
-    }
-    if (
-      history.some((h) => h.question?.id === q.id) ||
-      recent.some(
-        (h) =>
-          h.question?.prompt.replace(/[\s？?，,。]/g, "") ===
-          q.prompt.replace(/[\s？?，,。]/g, ""),
-      )
-    ) {
-      throw new Error("模型重复了上一题，请重试");
-    }
+    const questions = result.next.questions;
+    if (questions.length < 2 || questions.length > 3)
+      throw new Error("每轮必须提出 2–3 个高价值问题");
+    const ids = new Set<string>();
+    const uncertaintyIds = new Set<string>();
     const priorities = { blocking: 0, material: 1, minor: 2 };
-    const target = result.state.uncertainties.find(
-      (u) => u.id === q.uncertaintyId,
-    )!;
-    if (
-      q.constraintRefs.some(
-        (ref) => !result.state.constraints.some((c) => c.text === ref),
+    let strongestImpact = 2;
+    for (const question of questions) {
+      if (ids.has(question.id)) throw new Error("同一轮问题 ID 重复");
+      if (uncertaintyIds.has(question.uncertaintyId))
+        throw new Error("同一轮不能重复追问同一判断");
+      ids.add(question.id);
+      uncertaintyIds.add(question.uncertaintyId);
+      const target = result.state.uncertainties.find(
+        (item) => item.id === question.uncertaintyId,
+      );
+      if (!target || target.status !== "open" || target.impact === "minor")
+        throw new Error("问题必须对应一个值得回答的未决判断");
+      strongestImpact = Math.min(strongestImpact, priorities[target.impact]);
+      if (answeredUncertainty(history, question.uncertaintyId))
+        throw new Error("模型重复询问已处理的判断，请重试");
+      if (questionHistory(history).some((old) => old.id === question.id))
+        throw new Error("模型重复了已问过的问题，请重试");
+      if (
+        recent.some((entry) =>
+          (entry.questions ?? []).some(
+            (old) => questionKey(old) === questionKey(question),
+          ),
+        )
       )
-    )
-      throw new Error("问题引用了不存在的约束");
-    if (
-      result.state.uncertainties.some(
-        (u) =>
-          u.status === "open" &&
-          priorities[u.impact] < priorities[target.impact],
+        throw new Error("模型重复了上一轮问题，请重试");
+      if (
+        question.constraintRefs.some(
+          (ref) => !result.state.constraints.some((item) => item.text === ref),
+        )
       )
-    ) {
-      throw new Error("模型跳过了更关键的未决判断，请重试");
+        throw new Error("问题引用了不存在的约束");
     }
+    const skippedStronger = result.state.uncertainties.some(
+      (item) =>
+        item.status === "open" &&
+        item.impact !== "minor" &&
+        priorities[item.impact] < strongestImpact &&
+        !uncertaintyIds.has(item.id),
+    );
+    if (skippedStronger) throw new Error("模型跳过了更关键的未决判断，请重试");
   }
+
   if (
     result.next.type === "checkpoint" &&
     result.next.reason === "ready" &&
-    result.state.uncertainties.some((u) => u.impact !== "minor")
+    result.state.uncertainties.some(
+      (item) => item.impact !== "minor" && item.status === "open",
+    )
   ) {
     throw new Error("仍有重要未决判断，不能标记为已就绪");
   }

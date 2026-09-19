@@ -11,29 +11,39 @@ export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
   if (!data.historyId) {
     if (next?.type !== "ask") return null;
     return (
-      <NodeShell kicker="当前问题" title="先判断这一点" selected={selected}>
-        <QuestionBlock question={next.question} />
+      <NodeShell kicker="当前问题 · 一轮" title="先一起判断这几件事" selected={selected}>
+        <QuestionBlock questions={next.questions} />
       </NodeShell>
     );
   }
   const turn = history.find((h) => h.id === data.historyId);
   if (!turn) return null;
-  const text =
-    turn.event.type === "correct"
-      ? turn.event.text
-      : turn.question
-        ? answerText(turn.question, turn.event.answer)
-        : "";
+  let text = "";
+  if (turn.event.type === "correct") text = turn.event.text;
+  if (turn.event.type === "checkpoint") text = `用户选择：${turn.event.action}`;
+  if (turn.event.type === "answer") {
+    const answers = turn.event.answers;
+    text = (turn.questions ?? [])
+      .map((question) => {
+        const answer = answers.find((item) => item.questionId === question.id);
+        return answer
+          ? `${question.prompt}\n${answerText(question, answer)}`
+          : question.prompt;
+      })
+      .join("\n\n");
+  }
   return (
     <NodeShell
       kicker={`记录 · ${turn.afterRevision}`}
-      title={turn.event.type === "correct" ? "已补充" : "已回答"}
+      title={turn.event.type === "correct" ? "已补充" : turn.event.type === "checkpoint" ? "检查点选择" : "已回答一轮"}
       selected={selected}
     >
-      {turn.question && (
-        <p className="mb-3 text-sm leading-relaxed text-ink">
-          {turn.question.prompt}
-        </p>
+      {turn.questions && (
+        <div className="mb-3 space-y-2 text-sm leading-relaxed text-ink">
+          {turn.questions.map((question, index) => (
+            <p key={question.id}>{index + 1}. {question.prompt}</p>
+          ))}
+        </div>
       )}
       <p className="whitespace-pre-wrap rounded-xl bg-mist px-3 py-2 text-sm leading-relaxed text-ink">
         {text}

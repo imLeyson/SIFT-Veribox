@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type {
   AnswerSchema,
+  AnswerBatchSchema,
   ConvergenceInputSchema,
   DesignStateSchema,
   EventSchema,
@@ -16,6 +17,7 @@ export type Judgment = z.infer<typeof JudgmentSchema>;
 export type DesignState = z.infer<typeof DesignStateSchema>;
 export type Question = z.infer<typeof QuestionSchema>;
 export type Answer = z.infer<typeof AnswerSchema>;
+export type AnswerBatch = z.infer<typeof AnswerBatchSchema>;
 export type TurnEvent = z.infer<typeof EventSchema>;
 export type HistoryEntry = z.infer<typeof HistoryEntrySchema>;
 export type Next = z.infer<typeof NextSchema>;

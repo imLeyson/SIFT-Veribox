@@ -50,9 +50,9 @@ function Field({
   );
 }
 const reasons = {
-  ready: "当前没有值得继续追问的关键判断，请确认这份方向。",
-  needs_evidence: "剩余判断需要更多依据，先保留为待定。",
-  user_requested: "已暂停追问，请检查当前方向和待定项。",
+  ready: "当前没有明显高价值问题了。由你决定下一步。",
+  needs_evidence: "剩余判断需要更多依据。由你决定继续深化还是先做验证。",
+  user_requested: "已暂停追问。请检查当前假设和待定项。",
 };
 
 export function StateNode({ selected }: NodeProps) {
@@ -66,7 +66,6 @@ export function StateNode({ selected }: NodeProps) {
     setCorrectionDraft,
   } = useSiftStore();
   const [editing, setEditing] = useState(false);
-  const [saved, setSaved] = useState(false);
   if (!state) return null;
   const checkpoint = next?.type === "checkpoint";
   const confirmed = state.status === "confirmed";
@@ -108,6 +107,15 @@ export function StateNode({ selected }: NodeProps) {
             items={state.direction.intent ? [state.direction.intent] : []}
           />
         </Field>
+        <Field label="当前设计假设">
+          <p>{state.currentHypothesis ?? "还没有足够依据形成假设"}</p>
+        </Field>
+        {state.validationAction && (
+          <Field label="轻量验证">
+            <p>{state.validationAction.label}</p>
+            <p className="mt-1 text-xs text-muted">{state.validationAction.instruction}</p>
+          </Field>
+        )}
         <Field label="优先">
           <JudgmentList items={state.direction.priorities} />
         </Field>
@@ -156,32 +164,33 @@ export function StateNode({ selected }: NodeProps) {
           <p className="mb-3 text-xs leading-relaxed text-muted">
             {reasons[next.reason]}
           </p>
-          {hasDirection(state) ? (
+          <div className="grid gap-2 sm:grid-cols-3">
             <button
               type="button"
-              className="btn-primary w-full"
-              disabled={Boolean(activeRequest) || editing}
+              className="btn-primary text-sm"
+              disabled={Boolean(activeRequest) || editing || !hasDirection(state) || Boolean(storageWarning)}
               onClick={siftActions.confirm}
             >
-              确认当前方向
+              开始设计
             </button>
-          ) : (
             <button
               type="button"
-              className="btn-ghost w-full"
-              disabled={Boolean(storageWarning)}
-              onClick={() => setSaved(true)}
+              className="btn-ghost text-sm"
+              disabled={Boolean(activeRequest) || editing}
+              onClick={() => void siftActions.deepen()}
             >
-              {storageWarning
-                ? "当前无法保存到浏览器"
-                : saved
-                  ? "已保存在当前浏览器"
-                  : "保存当前状态"}
+              继续深化
             </button>
-          )}
-          {state.uncertainties.length > 0 && (
-            <p className="mt-2 text-xs text-muted">确认后仍保留待定项。</p>
-          )}
+            <button
+              type="button"
+              className="btn-ghost text-sm"
+              disabled={Boolean(activeRequest)}
+              onClick={() => setEditing(true)}
+            >
+              回退修改
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-muted">SIFT 不会替你宣布完成。</p>
         </div>
       )}
       {confirmed && (
@@ -189,7 +198,7 @@ export function StateNode({ selected }: NodeProps) {
           方向已确认。待定项和待确认假设仍保留。
         </p>
       )}
-      {!editing && (
+      {!editing && !checkpoint && (
         <button
           type="button"
           className="btn-ghost mt-3 w-full text-sm"

@@ -3,6 +3,7 @@ import type {
   DesignState,
   Judgment,
   Question,
+  Answer,
   TurnPayload,
 } from "@/types/convergence";
 import { answerText } from "@/types/convergence";
@@ -16,6 +17,7 @@ type Decision = {
   impact?: "blocking" | "material";
   affected: string;
 };
+
 const decisions: Record<string, Decision> = {
   quality_expression: {
     topic: "品质感的表达重点",
@@ -37,16 +39,6 @@ const decisions: Record<string, Decision> = {
       ["brand", "品牌优先"],
     ],
   },
-  tactile_priority: {
-    topic: "触感的取舍",
-    affected: "触感应支持日常使用还是礼品体验",
-    prompt: "拿起茶罐时，更应像日常饮品还是礼物？",
-    rephrase: "这罐茶更像每天喝的，还是送人的？",
-    labels: [
-      ["daily", "日常饮品"],
-      ["gift", "礼物"],
-    ],
-  },
   skincare_trust: {
     topic: "护肤品牌的信任来源",
     affected: "优先表达温和亲近还是功效可信",
@@ -61,7 +53,7 @@ const decisions: Record<string, Decision> = {
     topic: "专业感的表达重点",
     affected: "突出功能实力还是容易上手",
     prompt: "专业感更应来自功能实力，还是容易上手？",
-    rephrase: "新团队打开页面，先看到能力还是使用门槛低？",
+    rephrase: "新团队打开页面，先看到能力还是门槛低？",
     labels: [
       ["power", "功能实力"],
       ["simple", "容易上手"],
@@ -88,18 +80,10 @@ const decisions: Record<string, Decision> = {
       ["paper", "现成纸盒"],
     ],
   },
-  purpose: {
-    topic: "交付对象",
-    impact: "blocking",
-    affected: "需要知道设计对象，才能判断表达取舍",
-    prompt: "这次具体要设计什么？",
-    rephrase: "这次最终要交付的东西是什么？",
-    labels: [],
-  },
   perception: {
     topic: "希望形成的印象",
     affected: "确定设计应优先传达的感受",
-    prompt: "最希望别人记住它的哪一点？",
+    prompt: "别人第一眼最应该记住它的哪一点？",
     rephrase: "别人用一句话介绍它，你希望听到什么？",
     labels: [],
   },
@@ -110,8 +94,6 @@ const chosenText: Record<string, string> = {
   layout: "通过字体与版式体现品质感",
   tea: "先识别茶品，再识别品牌",
   brand: "先识别品牌，再识别茶品",
-  daily: "触感服务于日常饮用",
-  gift: "触感强化赠礼体验",
   gentle: "优先传达温和亲近",
   proof: "优先传达功效可信",
   power: "优先呈现功能实力",
@@ -121,25 +103,43 @@ const chosenText: Record<string, string> = {
   metal: "采用定制金属盒；现成纸盒限制不再适用",
   paper: "采用现成纸盒；不再要求定制金属盒",
 };
+
 function judgment(text: string, source = "brief"): Judgment {
   return {
     text: text.length > 240 ? text.slice(0, 239) + "…" : text,
-    basis: "user",
+    basis: source === "brief" ? "user" : "user",
     sourceIds: [source],
   };
 }
+
 function uncertainty(id: string): DesignState["uncertainties"][number] {
-  const d = decisions[id];
+  const decision = decisions[id];
   return {
     id,
-    topic: d.topic,
-    impact: d.impact ?? "material",
-    decisionAffected: d.affected,
+    topic: decision.topic,
+    impact: decision.impact ?? "material",
+    decisionAffected: decision.affected,
     status: "open",
   };
 }
+
+function hypothesis(state: DesignState): string | null {
+  const priorities = state.direction.priorities.map((item) => item.text);
+  if (!priorities.length) return state.direction.intent?.text ?? null;
+  const focus = priorities.slice(-3).join("，并");
+  return `${state.brief.goal ?? "这项设计"}应先${focus}，再用一个可观察的对照验证是否成立。`;
+}
+
+function validation(state: DesignState) {
+  if (!state.direction.priorities.length) return null;
+  return {
+    label: "做一个最小对照",
+    instruction: "用两张低保真草图只改变当前优先项，问一位目标用户先注意到什么。",
+  };
+}
+
 function initialize(rawBrief: string): DesignState {
-  const example = EXAMPLES.find((e) => e.brief === rawBrief);
+  const example = EXAMPLES.find((item) => item.brief === rawBrief);
   const state: DesignState = {
     revision: 0,
     status: "questioning",
@@ -150,43 +150,63 @@ function initialize(rawBrief: string): DesignState {
     },
     constraints: rawBrief
       .split(/[。\n，,]/)
-      .filter((s) => /不要|避免|必须|不能|只用|要求/.test(s))
-      .map((s) => judgment(s.trim())),
+      .filter((item) => /不要|避免|必须|不能|只用|要求/.test(item))
+      .map((item) => judgment(item.trim())),
     direction: { intent: null, priorities: [], avoid: [], criteria: [] },
+    currentHypothesis: null,
+    validationAction: null,
     uncertainties: [],
   };
-  state.direction.avoid = state.constraints.filter((c) =>
-    /不要|避免/.test(c.text),
+  state.direction.avoid = state.constraints.filter((item) =>
+    /不要|避免/.test(item.text),
   );
-  const profiles: Record<string, [string, string, string, string | null]> = {
+  const profiles: Record<
+    string,
+    [string, string, string, string[], string | null]
+  > = {
     tea: [
       "都市上班族",
       "冷泡罐装茶包装",
       "干净、有仪式感",
-      "quality_expression",
+      ["quality_expression", "hierarchy"],
+      null,
     ],
     skincare: [
       "20–30 岁女性",
       "护肤品牌视觉",
       "自然、年轻、有品质感",
-      "skincare_trust",
+      ["skincare_trust", "perception"],
+      null,
     ],
-    saas: ["中小团队", "SaaS 官网和产品视觉", "专业、清晰", "saas_priority"],
+    saas: [
+      "中小团队",
+      "SaaS 官网和产品视觉",
+      "专业、清晰",
+      ["saas_priority", "perception"],
+      null,
+    ],
     cafe: [
       "附近居民和远程办公的人",
       "咖啡馆品牌视觉",
       "湿润、克制",
-      "cafe_priority",
+      ["cafe_priority", "perception"],
+      null,
     ],
-    conflict: ["都市上班族", "礼品茶包装", "体面", "packaging_conflict"],
-    complete: ["附近居民", "咖啡馆品牌视觉", "像熟悉的邻居", null],
+    conflict: [
+      "都市上班族",
+      "礼品茶包装",
+      "体面",
+      ["packaging_conflict", "perception"],
+      null,
+    ],
+    complete: ["附近居民", "咖啡馆品牌视觉", "像熟悉的邻居", [], null],
   };
   const profile = example && profiles[example.id];
   if (profile) {
     state.brief.audience = profile[0];
     state.brief.deliverable = profile[1];
     state.direction.intent = judgment(profile[2]);
-    if (profile[3]) state.uncertainties.push(uncertainty(profile[3]));
+    state.uncertainties = profile[3].map(uncertainty);
     if (example?.id === "complete") {
       state.direction.priorities = [judgment("优先传达日常可亲")];
       state.direction.avoid = [judgment("避免精品店距离感")];
@@ -195,36 +215,66 @@ function initialize(rawBrief: string): DesignState {
       ];
     }
   } else {
-    state.uncertainties = [uncertainty("purpose")];
+    state.uncertainties = [uncertainty("perception")];
   }
+  state.currentHypothesis = hypothesis(state);
+  state.validationAction = validation(state);
   return state;
 }
 
+function answerFor(question: Question, answer: Answer) {
+  if (answer.kind === "option") return chosenText[answer.optionId] ?? answer.optionId;
+  return answerText(question, answer);
+}
+
+function questionFor(
+  state: DesignState,
+  input: ConvergenceInput,
+  index: number,
+  rephrase: boolean,
+): Question[] {
+  const open = state.uncertainties.filter(
+    (item) => item.status === "open" && item.impact !== "minor",
+  );
+  if (open.length < 2) return [];
+  return open.slice(0, 3).map((item, offset) => {
+    const decision = decisions[item.id];
+    return {
+      id: `q_${input.requestId}_${index + offset}`,
+      uncertaintyId: item.id,
+      prompt: rephrase ? decision.rephrase : decision.prompt,
+      constraintRefs:
+        item.id === "packaging_conflict"
+          ? state.constraints
+              .filter((constraint) => /金属盒|纸盒/.test(constraint.text))
+              .map((constraint) => constraint.text)
+          : [],
+      options: decision.labels.map(([id, label]) => ({ id, label })),
+    };
+  });
+}
+
 export function mockConvergence(input: ConvergenceInput): TurnPayload {
-  const state = input.state
-    ? structuredClone(input.state)
-    : initialize(input.rawBrief);
-  const { event, pendingQuestion: q } = input;
-  if (event.type === "answer" && q && event.answer.kind !== "uncertain") {
-    const value =
-      event.answer.kind === "option"
-        ? chosenText[event.answer.optionId]
-        : answerText(q, event.answer);
-    const item = judgment(value, input.requestId);
-    state.uncertainties = state.uncertainties.filter(
-      (u) => u.id !== q.uncertaintyId,
-    );
-    if (q.uncertaintyId === "purpose") {
-      state.brief.deliverable = value;
-      state.uncertainties.push(uncertainty("perception"));
-    } else if (q.uncertaintyId === "perception") {
-      state.direction.intent = item;
-    } else {
-      state.direction.priorities.push(item);
-      if (q.uncertaintyId === "packaging_conflict") {
+  const state = input.state ? structuredClone(input.state) : initialize(input.rawBrief);
+  const { event } = input;
+  if (event.type === "answer") {
+    const answers = event.answers;
+    for (const answer of answers) {
+      const question = input.pendingQuestions?.find(
+        (item) => item.id === answer.questionId,
+      );
+      if (!question || answer.kind === "uncertain") continue;
+      const value = answerFor(question, answer);
+      const item = judgment(value, input.requestId);
+      state.uncertainties = state.uncertainties.filter(
+        (uncertaintyItem) => uncertaintyItem.id !== question.uncertaintyId,
+      );
+      if (question.uncertaintyId === "perception") state.direction.intent = item;
+      else state.direction.priorities.push(item);
+      if (question.uncertaintyId === "packaging_conflict") {
         state.constraints = [
           ...state.constraints.filter(
-            (c) => !q.constraintRefs.includes(c.text),
+            (constraint) => !question.constraintRefs.includes(constraint.text),
           ),
           item,
         ];
@@ -232,92 +282,63 @@ export function mockConvergence(input: ConvergenceInput): TurnPayload {
           judgment("按已选择的结构评估设计", input.requestId),
         );
       }
-      if (
-        q.uncertaintyId === "quality_expression" &&
-        event.answer.kind === "option"
-      ) {
-        state.uncertainties.push(
-          uncertainty(
-            event.answer.optionId === "touch"
-              ? "tactile_priority"
-              : "hierarchy",
-          ),
-        );
-      }
     }
   }
   if (event.type === "correct") {
-    // Only the demo's known decision can be replaced automatically; other input is additive.
-    const target = /品质|触感|版式/.test(event.text)
-      ? "quality_expression"
-      : /茶品|品牌优先/.test(event.text)
-        ? "hierarchy"
-        : null;
-    const sources = new Set(
-      input.history
-        .filter((h) => h.question?.uncertaintyId === target)
-        .map((h) => h.id),
-    );
-    const index = target
-      ? state.direction.priorities.findIndex((j) =>
-          j.sourceIds.some((id) => sources.has(id)),
-        )
-      : -1;
-    const item = judgment(event.text.replace(/^改为/, ""), input.requestId);
-    if (index >= 0) state.direction.priorities[index] = item;
-    else state.direction.priorities.push(item);
-    if (target)
-      state.uncertainties = state.uncertainties.filter((u) => u.id !== target);
+    state.direction.priorities.push(judgment(event.text.replace(/^改为/, ""), input.requestId));
   }
-  const afterCorrection = input.history.findLastIndex(
-    (h) => h.event.type === "correct",
+
+  const answerEvents = event.type === "answer" ? event.answers : [];
+  const uncertainQuestionIds = new Set(
+    answerEvents
+      .filter((answer) => answer.kind === "uncertain")
+      .map((answer) => answer.questionId),
   );
-  const recent = input.history.slice(afterCorrection + 1);
-  for (const u of state.uncertainties) {
-    const attempts =
-      recent.filter(
-        (h) =>
-          h.question?.uncertaintyId === u.id &&
-          h.event.type === "answer" &&
-          h.event.answer.kind === "uncertain",
-      ).length +
-      (event.type === "answer" &&
-      event.answer.kind === "uncertain" &&
-      q?.uncertaintyId === u.id
-        ? 1
-        : 0);
-    if (attempts >= 2) u.status = "deferred";
+  for (const uncertaintyItem of state.uncertainties) {
+    const attempts = input.history.reduce((count, entry) => {
+      if (entry.event.type !== "answer") return count;
+      const answers = entry.event.answers;
+      return (
+        count +
+        (entry.questions ?? []).filter(
+          (question) =>
+            question.uncertaintyId === uncertaintyItem.id &&
+            answers.some((answer) => answer.kind === "uncertain"),
+        ).length
+      );
+    }, 0);
+    if (
+      attempts +
+      [...uncertainQuestionIds].filter((id) =>
+        input.pendingQuestions?.some(
+          (question) => question.id === id && question.uncertaintyId === uncertaintyItem.id,
+        ),
+      ).length >= 2
+    )
+      uncertaintyItem.status = "deferred";
   }
-  const u = state.uncertainties.find(
-    (u) => u.status === "open" && u.impact !== "minor",
+
+  state.currentHypothesis = hypothesis(state);
+  state.validationAction = validation(state);
+  const questions = questionFor(
+    state,
+    input,
+    1,
+    event.type === "answer" &&
+      event.answers.some((answer) => answer.kind === "uncertain"),
   );
-  if (!u) {
+  if (!questions.length) {
     state.status = "checkpoint";
     return {
       state,
       next: {
         type: "checkpoint",
-        reason: state.uncertainties.length ? "needs_evidence" : "ready",
+        reason: state.uncertainties.some((item) => item.status === "open")
+          ? "needs_evidence"
+          : "ready",
       },
     };
   }
-  const d = decisions[u.id];
-  const rephrase =
-    event.type === "answer" &&
-    event.answer.kind === "uncertain" &&
-    q?.uncertaintyId === u.id;
-  const question: Question = {
-    id: `q_${input.requestId}`,
-    uncertaintyId: u.id,
-    prompt: rephrase ? d.rephrase : d.prompt,
-    constraintRefs:
-      u.id === "packaging_conflict"
-        ? state.constraints
-            .filter((c) => /金属盒|纸盒/.test(c.text))
-            .map((c) => c.text)
-        : [],
-    options: d.labels.map(([id, label]) => ({ id, label })),
-  };
   state.status = "questioning";
-  return { state, next: { type: "ask", question } };
+  return { state, next: { type: "ask", questions } };
 }

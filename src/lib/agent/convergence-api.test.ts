@@ -17,7 +17,7 @@ const initial = () => ({
   rawBrief: EXAMPLES[0].brief,
   state: null,
   history: [],
-  pendingQuestion: null,
+  pendingQuestions: null,
   event: { type: "start" },
 });
 describe("convergence API", () => {
@@ -33,28 +33,24 @@ describe("convergence API", () => {
     expect((await handleTurn(request({}), true)).status).toBe(400);
     expect((await handleTurn(request(initial()), false)).status).toBe(400);
   });
-  it("initializes then commits a single answer with its complete provenance", async () => {
+  it("initializes then commits a batch answer with its complete provenance", async () => {
     const first = await (await handleTurn(request(initial()), true)).json();
     const next = {
       ...initial(),
       requestId: "r2",
       state: first.state,
       history: first.history,
-      pendingQuestion: first.next.question,
+      pendingQuestions: first.next.questions,
       event: {
         type: "answer",
-        answer: {
-          questionId: first.next.question.id,
-          kind: "option",
-          optionId: "layout",
-        },
+        answers: first.next.questions.map((question: { id: string; options: { id: string }[] }) => ({ questionId: question.id, kind: "option" as const, optionId: question.options[0].id })),
       },
     };
     const response = await handleTurn(request(next), false);
     expect(response.status).toBe(200);
     const result = await response.json();
     expect(result.state.direction.priorities[0].sourceIds).toEqual(["r2"]);
-    expect(result.history[0].event.answer.optionId).toBe("layout");
+    expect(result.history[0].event.answers).toHaveLength(2);
     expect(result.baseRevision).toBe(1);
     expect(result.state.revision).toBe(2);
   });
