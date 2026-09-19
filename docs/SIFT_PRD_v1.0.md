@@ -1,3 +1,5 @@
+> 历史文档：当前产品已改为设计方向收敛 Agent。以 [收敛 MVP](SIFT_Convergence_MVP.md) 为准。
+
 # SIFT 产品需求文档
 
 **版本：** v1.0
