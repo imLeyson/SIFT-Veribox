@@ -22,9 +22,9 @@ npm run dev
 在本地 `.env.local` 或部署平台环境变量中配置：
 
 ```text
-LLM_BASE_URL=<OpenAI-compatible endpoint>
+LLM_BASE_URL=https://maas.haoee.com/v1
 LLM_API_KEY=<your key>
-LLM_MODEL=grok-4.6
+LLM_MODEL=gpt-5.6-terra
 LLM_REASONING_EFFORT=medium
 ```
 

@@ -206,7 +206,7 @@ brief_input
 
 | 条件 | 模式 |
 |------|------|
-| 已配置 `LLM_API_KEY` | Live，模型为 `LLM_MODEL`（生产为 grok-4.6） |
+| 已配置 `LLM_API_KEY` | Live，模型为 `LLM_MODEL`（生产为 gpt-5.6-terra） |
 | 未配置 Key | Mock，结构化模板，保证可走通 |
 
 有 Key 时 **禁止** 静默回退 Mock。模型失败须返回可读错误，并保留当前画布。
@@ -221,7 +221,7 @@ brief_input
 {
   "data": {},
   "mode": "live",
-  "model": "grok-4.6"
+  "model": "gpt-5.6-terra"
 }
 ```
 
@@ -329,7 +329,7 @@ brief_input
 - 无限画布：`@xyflow/react`
 - 状态：Zustand + LocalStorage
 - 结构化校验：Zod
-- 模型：OpenAI 兼容 Chat Completions（生产 grok-4.6）
+- 模型：OpenAI 兼容 Chat Completions（生产 gpt-5.6-terra，Haoee MaaS）
 - 部署：Vercel；无数据库
 
 ---
