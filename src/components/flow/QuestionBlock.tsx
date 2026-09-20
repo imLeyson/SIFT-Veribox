@@ -9,6 +9,25 @@ function answerFor(drafts: Answer[], questionId: string) {
   return drafts.find((answer) => answer.questionId === questionId) ?? null;
 }
 
+function getQuestionCategoryTag(prompt: string, index: number): string {
+  if (/材质|纸|盒|工艺|触感|金属|打样|质感|压凹|烫/.test(prompt)) {
+    return `0${index + 1} · 材质工艺`;
+  }
+  if (/版式|排版|字|网格|层级|字阶|留白|负空间|信息/.test(prompt)) {
+    return `0${index + 1} · 版式层级`;
+  }
+  if (/色|彩|调|黑白|灰度|饱和度/.test(prompt)) {
+    return `0${index + 1} · 色彩基调`;
+  }
+  if (/冲突|优先|权衡|保哪个|取舍|平衡|成本/.test(prompt)) {
+    return `0${index + 1} · 核心权衡`;
+  }
+  if (/符号|隐喻|图形|意象|场景|情绪/.test(prompt)) {
+    return `0${index + 1} · 视觉意象`;
+  }
+  return `0${index + 1} · 视觉取舍`;
+}
+
 export function QuestionBlock({ questions }: { questions: Question[] }) {
   const { drafts, activeRequest, setDrafts } = useSiftStore();
   const title = useRef<HTMLParagraphElement>(null);
@@ -128,7 +147,7 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
             {/* Question Header */}
             <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-600">
-                0{index + 1} · 视觉取舍
+                {getQuestionCategoryTag(question.prompt, index)}
               </span>
               {current && isQuestionAnswered(question) ? (
                 <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-700">
