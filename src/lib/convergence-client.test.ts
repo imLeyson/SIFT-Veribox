@@ -137,4 +137,55 @@ describe("convergence requests", () => {
       reason: "user_requested",
     });
   });
+
+  it("automatically defaults unselected questions to uncertain when submitting answers", async () => {
+    const store = createSiftStore(memory);
+    store.getState().setRawBrief(EXAMPLES[0].brief);
+    let lastBody!: ConvergenceInput;
+    const fetcher = vi.fn(async (_url, init) => {
+      lastBody = JSON.parse(init.body);
+      return serverResponse(lastBody);
+    });
+    const actions = createConvergenceActions(store, fetcher);
+    await actions.start();
+    expect(store.getState().next?.type).toBe("ask");
+
+    // Do not set any drafts (all unselected)
+    await actions.answer();
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(lastBody.event.type).toBe("answer");
+    if (lastBody.event.type === "answer") {
+      expect(lastBody.event.answers.length).toBe(2);
+      expect(lastBody.event.answers.every((a) => a.kind === "uncertain")).toBe(true);
+    }
+  });
+
+  it("retains custom text answer and defaults unselected sibling to uncertain", async () => {
+    const store = createSiftStore(memory);
+    store.getState().setRawBrief(EXAMPLES[0].brief);
+    let lastBody!: ConvergenceInput;
+    const fetcher = vi.fn(async (_url, init) => {
+      lastBody = JSON.parse(init.body);
+      return serverResponse(lastBody);
+    });
+    const actions = createConvergenceActions(store, fetcher);
+    await actions.start();
+    const next = store.getState().next;
+    const questions = next?.type === "ask" ? next.questions : [];
+    expect(questions.length).toBeGreaterThanOrEqual(2);
+
+    // Answer first question with custom text, leave second unselected
+    store.getState().setDrafts([
+      { questionId: questions[0].id, kind: "custom", text: "冷茶青色与极简排版" },
+    ]);
+
+    await actions.answer();
+    expect(lastBody.event.type).toBe("answer");
+    if (lastBody.event.type === "answer") {
+      expect(lastBody.event.answers).toEqual([
+        { questionId: questions[0].id, kind: "custom", text: "冷茶青色与极简排版" },
+        { questionId: questions[1].id, kind: "uncertain" },
+      ]);
+    }
+  });
 });

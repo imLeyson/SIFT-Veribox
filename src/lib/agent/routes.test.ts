@@ -125,6 +125,12 @@ describe("routes agent generation", () => {
     expect(normalized.routes).toHaveLength(3);
     expect(normalized.routes[0].title).not.toBe("自然");
     expect(normalized.routes[0].title).toMatch(/转译与落地法/);
+    expect(normalized.routes[0].focusDimension).toBeTruthy();
+    expect(normalized.routes[0].feasibility).toBe("high");
     expect(normalized.routes[0].steps.length).toBeGreaterThanOrEqual(3);
+    for (const step of normalized.routes[0].steps) {
+      expect(step.deliverables && step.deliverables.length > 0).toBe(true);
+      expect(step.acceptanceCriteria && step.acceptanceCriteria.length > 0).toBe(true);
+    }
   });
 });

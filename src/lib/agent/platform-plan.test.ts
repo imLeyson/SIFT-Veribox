@@ -109,5 +109,16 @@ describe("platform plan agent generation", () => {
     const roles = new Set(normalized.plan.primarySources.map((s) => s.roleTag));
     expect(roles.size).toBe(3);
     expect(normalized.plan.alternativeSources.length).toBeGreaterThanOrEqual(2);
+
+    // Verify searchType and advancedQuery are populated
+    for (const source of [...normalized.plan.primarySources, ...normalized.plan.alternativeSources]) {
+      for (const kw of source.keywords) {
+        expect(kw.searchType).toBeTruthy();
+        expect(["moodboard", "detail", "consumer", "benchmark"]).toContain(kw.searchType);
+      }
+    }
+    // Pinterest primary source keywords should have anti-mockup advanced query
+    const pinSource = normalized.plan.primarySources.find((s) => s.platform === "Pinterest");
+    expect(pinSource?.keywords[0]?.advancedQuery).toMatch(/-mockup/);
   });
 });

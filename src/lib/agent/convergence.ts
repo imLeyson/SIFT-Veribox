@@ -97,13 +97,12 @@ export async function runConvergenceTurn(
     });
   }
 
-  const allowedSources = new Set(["brief", ...history.map((h) => h.id)]);
-  if (
-    judgments(result.state).some((judgment) =>
-      judgment.sourceIds.some((id) => !allowedSources.has(id)),
-    )
-  ) {
-    throw new Error("状态引用了不存在的回答，请重试");
+  const allowedSources = new Set(["brief", ...history.map((h) => h.id), input.requestId]);
+  for (const item of judgments(result.state)) {
+    item.sourceIds = item.sourceIds.map((id) =>
+      allowedSources.has(id) ? id : input.requestId,
+    );
+    if (!item.sourceIds.length) item.sourceIds = [input.requestId];
   }
 
   if (previous && event.type === "answer") {
@@ -122,7 +121,7 @@ export async function runConvergenceTurn(
       )
         throw new Error("模型丢失了已有约束，请重试");
     }
-    if (answers.some((answer) => answer.kind === "uncertain")) {
+    if (answers.every((answer) => answer.kind === "uncertain")) {
       result.state.direction = previous.direction;
       result.state.constraints = previous.constraints;
     }
@@ -204,7 +203,7 @@ export async function runConvergenceTurn(
       (item) => item.impact !== "minor" && item.status === "open",
     )
   ) {
-    throw new Error("仍有重要未决判断，不能标记为已就绪");
+    result.next.reason = "needs_evidence";
   }
   result.state.revision = revision;
   return parseContract(TurnResultSchema, {

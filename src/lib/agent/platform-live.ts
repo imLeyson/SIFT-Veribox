@@ -10,7 +10,7 @@ const SYSTEM = `你是 SIFT 搜索计划与关键词 Agent。
 设计师已确认设计方向，并选择了具体路线与当前探索步骤。
 你的任务是为当前这一个具体步骤，生成一份高效、精准的外部平台搜索计划。
 
-规则要求：
+规则要求（设计师专业搜索心智）：
 1. 平台必须来自注册表：
    - Pinterest（视觉扩散：意象、情绪板、色彩质感）
    - Behance（完整项目验证：完整落地案、推演过程、系统规范）
@@ -18,24 +18,40 @@ const SYSTEM = `你是 SIFT 搜索计划与关键词 Agent。
    - Instagram（场景和趋势参考：主理人切片、前沿动态、小众品牌）
    - Dribbble（数字产品与界面参考：微交互、高保真组件、排版小样）
    - Google / 品牌官网搜索（品牌验证与跨品类检索：行业报告、官方规范、学术研究）
-2. 动态排序：根据当前步骤的探索重点（例如是先看材质？还是先看网格？还是先看用户真实评价？）动态决定哪个平台排第一。
+2. 动态排序：根据当前步骤的探索重点（例如是先看材质？还是先看网格？还是先看真实晒单？）动态决定哪个平台排第一。
 3. 必须返回正好 3 个主来源（primarySources），且 3 个主来源的角色（roleTag）必须完全不同！
 4. 必须返回 2–4 个备选来源（alternativeSources）。
-5. 每个平台提供 2–4 个可直接在搜索框使用的关键词：
-   - 包含中英双语关键词；
-   - 英文关键词给出具体的中文释义（说明它搜出来的是什么视觉参考）；
-   - 中文关键词给出具体的使用说明（说明在中文平台中如何切中用户真实心智）；
-   - 关键词必须深度结合当前步骤的具体问题与目的，严禁返回毫无针对性的泛化大词（如只搜“包装”、“设计”、“好看”）。
-6. 返回且仅返回纯 JSON，格式如下：
+5. 专业设计检索公式：严禁生成“包装”、“设计”、“好看”等毫无针对性的泛化大词！
+   关键词结构必须遵循：[设计流派/风格] + [载体/媒介] + [美学/工艺特征]（如 swiss typography grid system packaging、tactile embossed paper packaging）。
+6. 中英双语精准分工：
+   - 英文关键词：面向海外社区（Behance/Pinterest/Dribbble/IG），包含流派/大师风格或工艺术语，附带中文精准释义；
+   - 中文关键词：面向本土消费心智（小红书/国内行业库），直击真实打卡晒单、买点评价与用户痛点；
+   - 标注 searchType："moodboard"（情绪板）| "detail"（微观细节）| "consumer"（消费语境）| "benchmark"（标杆案）。
+7. 高级去样机语法（Anti-Mockup Syntax）：
+   - Behance 与 Pinterest 充斥劣质样机贴图模板，必须为首要关键词生成 advancedQuery，自动附带 -mockup -template（如 swiss typography packaging -mockup -template）；
+   - 小红书生成本土精准避坑语法（如 包装版式 留白 实拍 -广告）。
+8. 返回且仅返回纯 JSON，格式如下：
 {
   "primarySources": [
     {
-      "platform": "平台名（如 Pinterest）",
-      "roleTag": "能力标签（如 视觉扩散）",
+      "platform": "平台名（如 Behance）",
+      "roleTag": "能力标签（如 完整项目验证）",
       "reason": "为什么在当前步骤将该平台排在这一顺序的理由",
       "keywords": [
-        {"keyword": "具体英文检索词", "meaning": "该词搜索意图与释义", "language": "en"},
-        {"keyword": "具体中文检索词", "meaning": "中文语境下的检索切入点", "language": "zh"}
+        {
+          "keyword": "具体英文检索词",
+          "meaning": "该词搜索意图与释义",
+          "language": "en",
+          "searchType": "benchmark",
+          "advancedQuery": "具体英文检索词 -mockup -template"
+        },
+        {
+          "keyword": "具体中文检索词",
+          "meaning": "中文语境下的检索切入点",
+          "language": "zh",
+          "searchType": "consumer",
+          "advancedQuery": "具体中文检索词 实拍 -广告"
+        }
       ]
     }
   ],
@@ -45,8 +61,18 @@ const SYSTEM = `你是 SIFT 搜索计划与关键词 Agent。
       "roleTag": "备选能力标签",
       "reason": "作为备选平台的理由",
       "keywords": [
-        {"keyword": "检索词1", "meaning": "释义", "language": "en"},
-        {"keyword": "检索词2", "meaning": "释义", "language": "zh"}
+        {
+          "keyword": "检索词1",
+          "meaning": "释义",
+          "language": "en",
+          "searchType": "detail"
+        },
+        {
+          "keyword": "检索词2",
+          "meaning": "释义",
+          "language": "zh",
+          "searchType": "consumer"
+        }
       ]
     }
   ]
@@ -81,25 +107,50 @@ export function normalizeLivePlatformPayload(
 
   const registeredList = Object.values(PLATFORM_REGISTRY);
 
-  function normalizeKeywords(rawKws: unknown[]): PlatformKeyword[] {
+  function normalizeKeywords(rawKws: unknown[], regId: string): PlatformKeyword[] {
     const list: PlatformKeyword[] = [];
+    const validSearchTypes = ["moodboard", "detail", "consumer", "benchmark"] as const;
+
     for (const item of rawKws) {
       const rec = record(item);
       const kw = nonEmpty(rec.keyword, "");
       if (!kw) continue;
       const lang = rec.language === "en" || rec.language === "zh" ? rec.language : /[\u4e00-\u9fa5]/.test(kw) ? "zh" : "en";
+      const st = typeof rec.searchType === "string" && (validSearchTypes as readonly string[]).includes(rec.searchType)
+        ? (rec.searchType as (typeof validSearchTypes)[number])
+        : lang === "zh" ? "consumer" : "detail";
+
+      let adv = typeof rec.advancedQuery === "string" && rec.advancedQuery.trim()
+        ? rec.advancedQuery.trim()
+        : "";
+
+      if (!adv) {
+        if (regId === "behance" || regId === "pinterest") {
+          adv = kw.includes("-mockup") ? kw : `${kw} -mockup -template`;
+        } else if (regId === "xiaohongshu") {
+          adv = kw.includes("-广告") ? kw : `${kw} 实拍 -广告`;
+        } else if (regId === "instagram") {
+          adv = kw.startsWith("#") ? kw : `#${kw.replace(/[\s#]+/g, "")}`;
+        }
+      }
+
       list.push({
         keyword: kw,
         meaning: nonEmpty(rec.meaning, "探索参考检索词"),
         language: lang,
+        searchType: st,
+        advancedQuery: adv ? adv.slice(0, 160) : undefined,
       });
     }
     while (list.length < 2) {
       const idx = list.length + 1;
+      const kw = `${input.currentStep.title} 案例 ${idx}`;
       list.push({
-        keyword: `${input.currentStep.title} 案例 ${idx}`,
+        keyword: kw,
         meaning: "对应当前步骤的基础参考词",
         language: "zh",
+        searchType: "detail",
+        advancedQuery: regId === "behance" || regId === "pinterest" ? `${kw} -mockup` : undefined,
       });
     }
     return list.slice(0, 4);
@@ -120,6 +171,7 @@ export function normalizeLivePlatformPayload(
 
     const keywords = normalizeKeywords(
       Array.isArray(s.keywords) ? s.keywords : [],
+      reg.id,
     );
     const firstKw = keywords[0]?.keyword ?? input.currentStep.title;
 
@@ -153,16 +205,22 @@ export function normalizeLivePlatformPayload(
     if (!usedPlatforms.has(reg.name) && !usedRoles.has(reg.roleTag)) {
       usedPlatforms.add(reg.name);
       usedRoles.add(reg.roleTag);
+      const zhKw = `${input.currentStep.title} ${reg.roleTag}`;
+      const enKw = `minimal ${reg.name.toLowerCase()} design benchmark`;
       const kws: PlatformKeyword[] = [
         {
-          keyword: `${input.currentStep.title} ${reg.roleTag}`,
+          keyword: zhKw,
           meaning: `${reg.name} 上的 ${reg.roleTag} 参考`,
           language: "zh",
+          searchType: "detail",
+          advancedQuery: reg.id === "xiaohongshu" ? `${zhKw} 实拍 -广告` : undefined,
         },
         {
-          keyword: `minimal ${reg.name.toLowerCase()} design reference`,
+          keyword: enKw,
           meaning: "英文高质量设计标杆参考",
           language: "en",
+          searchType: "benchmark",
+          advancedQuery: reg.id === "behance" || reg.id === "pinterest" ? `${enKw} -mockup -template` : undefined,
         },
       ];
       primarySources.push({
@@ -195,16 +253,22 @@ export function normalizeLivePlatformPayload(
     if (alternativeSources.length >= 2) break;
     if (!usedPlatforms.has(reg.name)) {
       usedPlatforms.add(reg.name);
+      const zhKw = `${input.currentStep.title} 备选`;
+      const enKw = "creative design benchmark";
       const kws: PlatformKeyword[] = [
         {
-          keyword: `${input.currentStep.title} 备选`,
+          keyword: zhKw,
           meaning: `在 ${reg.name} 上拓展寻找更多可能性`,
           language: "zh",
+          searchType: "consumer",
+          advancedQuery: reg.id === "xiaohongshu" ? `${zhKw} 真实晒单` : undefined,
         },
         {
-          keyword: "creative design benchmark",
+          keyword: enKw,
           meaning: "跨领域创意标杆",
           language: "en",
+          searchType: "moodboard",
+          advancedQuery: reg.id === "behance" || reg.id === "pinterest" ? `${enKw} -mockup` : undefined,
         },
       ];
       alternativeSources.push({

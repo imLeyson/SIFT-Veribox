@@ -42,4 +42,4 @@ npm run build
 
 新会话使用 `sift-convergence-v1`。旧 `sift-agent-v1` 数据不删除，仅首次读取原始 Brief 作为草稿。
 
-产品行为与 API 契约见 [收敛 MVP](docs/SIFT_Convergence_MVP.md)。[原 v1 PRD](docs/SIFT_PRD_v1.0.md) 仅作为历史记录。
+产品行为与 API 契约见 [收敛 MVP](docs/SIFT_Convergence_MVP.md)。完整规范与全景架构详见 [PRD v2.0](docs/SIFT_PRD_v2.0.md)（[原 v1 PRD](docs/SIFT_PRD_v1.0.md) 仅作为历史记录）。

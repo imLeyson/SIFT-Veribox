@@ -75,31 +75,21 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
     }
   };
 
-  // Validation: each question must have a valid answer in drafts
-  const isQuestionComplete = (q: Question) => {
+  // Validation: check which questions have answers in drafts
+  const isQuestionAnswered = (q: Question) => {
     const current = answerFor(drafts, q.id);
     if (!current) return false;
     if (current.kind === "custom") return Boolean(current.text.trim());
     return true;
   };
 
-  const complete = questions.every(isQuestionComplete);
-  const incompleteCount = questions.filter((q) => !isQuestionComplete(q)).length;
-  const firstIncompleteIdx = questions.findIndex((q) => !isQuestionComplete(q));
-  const firstIncompleteQ =
-    firstIncompleteIdx >= 0 ? questions[firstIncompleteIdx] : null;
-  const isFirstIncompleteCustom = firstIncompleteQ
-    ? Boolean(
-        customMode[firstIncompleteQ.id] ??
-          (answerFor(drafts, firstIncompleteQ.id)?.kind === "custom"),
-      ) || firstIncompleteQ.options.length === 0
-    : false;
+  const answeredCount = questions.filter(isQuestionAnswered).length;
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        if (complete) void siftActions.answer();
+        if (!disabled) void siftActions.answer();
       }}
       className="space-y-4"
     >
@@ -108,7 +98,7 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
         tabIndex={-1}
         className="text-[11px] leading-relaxed text-muted outline-none"
       >
-        动笔前，对齐核心视觉取向。若预设选项不符合你的想法，可直接选择自定义输入。
+        动笔前，对齐核心视觉取向。可选择预设选项、选择“其他”输入你想要的内容，或直接跳过继续。
       </p>
 
       {questions.map((question, index) => {
@@ -134,10 +124,20 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
               <span className="inline-flex items-center rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-600">
                 0{index + 1} · 视觉取舍
               </span>
-              {current && isQuestionComplete(question) && (
+              {current && isQuestionAnswered(question) ? (
                 <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-700">
                   <Check className="h-3 w-3 text-emerald-600" />
-                  <span>已确认</span>
+                  <span>
+                    {isUncertain
+                      ? "已标暂不确定"
+                      : isCustomFilled
+                        ? "已填写其他"
+                        : "已选择"}
+                  </span>
+                </span>
+              ) : (
+                <span className="text-[10px] text-stone-400">
+                  未选（提交时默认跳过）
                 </span>
               )}
             </div>
@@ -179,7 +179,7 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
                 );
               })}
 
-              {/* Custom Input Option Button */}
+              {/* Other Option Button */}
               {question.options.length > 0 && (
                 <button
                   type="button"
@@ -187,18 +187,22 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
                   onClick={() => selectCustom(question.id)}
                   className={`flex items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition-all ${
                     isCustomActive
-                      ? "border-accent/80 bg-accent/10 text-accent font-medium shadow-xs"
-                      : "border-dashed border-line bg-cream/30 text-stone-600 hover:border-ink/40 hover:bg-cream/70"
+                      ? "border-ink bg-ink text-cream shadow-xs font-medium"
+                      : "border-line/70 bg-white text-ink hover:border-ink/50 hover:bg-cream/40"
                   }`}
                 >
                   <span className="flex items-center gap-1.5">
-                    <PenLine className="h-3.5 w-3.5 shrink-0" />
-                    <span>没有我想选的，自己输入具体偏好…</span>
+                    <PenLine
+                      className={`h-3.5 w-3.5 shrink-0 ${
+                        isCustomActive ? "text-cream" : "text-stone-400"
+                      }`}
+                    />
+                    <span>其他（输入你想要的内容…）</span>
                   </span>
                   <span
                     className={`h-2.5 w-2.5 rounded-full border transition-all ${
                       isCustomActive
-                        ? "border-accent bg-accent ring-2 ring-accent/30"
+                        ? "border-white bg-accent ring-2 ring-white/30"
                         : "border-stone-300 bg-transparent"
                     }`}
                   />
@@ -211,7 +215,7 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
               <div className="pt-1.5 space-y-1">
                 <label className="block text-[11px] font-medium text-stone-600">
                   {question.options.length > 0
-                    ? "输入你的具体视觉倾向或偏好："
+                    ? "输入你想要的内容或具体设计要求："
                     : "用一两句话描述你的视觉倾向："}
                 </label>
                 <textarea
@@ -222,25 +226,25 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
                   maxLength={2000}
                   value={customTexts[question.id] ?? ""}
                   disabled={disabled}
-                  placeholder="例：希望采用低饱和茶青色，配合大面积负空间留白与中英文细线排版，突出冷冽克制感…"
+                  placeholder="输入你想要的内容，例：希望采用低饱和茶青色，配合大面积负空间留白与中英文细线排版，突出冷冽克制感…"
                   onChange={(e) =>
                     handleCustomTextChange(question.id, e.target.value)
                   }
                   className={`w-full resize-y rounded-xl border bg-white px-3 py-2 text-xs leading-relaxed text-ink outline-none transition-all ${
                     isCustomEmpty
-                      ? "border-amber-400 focus:border-accent ring-1 ring-amber-200"
-                      : "border-line focus:border-accent"
+                      ? "border-line focus:border-accent"
+                      : "border-emerald-600/50 focus:border-accent"
                   }`}
                 />
                 <div className="flex items-center justify-between text-[10px] text-muted">
                   <span>
                     {isCustomEmpty ? (
-                      <span className="text-amber-700 font-medium">
-                        ⚠️ 请输入具体内容以确认此项
+                      <span className="text-stone-500">
+                        未填写将作为暂不确定跳过
                       </span>
                     ) : (
                       <span className="text-emerald-700 font-medium">
-                        ✓ 已就绪
+                        ✓ 已输入内容
                       </span>
                     )}
                   </span>
@@ -274,23 +278,29 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
       <button
         type="submit"
         className={`w-full py-2.5 text-xs font-medium flex items-center justify-center gap-1.5 rounded-xl shadow-xs transition-all ${
-          complete && !disabled
-            ? "btn-primary hover:shadow"
-            : "bg-stone-200 text-stone-400 cursor-not-allowed"
+          disabled
+            ? "bg-stone-200 text-stone-400 cursor-not-allowed"
+            : "btn-primary hover:shadow cursor-pointer"
         }`}
-        disabled={disabled || !complete}
+        disabled={disabled}
       >
         {disabled ? (
           "正在整理视觉判断…"
-        ) : complete ? (
+        ) : answeredCount === questions.length ? (
           <>
             <span>确认视觉取向，收敛方向</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </>
-        ) : isFirstIncompleteCustom ? (
-          `第 ${(firstIncompleteIdx ?? 0) + 1} 题：请填写自定义内容`
+        ) : answeredCount > 0 ? (
+          <>
+            <span>确认已选 ({answeredCount}/{questions.length})，其余跳过继续</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </>
         ) : (
-          `还差 ${incompleteCount} 项视觉抉择未完成`
+          <>
+            <span>暂不确定，直接以此状态推进</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </>
         )}
       </button>
     </form>

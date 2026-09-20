@@ -90,4 +90,33 @@ describe("batch design convergence", () => {
       }),
     ).rejects.toThrow(/开始时不能携带旧状态/);
   });
+
+  it("preserves custom direction and constraints when answered alongside an uncertain question", async () => {
+    const input = start();
+    const first = await runConvergenceTurn(input);
+    if (first.next.type !== "ask") throw new Error("Expected ask");
+    const second = await runConvergenceTurn({
+      ...input,
+      requestId: "request-custom",
+      state: first.state,
+      history: first.history,
+      pendingQuestions: first.next.questions,
+      event: {
+        type: "answer",
+        answers: [
+          { questionId: first.next.questions[0].id, kind: "uncertain" },
+          {
+            questionId: first.next.questions[1].id,
+            kind: "custom",
+            text: "冷茶青色与极简排版",
+          },
+        ],
+      },
+    });
+    expect(second.state.status).toBe("checkpoint");
+    expect(second.state.direction.priorities.length).toBeGreaterThanOrEqual(1);
+    expect(
+      second.state.direction.priorities.some((p) => p.text.includes("冷茶青色与极简排版")),
+    ).toBe(true);
+  });
 });

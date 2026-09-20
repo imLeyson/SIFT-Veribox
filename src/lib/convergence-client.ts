@@ -10,7 +10,7 @@ import {
   RoutesResultSchema,
   PlatformPlanResultSchema,
 } from "./agent/routes-schema";
-import type { ConvergenceInput, TurnEvent } from "@/types/convergence";
+import type { Answer, ConvergenceInput, TurnEvent } from "@/types/convergence";
 
 export function createConvergenceActions(
   store: ReturnType<typeof createSiftStore>,
@@ -207,10 +207,23 @@ export function createConvergenceActions(
     start: () => send({ type: "start" }),
     fastStart: () => send({ type: "fast_start" }),
     answer: () => {
-      const drafts = store.getState().drafts;
-      return drafts.length
-        ? send({ type: "answer", answers: drafts })
-        : Promise.resolve();
+      const s = store.getState();
+      const questions = s.next?.type === "ask" ? s.next.questions : [];
+      if (!questions.length) return Promise.resolve();
+      const drafts = s.drafts;
+      const answers: Answer[] = questions.map((q) => {
+        const draft = drafts.find((d) => d.questionId === q.id);
+        if (draft) {
+          if (draft.kind === "custom") {
+            return draft.text.trim()
+              ? draft
+              : { questionId: q.id, kind: "uncertain" as const };
+          }
+          return draft;
+        }
+        return { questionId: q.id, kind: "uncertain" as const };
+      });
+      return send({ type: "answer", answers });
     },
     correct: () => {
       const text = store.getState().correctionDraft.trim();
