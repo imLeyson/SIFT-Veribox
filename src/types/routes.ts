@@ -22,6 +22,7 @@ export type Route = {
   timeframe?: string;
   feasibility?: "high" | "medium" | "challenging";
   focusDimension?: string;
+  alignmentScore?: number;
 };
 
 export type PlatformKeyword = {
@@ -51,6 +52,8 @@ export type PlatformPlan = {
     engine: "jev-cloud" | "jev-native";
     latencyMs: number;
     confidence?: number;
+    scores?: Record<string, number>;
+    matchPercentages?: Record<string, number>;
   };
 };
 

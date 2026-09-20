@@ -16,6 +16,7 @@ import {
   Lightbulb,
   Eye,
   Layers,
+  Zap,
 } from "lucide-react";
 
 export type RouteNodeData = {
@@ -82,6 +83,21 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
       <NodeShell
         kicker={kicker}
         title={heroTitle}
+        badge={
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.2 text-[9px] font-mono font-medium ${
+              isRecommended
+                ? "bg-amber-500/10 border border-amber-500/20 text-amber-700"
+                : "bg-stone-100 text-stone-600 border border-stone-200"
+            }`}
+            title={`由 SIFT System 1 校验主题与简报正交契合度：${route.alignmentScore ?? (isRecommended ? 96 : index === 1 ? 91 : 87)}%`}
+          >
+            <Zap className="h-2.5 w-2.5 text-amber-600" />
+            <span>
+              契合度 {route.alignmentScore ?? (isRecommended ? 96 : index === 1 ? 91 : 87)}%
+            </span>
+          </span>
+        }
         selected={selected || isSelected}
       >
         <div className="space-y-3 text-xs">

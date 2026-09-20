@@ -38,6 +38,7 @@ export const RouteSchema = z
     timeframe: text.max(60).optional(),
     feasibility: z.enum(["high", "medium", "challenging"]).optional(),
     focusDimension: text.max(60).optional(),
+    alignmentScore: z.number().min(0).max(100).optional(),
     steps: z
       .array(RouteStepSchema)
       .min(3, "每条路线至少包含 3 个步骤")
@@ -91,6 +92,8 @@ export const PlatformPlanSchema = z
         engine: z.enum(["jev-cloud", "jev-native"]),
         latencyMs: z.number(),
         confidence: z.number().optional(),
+        scores: z.record(z.string(), z.number()).optional(),
+        matchPercentages: z.record(z.string(), z.number()).optional(),
       })
       .optional(),
   })

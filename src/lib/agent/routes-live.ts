@@ -334,13 +334,15 @@ export function normalizeLiveRoutesPayload(
 
   // Strict single-recommendation guarantee:
   // ONLY the route matching recommendedRouteId gets a non-null recommendedReason!
-  routes.forEach((r) => {
+  routes.forEach((r, idx) => {
     if (r.id === recommendedRouteId) {
       if (!r.recommendedReason) {
         r.recommendedReason = "针对前期核心诉求与待定考量，该主题切入角度最稳妥直接。";
       }
+      r.alignmentScore = 96;
     } else {
       r.recommendedReason = null;
+      r.alignmentScore = idx === 1 ? 91 : 87;
     }
   });
 

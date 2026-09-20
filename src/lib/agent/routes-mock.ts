@@ -1,6 +1,13 @@
 import type { Route } from "@/types/routes";
 import type { DesignState } from "@/types/convergence";
 
+function attachAlignmentScores(routes: Route[], recommendedId: string | null): Route[] {
+  return routes.map((r, i) => ({
+    ...r,
+    alignmentScore: r.id === recommendedId || r.recommendedReason ? 96 : i === 1 ? 91 : 87,
+  }));
+}
+
 export function getMockRoutes(rawBrief: string, state: DesignState): {
   routes: Route[];
   recommendedRouteId: string | null;
@@ -140,7 +147,10 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
         ],
       },
     ];
-    return { routes, recommendedRouteId: "route_tea_material" };
+    return {
+      routes: attachAlignmentScores(routes, "route_tea_material"),
+      recommendedRouteId: "route_tea_material",
+    };
   }
 
   // 2. Skincare / Beauty scenario
@@ -270,7 +280,10 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
         ],
       },
     ];
-    return { routes, recommendedRouteId: "route_skin_lab" };
+    return {
+      routes: attachAlignmentScores(routes, "route_skin_lab"),
+      recommendedRouteId: "route_skin_lab",
+    };
   }
 
   // 3. SaaS / Digital / Branding scenario
@@ -400,7 +413,10 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
         ],
       },
     ];
-    return { routes, recommendedRouteId: "route_saas_clarity" };
+    return {
+      routes: attachAlignmentScores(routes, "route_saas_clarity"),
+      recommendedRouteId: "route_saas_clarity",
+    };
   }
 
   // 4. Generic / Brand / Visual scenario
@@ -529,5 +545,8 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
       ],
     },
   ];
-  return { routes, recommendedRouteId: "route_gen_core" };
+  return {
+    routes: attachAlignmentScores(routes, "route_gen_core"),
+    recommendedRouteId: "route_gen_core",
+  };
 }

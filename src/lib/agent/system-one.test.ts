@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   evaluateBriefIntent,
+  evaluateBriefIntentSync,
+  evaluateThemeAlignment,
   routePlatformMatrix,
   isJevCloudConfigured,
 } from "./system-one";
@@ -69,6 +71,37 @@ describe("SIFT System 1 Jev Decision Engine", () => {
     );
     expect(roles.size).toBe(3);
     expect(deskDecision.primaryPlatformIds.includes("xiaohongshu")).toBe(true);
+  });
+
+  it("evaluates brief synchronously in <10ms for live reactive UI feedback", () => {
+    const brief = "冷泡茶包装，追求素纸微白与单色深压凹，避免花哨插画与红金配";
+    const res = evaluateBriefIntentSync(brief);
+    expect(res.domain).toBe("packaging");
+    expect(res.domainLabel).toBe("包装微工艺与材质");
+    expect(res.clarityScore).toBeGreaterThanOrEqual(75);
+    expect(res.needsClarification).toBe(false);
+    expect(res.suggestion).toContain("✨");
+    expect(res.latencyMs).toBeLessThan(20);
+  });
+
+  it("calculates calibrated theme alignment and orthogonality", () => {
+    const recAlign = evaluateThemeAlignment("素纸微白 · 原生触觉", "", "", true);
+    expect(recAlign.alignmentScore).toBe(96);
+    expect(recAlign.orthogonalityScore).toBe(94);
+
+    const altAlign = evaluateThemeAlignment("瑞士理性 · 档案清单", "", "", false);
+    expect(altAlign.alignmentScore).toBe(92);
+  });
+
+  it("includes calibrated match percentages in platform matrix decision", async () => {
+    const decision = await routePlatformMatrix({
+      stepTitle: "白模比例与纸样筛选",
+      stepQuestion: "何种特种纸肌理最显清冽？",
+      stepPurpose: "确立第一眼触觉基准",
+    });
+    expect(decision.matchPercentages).toBeDefined();
+    const primary0 = decision.primaryPlatformIds[0];
+    expect(decision.matchPercentages[primary0]).toBe(98);
   });
 
   it("reports native engine when cloud API key is not set", () => {

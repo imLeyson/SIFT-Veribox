@@ -1,4 +1,5 @@
 import type { SiftStore } from "./convergence-store";
+import { evaluateBriefIntentSync } from "./agent/system-one";
 
 export function generateDossierMarkdown(store: Partial<SiftStore>): string {
   const {
@@ -28,9 +29,18 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
   lines.push(`> 项目：**${goalTitle}**  `);
   lines.push(`> 生成时间：${now} · 工具：SIFT AI 探索副驾\n`);
 
-  // Section 00: Brief
+  // Section 00: Brief & System 1 Diagnostics
   lines.push(`## 00 原始设计任务 (Brief)`);
   lines.push(`\`\`\`text\n${rawBrief?.trim() || "暂无输入 Brief"}\n\`\`\`\n`);
+  if (rawBrief?.trim()) {
+    const diag = evaluateBriefIntentSync(rawBrief);
+    lines.push(`- **System 1 领域定位**：${diag.domainIcon} ${diag.domainLabel} *(置信度 ${Math.round(diag.confidence * 100)}% · ${diag.latencyMs}ms 极速裁决)*`);
+    lines.push(`- **视觉指向清晰度**：${diag.clarityScore} / 100`);
+    if (diag.suggestion) {
+      lines.push(`- **定向收敛提示**：${diag.suggestion}`);
+    }
+    lines.push("");
+  }
   if (state?.brief.audience || state?.brief.deliverable) {
     lines.push(`- **目标受众**：${state.brief.audience || "未明确"}`);
     lines.push(`- **核心交付物**：${state.brief.deliverable || "未明确"}\n`);
@@ -103,6 +113,9 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       };
       lines.push(`- **工艺可行性**：${labels[selectedRoute.feasibility]}`);
     }
+    if (selectedRoute.alignmentScore) {
+      lines.push(`- **System 1 契合度**：${selectedRoute.alignmentScore}% *(由 System 1 校验正交契合度)*`);
+    }
     if (selectedRoute.recommendedReason) {
       lines.push(`- **决策理由**：${selectedRoute.recommendedReason}`);
     }
@@ -149,7 +162,8 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
         const latencyLabel = plan.systemOne?.latencyMs ? ` · ${plan.systemOne.latencyMs}ms 极速裁决` : "";
         lines.push(`\n#### 🔍 Step 0${idx + 1} 推荐搜索方案与关键词资产 *(${engineLabel}${latencyLabel})*`);
         plan.primarySources.forEach((src, sIdx) => {
-          lines.push(`**${sIdx + 1}. ${src.platform}** (角色定位：${src.roleTag})`);
+          const match = plan.systemOne?.matchPercentages?.[src.id] ? ` · ⚡️ ${plan.systemOne.matchPercentages[src.id]}% 匹配` : "";
+          lines.push(`**${sIdx + 1}. ${src.platform}** (角色定位：${src.roleTag}${match})`);
           lines.push(`- *推荐依据*：${src.reason}`);
           lines.push(`- *搜索直达*：[在新标签页打开搜索](${src.searchUrl})`);
           lines.push(`- *关键词组合*：`);

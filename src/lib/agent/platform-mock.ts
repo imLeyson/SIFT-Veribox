@@ -862,6 +862,13 @@ export function getMockPlatformPlan(
       engine: "jev-native",
       latencyMs: 16,
       confidence: 0.96,
+      matchPercentages: {
+        ...(primary[0]?.id ? { [primary[0].id]: 98 } : {}),
+        ...(primary[1]?.id ? { [primary[1].id]: 94 } : {}),
+        ...(primary[2]?.id ? { [primary[2].id]: 90 } : {}),
+        ...(alternative[0]?.id ? { [alternative[0].id]: 85 } : {}),
+        ...(alternative[1]?.id ? { [alternative[1].id]: 82 } : {}),
+      },
     },
   };
 }

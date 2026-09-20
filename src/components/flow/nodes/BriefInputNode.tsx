@@ -6,7 +6,8 @@ import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { EXAMPLES } from "@/lib/agent/examples";
 import { compressImageFile } from "@/lib/image-utils";
-import { ImagePlus, Plus, X, Eye } from "lucide-react";
+import { ImagePlus, Plus, X, Eye, Zap } from "lucide-react";
+import { evaluateBriefIntentSync } from "@/lib/agent/system-one";
 
 export function BriefInputNode({ selected }: NodeProps) {
   const {
@@ -24,6 +25,11 @@ export function BriefInputNode({ selected }: NodeProps) {
   const [compressing, setCompressing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  const briefDiagnostics =
+    rawBrief.trim().length >= 4 ? evaluateBriefIntentSync(rawBrief) : null;
+  const confirmedDiagnostics =
+    state && rawBrief ? evaluateBriefIntentSync(rawBrief) : null;
 
   const processFiles = async (files: FileList | File[]) => {
     if (briefImages.length >= 3) return;
@@ -76,6 +82,27 @@ export function BriefInputNode({ selected }: NodeProps) {
       <NodeShell
         kicker="00 · 设计简报"
         title={state ? "设计简报" : "输入设计目标与背景"}
+        badge={
+          state && confirmedDiagnostics ? (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 text-[9px] font-mono font-medium text-amber-700"
+              title={`System 1 已定位领域：${confirmedDiagnostics.domainLabel}`}
+            >
+              <Zap className="h-2.5 w-2.5 text-amber-600" />
+              <span>
+                {confirmedDiagnostics.domainIcon} {confirmedDiagnostics.domainLabel}
+              </span>
+            </span>
+          ) : !state && briefDiagnostics ? (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 text-[9px] font-mono font-medium text-amber-700"
+              title="由 SIFT System 1 毫秒级解析简报"
+            >
+              <Zap className="h-2.5 w-2.5 text-amber-600" />
+              <span>System 1 · {briefDiagnostics.latencyMs}ms</span>
+            </span>
+          ) : undefined
+        }
         selected={selected}
       >
         {state ? (
@@ -148,6 +175,64 @@ export function BriefInputNode({ selected }: NodeProps) {
               placeholder="例：冷泡茶包装，克制日常感，避免大插画与红金罐，探索特种纸与极简排版…"
               className="w-full resize-y rounded-xl border border-line bg-cream/70 px-3 py-2 text-xs sm:text-sm leading-relaxed outline-none focus:border-accent"
             />
+
+            {/* Live System 1 Brief Diagnostics Radar */}
+            {rawBrief.trim().length >= 4 && briefDiagnostics && (
+              <div className="mt-2.5 rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/70 via-stone-50/50 to-cream/80 p-2.5 shadow-2xs animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="flex items-center justify-between text-[11px] mb-1.5">
+                  <div className="flex items-center gap-1.5 font-semibold text-stone-800">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white border border-amber-200/80 text-xs shadow-2xs">
+                      {briefDiagnostics.domainIcon}
+                    </span>
+                    <span>{briefDiagnostics.domainLabel}</span>
+                    <span className="rounded bg-amber-100/80 text-amber-800 px-1.5 py-0.2 text-[9px] font-mono font-medium">
+                      置信度 {Math.round(briefDiagnostics.confidence * 100)}%
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 font-mono text-[9px] text-amber-700 bg-amber-500/10 px-1.5 py-0.5 rounded-full border border-amber-500/20">
+                    <Zap className="h-2.5 w-2.5 text-amber-600" />
+                    <span>System 1 · {briefDiagnostics.latencyMs}ms</span>
+                  </div>
+                </div>
+
+                {/* Visual Clarity Progress Bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[10.5px]">
+                    <span className="text-stone-500 font-medium">视觉指向清晰度</span>
+                    <span
+                      className={`font-mono font-bold ${
+                        briefDiagnostics.clarityScore >= 80
+                          ? "text-emerald-700"
+                          : briefDiagnostics.clarityScore >= 50
+                            ? "text-amber-700"
+                            : "text-rose-600"
+                      }`}
+                    >
+                      {briefDiagnostics.clarityScore} / 100
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-stone-200/80">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        briefDiagnostics.clarityScore >= 80
+                          ? "bg-emerald-500"
+                          : briefDiagnostics.clarityScore >= 50
+                            ? "bg-amber-500"
+                            : "bg-rose-500"
+                      }`}
+                      style={{ width: `${briefDiagnostics.clarityScore}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Contextual Smart Suggestion */}
+                {briefDiagnostics.suggestion && (
+                  <p className="mt-1.5 text-[10.5px] text-stone-600 leading-tight">
+                    {briefDiagnostics.suggestion}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Reference Images Upload / Paste Zone */}
             <div

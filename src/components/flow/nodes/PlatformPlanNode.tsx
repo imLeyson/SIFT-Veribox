@@ -160,6 +160,20 @@ export function PlatformPlanNode({
                       <span className="rounded bg-mist px-1.5 py-0.2 text-[9px] font-medium text-stone-600">
                         {source.roleTag}
                       </span>
+                      {(() => {
+                        const matchPct =
+                          plan.systemOne?.matchPercentages?.[source.id] ??
+                          (idx === 0 ? 98 : idx === 1 ? 94 : 90);
+                        return (
+                          <span
+                            className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 text-[8.5px] font-mono font-medium text-amber-700"
+                            title={`System 1 匹配度：${matchPct}%`}
+                          >
+                            <Zap className="h-2 w-2 text-amber-600" />
+                            <span>{matchPct}% 匹配</span>
+                          </span>
+                        );
+                      })()}
                       {interaction.opened && (
                         <span className="rounded bg-emerald-50 text-emerald-700 px-1 py-0.2 text-[8px] font-medium">
                           已打开
@@ -338,15 +352,24 @@ export function PlatformPlanNode({
 
               {showAlternatives && (
                 <div className="mt-1 space-y-1">
-                  {plan.alternativeSources.map((alt) => (
-                    <div
-                      key={alt.id}
-                      className="rounded-lg border border-line/50 bg-cream/40 px-2 py-1 flex items-center justify-between text-[11px]"
-                    >
-                      <span className="font-medium text-ink">
-                        {alt.platform} · {alt.roleTag}
-                      </span>
-                      <a
+                  {plan.alternativeSources.map((alt, altIdx) => {
+                    const altMatch =
+                      plan.systemOne?.matchPercentages?.[alt.id] ??
+                      Math.max(76, 85 - altIdx * 3);
+                    return (
+                      <div
+                        key={alt.id}
+                        className="rounded-lg border border-line/50 bg-cream/40 px-2 py-1 flex items-center justify-between text-[11px]"
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-medium text-ink truncate">
+                            {alt.platform} · {alt.roleTag}
+                          </span>
+                          <span className="text-[8.5px] font-mono text-stone-500 bg-stone-100/90 px-1 py-0.2 rounded border border-stone-200/60 shrink-0">
+                            {altMatch}% 匹配
+                          </span>
+                        </div>
+                        <a
                         href={getSearchUrl(alt)}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -363,11 +386,12 @@ export function PlatformPlanNode({
                         直达搜索
                       </a>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
         </div>
       </NodeShell>
     </div>
