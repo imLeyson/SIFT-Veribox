@@ -88,87 +88,56 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
         kicker={kicker}
         title={heroTitle}
         badge={
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.2 text-[9px] font-mono font-medium ${
-              isRecommended
-                ? "bg-amber-500/10 border border-amber-500/20 text-amber-700"
-                : "bg-stone-100 text-stone-600 border border-stone-200"
-            }`}
-            title={`由 SIFT System 1 校验主题与简报正交契合度：${route.alignmentScore ?? (isRecommended ? 96 : index === 1 ? 91 : 87)}%`}
-          >
-            <Zap className="h-2.5 w-2.5 text-amber-600" />
-            <span>
-              契合度 {route.alignmentScore ?? (isRecommended ? 96 : index === 1 ? 91 : 87)}%
-            </span>
+          <span className="text-[10px] font-mono text-stone-400">
+            契合度 {route.alignmentScore ?? (isRecommended ? 96 : index === 1 ? 91 : 87)}%
           </span>
         }
         selected={selected || isSelected}
       >
         <div className="space-y-3 text-xs">
           {/* Visual Hook & Dimension Badges */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-md bg-stone-100/90 px-2 py-0.5 text-[10.5px] font-medium text-stone-700 border border-stone-200/60">
-              <Compass className="h-3 w-3 text-accent" />
+          <div className="flex flex-wrap items-center gap-1.5 text-[10.5px]">
+            <span className="rounded-md bg-stone-100 px-2 py-0.5 font-medium text-stone-700">
               {route.startingPoint}
             </span>
             {visualHook && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-stone-50 px-2 py-0.5 text-[10px] text-stone-500 border border-stone-200/50">
-                <Layers className="h-2.5 w-2.5 text-stone-400" />
+              <span className="rounded-md bg-stone-50 px-2 py-0.5 text-stone-500 border border-line/60">
                 {visualHook}
               </span>
             )}
             {route.timeframe && (
-              <span className="inline-flex items-center gap-0.5 rounded-md bg-stone-50 px-1.5 py-0.5 text-[10px] text-stone-600 font-medium border border-stone-200/50">
-                <Clock className="h-2.5 w-2.5 text-stone-400" />
+              <span className="text-stone-400 font-mono text-[10px]">
                 {route.timeframe}
               </span>
             )}
             {route.feasibility && (
-              <span
-                className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium border ${
-                  route.feasibility === "high"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                    : route.feasibility === "medium"
-                      ? "bg-amber-50 text-amber-700 border-amber-100"
-                      : "bg-rose-50 text-rose-700 border-rose-100"
-                }`}
-              >
-                {route.feasibility === "high"
-                  ? "稳妥落地"
-                  : route.feasibility === "medium"
-                    ? "需打样验证"
-                    : "工艺挑战"}
+              <span className="text-stone-400 text-[10px]">
+                · {route.feasibility === "high" ? "稳妥落地" : route.feasibility === "medium" ? "需打样" : "挑战性"}
               </span>
             )}
           </div>
 
           {/* Visual Impression / Art Direction */}
-          <div className="rounded-xl border border-stone-200/90 bg-white/95 p-3 shadow-2xs space-y-1.5">
-            <div className="flex items-center justify-between font-semibold text-stone-900 text-[11px]">
-              <div className="flex items-center gap-1.5">
-                <Eye className="h-3.5 w-3.5 text-stone-700 shrink-0" />
-                <span>视觉呈象 · 画面质感</span>
-              </div>
+          <div className="rounded-xl border border-line/80 bg-white/95 p-3 shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-[10.5px] font-semibold text-stone-600">
+              <span>视觉质感</span>
               <span className="text-[9px] font-mono text-stone-400 tracking-wider">ART DIRECTION</span>
             </div>
-            <p className="leading-relaxed text-[11.5px] text-stone-800 font-medium">
+            <p className="leading-relaxed text-xs sm:text-[12.5px] text-ink font-serif font-medium">
               {snapshotText}
             </p>
           </div>
 
           {/* Recommended Reason - ONLY for strictly recommended route */}
           {isRecommended && recReason && (
-            <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 p-2.5 text-xs text-amber-950 leading-snug shadow-2xs">
-              <div className="flex items-center gap-1.5 font-semibold text-amber-900 text-[11px] mb-1">
-                <Sparkles className="h-3 w-3 text-amber-600" />
-                <span>首选推荐依据</span>
-              </div>
-              <p className="leading-relaxed text-[11px] text-amber-950/90">{recReason}</p>
+            <div className="border-l-2 border-line/90 pl-2.5 py-0.5 text-[11px] text-stone-600 leading-relaxed">
+              <span className="font-medium text-ink">推荐考量：</span>
+              {recReason}
             </div>
           )}
 
           {/* Core Visual Strategy */}
-          <div className="rounded-xl bg-stone-50/70 p-2.5 border border-stone-200/70 space-y-1">
+          <div className="rounded-xl bg-stone-50/60 p-2.5 border border-line/60 space-y-1">
             <div className="flex items-center justify-between text-[10px] font-semibold text-stone-500 uppercase tracking-wider">
               <span>设计策略与取舍</span>
               <span className="font-mono text-[9px] text-stone-400">STRATEGY</span>
@@ -185,23 +154,17 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
 
           {/* Visual Highlights & Anti-Drift Guardrails */}
           <div className="grid grid-cols-2 gap-2 text-[11px]">
-            <div className="rounded-lg bg-emerald-50/60 p-2.5 border border-emerald-200/70 text-emerald-950 flex flex-col justify-between shadow-2xs">
-              <div>
-                <span className="font-semibold text-emerald-800 flex items-center gap-1 text-[10.5px]">
-                  <Sparkles className="h-3 w-3 text-emerald-600" />
-                  视觉亮点
-                </span>
-                <p className="leading-relaxed mt-1 text-[11px] text-emerald-950">{prosText}</p>
-              </div>
+            <div className="rounded-lg bg-white/80 p-2.5 border border-line/70">
+              <span className="font-semibold text-stone-700 block mb-0.5 text-[10.5px]">
+                视觉亮点
+              </span>
+              <p className="leading-relaxed text-stone-700 text-[11px]">{prosText}</p>
             </div>
-            <div className="rounded-lg bg-amber-50/60 p-2.5 border border-amber-200/70 text-amber-950 flex flex-col justify-between shadow-2xs">
-              <div>
-                <span className="font-semibold text-amber-800 flex items-center gap-1 text-[10.5px]">
-                  <Compass className="h-3 w-3 text-amber-600" />
-                  防跑偏提示
-                </span>
-                <p className="leading-relaxed mt-1 text-[11px] text-amber-950">{consText}</p>
-              </div>
+            <div className="rounded-lg bg-white/80 p-2.5 border border-line/70">
+              <span className="font-semibold text-stone-700 block mb-0.5 text-[10.5px]">
+                防跑偏提示
+              </span>
+              <p className="leading-relaxed text-stone-700 text-[11px]">{consText}</p>
             </div>
           </div>
 

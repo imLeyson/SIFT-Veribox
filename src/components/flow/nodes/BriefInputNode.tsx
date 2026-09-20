@@ -84,22 +84,12 @@ export function BriefInputNode({ selected }: NodeProps) {
         title={state ? "设计简报" : "输入设计目标与背景"}
         badge={
           state && confirmedDiagnostics ? (
-            <span
-              className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 text-[9px] font-mono font-medium text-amber-700"
-              title={`System 1 已定位领域：${confirmedDiagnostics.domainLabel}`}
-            >
-              <Zap className="h-2.5 w-2.5 text-amber-600" />
-              <span>
-                {confirmedDiagnostics.domainIcon} {confirmedDiagnostics.domainLabel}
-              </span>
+            <span className="text-[10px] font-mono text-stone-400">
+              {confirmedDiagnostics.domainLabel}
             </span>
           ) : !state && briefDiagnostics ? (
-            <span
-              className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 text-[9px] font-mono font-medium text-amber-700"
-              title="由 SIFT System 1 毫秒级解析简报"
-            >
-              <Zap className="h-2.5 w-2.5 text-amber-600" />
-              <span>System 1 · {briefDiagnostics.latencyMs}ms</span>
+            <span className="text-[10px] font-mono text-stone-400">
+              System 1 · {briefDiagnostics.latencyMs}ms
             </span>
           ) : undefined
         }
@@ -178,57 +168,39 @@ export function BriefInputNode({ selected }: NodeProps) {
 
             {/* Live System 1 Brief Diagnostics Radar */}
             {rawBrief.trim().length >= 4 && briefDiagnostics && (
-              <div className="mt-2.5 rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/70 via-stone-50/50 to-cream/80 p-2.5 shadow-2xs animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="flex items-center justify-between text-[11px] mb-1.5">
-                  <div className="flex items-center gap-1.5 font-semibold text-stone-800">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white border border-amber-200/80 text-xs shadow-2xs">
-                      {briefDiagnostics.domainIcon}
-                    </span>
+              <div className="mt-2.5 rounded-xl border border-line/80 bg-white/70 p-2.5 space-y-2">
+                <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-1.5 font-medium text-ink">
                     <span>{briefDiagnostics.domainLabel}</span>
-                    <span className="rounded bg-amber-100/80 text-amber-800 px-1.5 py-0.2 text-[9px] font-mono font-medium">
-                      置信度 {Math.round(briefDiagnostics.confidence * 100)}%
+                    <span className="text-stone-400 font-mono text-[10px]">
+                      · 置信度 {Math.round(briefDiagnostics.confidence * 100)}%
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 font-mono text-[9px] text-amber-700 bg-amber-500/10 px-1.5 py-0.5 rounded-full border border-amber-500/20">
-                    <Zap className="h-2.5 w-2.5 text-amber-600" />
-                    <span>System 1 · {briefDiagnostics.latencyMs}ms</span>
-                  </div>
+                  <span className="font-mono text-[9.5px] text-stone-400">
+                    System 1 · {briefDiagnostics.latencyMs}ms
+                  </span>
                 </div>
 
                 {/* Visual Clarity Progress Bar */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[10.5px]">
-                    <span className="text-stone-500 font-medium">视觉指向清晰度</span>
-                    <span
-                      className={`font-mono font-bold ${
-                        briefDiagnostics.clarityScore >= 80
-                          ? "text-emerald-700"
-                          : briefDiagnostics.clarityScore >= 50
-                            ? "text-amber-700"
-                            : "text-rose-600"
-                      }`}
-                    >
+                    <span className="text-stone-500">指向清晰度</span>
+                    <span className="font-mono font-medium text-ink">
                       {briefDiagnostics.clarityScore} / 100
                     </span>
                   </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-stone-200/80">
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-stone-200">
                     <div
-                      className={`h-full rounded-full transition-all duration-300 ${
-                        briefDiagnostics.clarityScore >= 80
-                          ? "bg-emerald-500"
-                          : briefDiagnostics.clarityScore >= 50
-                            ? "bg-amber-500"
-                            : "bg-rose-500"
-                      }`}
+                      className="h-full rounded-full bg-ink/75 transition-all duration-300"
                       style={{ width: `${briefDiagnostics.clarityScore}%` }}
                     />
                   </div>
                 </div>
 
-                {/* Contextual Smart Suggestion */}
+                {/* Contextual Clean Suggestion */}
                 {briefDiagnostics.suggestion && (
-                  <p className="mt-1.5 text-[10.5px] text-stone-600 leading-tight">
-                    {briefDiagnostics.suggestion}
+                  <p className="text-[10.5px] text-stone-500 leading-relaxed pt-0.5 border-t border-line/40">
+                    {briefDiagnostics.suggestion.replace(/^[💡✨⚡️]\s*/, "")}
                   </p>
                 )}
               </div>

@@ -49,9 +49,8 @@ export function StateNode({ selected }: NodeProps) {
       <div className="space-y-3 text-xs leading-relaxed">
         {/* Core Intent Box */}
         {state.direction.intent?.text ? (
-          <div className="rounded-xl bg-amber-50/80 border border-amber-200/90 p-3 shadow-xs">
-            <span className="text-[10px] font-semibold text-accent flex items-center gap-1 mb-1">
-              <Sparkles className="h-3 w-3" />
+          <div className="rounded-xl bg-white/90 border border-line/80 p-3 shadow-xs space-y-1">
+            <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider block">
               视觉主张
             </span>
             <p className="text-xs sm:text-sm font-medium text-ink leading-relaxed font-serif">
@@ -88,13 +87,12 @@ export function StateNode({ selected }: NodeProps) {
 
         {/* Extracted Visual Keywords */}
         {state.visualKeywords && state.visualKeywords.length > 0 && (
-          <div className="rounded-xl bg-stone-50/90 p-2.5 border border-stone-200/80 shadow-2xs">
+          <div className="rounded-xl bg-white/70 p-2.5 border border-line/70">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-semibold text-stone-600 flex items-center gap-1">
-                <Palette className="h-3 w-3 text-accent" />
+              <span className="text-[10.5px] font-medium text-ink">
                 视觉关键词
               </span>
-              <span className="text-[9px] text-stone-600 font-medium">
+              <span className="text-[9.5px] text-stone-400 font-mono">
                 {briefImages.length > 0 ? "参考图与简报提炼" : "简报提炼"}
               </span>
             </div>
@@ -104,17 +102,17 @@ export function StateNode({ selected }: NodeProps) {
                   key={idx}
                   type="button"
                   onClick={() => handleCopyKeyword(keyword)}
-                  className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border transition-all cursor-pointer select-none active:scale-95 ${
+                  className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border transition-colors cursor-pointer select-none ${
                     copiedKeyword === keyword
-                      ? "bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs"
-                      : "bg-white text-stone-800 border-stone-200/90 hover:border-accent hover:text-ink hover:-translate-y-0.5 shadow-2xs"
+                      ? "bg-stone-100 text-ink border-ink/40"
+                      : "bg-white text-stone-800 border-line hover:border-ink/50 hover:text-ink"
                   }`}
                   title="点击复制关键词"
                 >
                   {copiedKeyword === keyword ? (
-                    <Check className="h-3 w-3 text-emerald-600 mr-1" />
+                    <Check className="h-2.5 w-2.5 text-emerald-600 mr-1" />
                   ) : (
-                    <span className="text-accent mr-0.5 font-normal">#</span>
+                    <span className="text-stone-400 mr-0.5 font-mono">#</span>
                   )}
                   <span>{copiedKeyword === keyword ? "已复制" : keyword}</span>
                 </button>
@@ -126,9 +124,8 @@ export function StateNode({ selected }: NodeProps) {
         {/* Visual Guardrails: Priorities & Avoid */}
         <div className="grid grid-cols-2 gap-2 pt-1">
           {/* Priorities */}
-          <div className="rounded-xl bg-emerald-50/60 p-2.5 border border-emerald-100">
-            <span className="text-[10px] font-semibold text-emerald-800 flex items-center gap-1 mb-1">
-              <ShieldCheck className="h-3 w-3 text-emerald-600" />
+          <div className="rounded-xl bg-white/70 p-2.5 border border-line/70">
+            <span className="text-[10px] font-semibold text-stone-600 block mb-1">
               视觉坚持
             </span>
             {state.direction.priorities.length > 0 ? (
@@ -136,7 +133,7 @@ export function StateNode({ selected }: NodeProps) {
                 {state.direction.priorities.slice(0, 3).map((p, i) => (
                   <span
                     key={i}
-                    className="inline-block rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-medium text-emerald-950 mr-1 mb-1 border border-emerald-200/60"
+                    className="inline-block rounded bg-mist/60 px-1.5 py-0.5 text-[10.5px] text-stone-800 mr-1 mb-1 border border-line/50"
                   >
                     {p.text}
                   </span>
@@ -148,9 +145,8 @@ export function StateNode({ selected }: NodeProps) {
           </div>
 
           {/* Avoid */}
-          <div className="rounded-xl bg-stone-100/70 p-2.5 border border-stone-200/70">
-            <span className="text-[10px] font-semibold text-stone-700 flex items-center gap-1 mb-1">
-              <Ban className="h-3 w-3 text-stone-500" />
+          <div className="rounded-xl bg-white/70 p-2.5 border border-line/70">
+            <span className="text-[10px] font-semibold text-stone-600 block mb-1">
               视觉红线
             </span>
             {state.direction.avoid.length > 0 ? (
@@ -158,7 +154,7 @@ export function StateNode({ selected }: NodeProps) {
                 {state.direction.avoid.slice(0, 3).map((a, i) => (
                   <span
                     key={i}
-                    className="inline-block rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-medium text-stone-800 mr-1 mb-1 border border-stone-200/80"
+                    className="inline-block rounded bg-stone-100/80 px-1.5 py-0.5 text-[10.5px] text-stone-700 mr-1 mb-1 border border-stone-200/60"
                   >
                     {a.text}
                   </span>

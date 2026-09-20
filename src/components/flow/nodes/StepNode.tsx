@@ -95,16 +95,16 @@ export function StepNode({ selected }: NodeProps) {
                   onClick={() => {
                     if (i !== activeIdx) siftActions.activateStep(st.id);
                   }}
-                  className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-all shrink-0 ${
+                  className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors shrink-0 ${
                     isCurrent
-                      ? "bg-accent text-white shadow-xs"
+                      ? "bg-ink text-white font-semibold"
                       : isCompleted
-                        ? "bg-emerald-100/80 text-emerald-900 hover:bg-emerald-200/80"
-                        : "bg-mist/70 text-muted hover:bg-mist"
+                        ? "bg-stone-100 text-stone-700 hover:text-ink"
+                        : "text-stone-400 hover:text-stone-700"
                   }`}
                 >
-                  <span className="text-[10px]">
-                    {isCompleted ? <Check className="h-3 w-3 inline" /> : i + 1}
+                  <span className="text-[10px] font-mono">
+                    {isCompleted ? "✓" : i + 1}.
                   </span>
                   <span>{st.title.slice(0, 8)}</span>
                 </button>
@@ -115,7 +115,7 @@ export function StepNode({ selected }: NodeProps) {
           {/* Current Step Focus Box */}
           <div className="rounded-xl border border-line/80 bg-white/90 p-3 shadow-xs space-y-2.5">
             <div>
-              <span className="text-[10px] font-semibold text-accent uppercase tracking-wider block mb-0.5">
+              <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider block mb-0.5">
                 Step 0{activeIdx + 1} · {currentStep.title}
               </span>
               <p className="text-xs sm:text-sm font-semibold text-ink leading-snug">
@@ -126,15 +126,14 @@ export function StepNode({ selected }: NodeProps) {
             {/* Deliverables */}
             {currentStep.deliverables && currentStep.deliverables.length > 0 && (
               <div className="pt-2 border-t border-line/40">
-                <span className="text-[10px] font-medium text-stone-500 flex items-center gap-1 mb-1">
-                  <PackageCheck className="h-3 w-3 text-accent" />
-                  阶段交付物清单 (Deliverables)
+                <span className="text-[10px] font-semibold text-stone-500 block mb-1">
+                  交付清单
                 </span>
                 <div className="flex flex-wrap gap-1">
                   {currentStep.deliverables.map((item, idx) => (
                     <span
                       key={idx}
-                      className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-800 border border-stone-200/50"
+                      className="rounded bg-stone-100 px-2 py-0.5 text-[10.5px] text-stone-700"
                     >
                       {item}
                     </span>
@@ -145,27 +144,24 @@ export function StepNode({ selected }: NodeProps) {
 
             {/* Acceptance Checklist */}
             {currentStep.acceptanceCriteria && currentStep.acceptanceCriteria.length > 0 && (
-              <div className="pt-2 border-t border-line/40 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-medium text-emerald-800 flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                    工位验收清单 (Acceptance Checklist)
-                  </span>
-                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.2 rounded-full">
+              <div className="pt-2 border-t border-line/40 space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-stone-500 pb-0.5">
+                  <span className="font-semibold">验收标准</span>
+                  <span className="font-mono">
                     {currentChecked.length}/{currentStep.acceptanceCriteria.length}
                   </span>
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {currentStep.acceptanceCriteria.map((crit, cIdx) => {
                     const isChecked = currentChecked.includes(crit);
                     return (
                       <label
                         key={cIdx}
-                        className={`flex items-start gap-1.5 rounded-lg p-1.5 text-[11px] transition-colors cursor-pointer select-none ${
+                        className={`flex items-start gap-1.5 rounded p-1 text-[11px] transition-colors cursor-pointer select-none ${
                           isChecked
-                            ? "bg-emerald-50/90 text-emerald-950 font-medium"
-                            : "bg-mist/40 text-stone-700 hover:bg-mist"
+                            ? "text-stone-400 line-through"
+                            : "text-stone-800 hover:bg-mist/40"
                         }`}
                       >
                         <input
@@ -177,13 +173,9 @@ export function StepNode({ selected }: NodeProps) {
                               crit,
                             )
                           }
-                          className="mt-0.5 h-3 w-3 rounded border-line text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                          className="mt-0.5 h-3 w-3 rounded border-line text-ink focus:ring-accent cursor-pointer"
                         />
-                        <span
-                          className={`leading-snug ${
-                            isChecked ? "line-through opacity-75" : ""
-                          }`}
-                        >
+                        <span className="leading-snug">
                           {crit}
                         </span>
                       </label>
