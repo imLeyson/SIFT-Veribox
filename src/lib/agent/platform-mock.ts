@@ -2,6 +2,7 @@ import type { PlatformPlan, PlatformSource } from "@/types/routes";
 import type { Route, RouteStep } from "@/types/routes";
 import type { DesignState } from "@/types/convergence";
 import { buildPlatformSearchUrl, PLATFORM_REGISTRY } from "./platform-registry";
+import { calibratePlatformQuery } from "./system-one";
 
 export function getMockPlatformPlan(
   state: DesignState,
@@ -852,22 +853,74 @@ export function getMockPlatformPlan(
     ];
   }
 
+  function enrichWithJevCalibration(
+    sources: PlatformSource[],
+    stepTitle: string,
+    themeName: string = "",
+  ): PlatformSource[] {
+    return sources.map((src) => {
+      const reg = Object.values(PLATFORM_REGISTRY).find(
+        (p) =>
+          p.name.toLowerCase() === src.platform.toLowerCase() ||
+          p.id === src.id.replace(/^src_/, "").toLowerCase(),
+      );
+      const regId = reg ? reg.id : src.id.replace(/^src_/, "").toLowerCase();
+
+      const calibratedKeywords = src.keywords.map((kw) => {
+        const cal = calibratePlatformQuery(regId, kw.keyword, {
+          stepTitle,
+          themeName,
+          meaning: kw.meaning,
+        });
+        return {
+          ...kw,
+          calibratedQuery: cal.calibratedQuery,
+          hitRateConfidence: cal.hitConfidence,
+          jevJudgement: cal.jevJudgement,
+          advancedQuery: cal.advancedQuery ?? kw.advancedQuery,
+        };
+      });
+
+      const target =
+        calibratedKeywords[0]?.calibratedQuery ||
+        calibratedKeywords[0]?.keyword ||
+        src.keywords[0]?.keyword;
+
+      return {
+        ...src,
+        keywords: calibratedKeywords,
+        searchUrl: buildPlatformSearchUrl(regId, target),
+      };
+    });
+  }
+
+  const enrichedPrimary = enrichWithJevCalibration(
+    primary,
+    currentStep.title,
+    route.themeName,
+  );
+  const enrichedAlternative = enrichWithJevCalibration(
+    alternative,
+    currentStep.title,
+    route.themeName,
+  );
+
   return {
     id: `plan_${route.id}_${currentStep.id}`,
     routeId: route.id,
     stepId: currentStep.id,
-    primarySources: primary,
-    alternativeSources: alternative,
+    primarySources: enrichedPrimary,
+    alternativeSources: enrichedAlternative,
     systemOne: {
       engine: "jev-native",
       latencyMs: 16,
       confidence: 0.96,
       matchPercentages: {
-        ...(primary[0]?.id ? { [primary[0].id]: 98 } : {}),
-        ...(primary[1]?.id ? { [primary[1].id]: 94 } : {}),
-        ...(primary[2]?.id ? { [primary[2].id]: 90 } : {}),
-        ...(alternative[0]?.id ? { [alternative[0].id]: 85 } : {}),
-        ...(alternative[1]?.id ? { [alternative[1].id]: 82 } : {}),
+        ...(enrichedPrimary[0]?.id ? { [enrichedPrimary[0].id]: 98 } : {}),
+        ...(enrichedPrimary[1]?.id ? { [enrichedPrimary[1].id]: 94 } : {}),
+        ...(enrichedPrimary[2]?.id ? { [enrichedPrimary[2].id]: 90 } : {}),
+        ...(enrichedAlternative[0]?.id ? { [enrichedAlternative[0].id]: 85 } : {}),
+        ...(enrichedAlternative[1]?.id ? { [enrichedAlternative[1].id]: 82 } : {}),
       },
     },
   };

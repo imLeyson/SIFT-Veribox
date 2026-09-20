@@ -23,10 +23,17 @@ export type PlatformPlanNodeData = {
   plan: PlatformPlan;
 };
 
-function getSearchUrl(source: PlatformSource, kw?: string): string {
-  const query = kw || source.keywords[0]?.keyword || "";
-  if (!query) return source.searchUrl;
-  return buildPlatformSearchUrl(source.platform, query);
+function getSearchUrl(source: PlatformSource, kwOrRaw?: string): string {
+  if (!kwOrRaw) {
+    const first = source.keywords[0];
+    const target = first?.calibratedQuery || first?.keyword || "";
+    return target ? buildPlatformSearchUrl(source.platform, target) : source.searchUrl;
+  }
+  const matched = source.keywords.find(
+    (k) => k.keyword === kwOrRaw || k.calibratedQuery === kwOrRaw,
+  );
+  const target = matched?.calibratedQuery || kwOrRaw;
+  return buildPlatformSearchUrl(source.platform, target);
 }
 
 export function PlatformPlanNode({
@@ -53,7 +60,7 @@ export function PlatformPlanNode({
   };
 
   const handleOpenSearch = (source: PlatformSource, kw?: string) => {
-    const query = kw ?? source.keywords[0]?.keyword ?? "";
+    const query = kw ?? source.keywords[0]?.calibratedQuery ?? source.keywords[0]?.keyword ?? "";
     const url = getSearchUrl(source, query);
     siftActions.openSearch(url, plan.stepId, source.id, query);
   };
@@ -96,10 +103,10 @@ export function PlatformPlanNode({
               <div className="min-w-0">
                 <span className="text-[10px] font-semibold text-accent flex items-center gap-1">
                   <Sparkles className="h-3 w-3 text-accent" />
-                  首选直达
+                  首选直达 · {firstSource.keywords[0]?.calibratedQuery ? `⚡️ Jev 检索式` : "高命中搜索"}
                 </span>
                 <p className="truncate text-xs font-bold text-ink mt-0.5">
-                  {firstSource.platform} · {firstSource.keywords[0]?.keyword}
+                  {firstSource.platform} · {firstSource.keywords[0]?.calibratedQuery || firstSource.keywords[0]?.keyword}
                 </p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -121,7 +128,7 @@ export function PlatformPlanNode({
                       plan.stepId,
                       firstSource.id,
                       "opened",
-                      firstSource.keywords[0]?.keyword,
+                      firstSource.keywords[0]?.calibratedQuery || firstSource.keywords[0]?.keyword,
                     )
                   }
                 >
@@ -164,13 +171,14 @@ export function PlatformPlanNode({
                         const matchPct =
                           plan.systemOne?.matchPercentages?.[source.id] ??
                           (idx === 0 ? 98 : idx === 1 ? 94 : 90);
+                        const hitRate = source.keywords[0]?.hitRateConfidence ?? matchPct;
                         return (
                           <span
                             className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 text-[8.5px] font-mono font-medium text-amber-700"
-                            title={`System 1 匹配度：${matchPct}%`}
+                            title={`⚡️ Jev 命中率：${hitRate}% | 平台匹配度：${matchPct}%`}
                           >
                             <Zap className="h-2 w-2 text-amber-600" />
-                            <span>{matchPct}% 匹配</span>
+                            <span>Jev {hitRate}% 命中</span>
                           </span>
                         );
                       })()}
@@ -268,17 +276,19 @@ export function PlatformPlanNode({
                     <div className="mt-2 pt-2 border-t border-line/40 space-y-1.5">
                       <div className="flex flex-wrap gap-1">
                         {source.keywords.map((k, ki) => {
-                          const isCopied = copiedKw === k.keyword;
+                          const isCopied = copiedKw === k.keyword || copiedKw === k.calibratedQuery;
+                          const effectiveCopyKw = k.calibratedQuery || k.keyword;
                           return (
                             <div
                               key={ki}
                               className="group inline-flex items-center gap-1 rounded-lg border border-line/70 bg-mist/40 px-2 py-0.5 text-[11px] transition-all hover:bg-white hover:border-ink/60"
+                              title={k.meaning}
                             >
                               <button
                                 type="button"
-                                onClick={() => handleCopy(source.id, k.keyword)}
+                                onClick={() => handleCopy(source.id, effectiveCopyKw)}
                                 className="font-medium text-ink hover:text-accent flex items-center gap-1"
-                                title="点击复制关键词"
+                                title={`点击复制精准检索词：${effectiveCopyKw}`}
                               >
                                 <span>{k.keyword}</span>
                                 {isCopied ? (
@@ -287,6 +297,14 @@ export function PlatformPlanNode({
                                   <Copy className="h-2.5 w-2.5 opacity-30 group-hover:opacity-100" />
                                 )}
                               </button>
+                              {k.calibratedQuery && k.calibratedQuery !== k.keyword && (
+                                <span
+                                  className="text-[9px] font-mono text-amber-800 bg-amber-100/70 rounded px-1 py-0.1 border border-amber-200/50"
+                                  title={`⚡️ Jev 已校准为该平台索引词 [${k.calibratedQuery}]`}
+                                >
+                                  {k.calibratedQuery}
+                                </span>
+                              )}
                               <a
                                 href={getSearchUrl(source, k.keyword)}
                                 target="_blank"
@@ -296,11 +314,11 @@ export function PlatformPlanNode({
                                     plan.stepId,
                                     source.id,
                                     "opened",
-                                    k.keyword,
+                                    k.calibratedQuery || k.keyword,
                                   )
                                 }
                                 className="text-muted hover:text-accent p-0.5 inline-flex items-center cursor-pointer"
-                                title={`直接在 ${source.platform} 搜索 “${k.keyword}”`}
+                                title={`直接在 ${source.platform} 检索 “${k.calibratedQuery || k.keyword}”`}
                               >
                                 <Search className="h-2.5 w-2.5" />
                               </a>
@@ -308,6 +326,17 @@ export function PlatformPlanNode({
                           );
                         })}
                       </div>
+
+                      {/* Jev Judgement Log */}
+                      {source.keywords[0]?.jevJudgement && (
+                        <div
+                          className="flex items-center gap-1 text-[9.5px] text-stone-500 bg-amber-500/5 border border-amber-500/15 rounded-md px-1.5 py-0.5 font-mono"
+                          title={source.keywords[0].jevJudgement}
+                        >
+                          <Zap className="h-2.5 w-2.5 text-amber-600 shrink-0" />
+                          <span className="truncate">{source.keywords[0].jevJudgement}</span>
+                        </div>
+                      )}
 
                       {/* Advanced Syntax copy shortcut */}
                       {source.keywords[0]?.advancedQuery && (

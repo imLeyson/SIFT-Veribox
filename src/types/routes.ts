@@ -31,6 +31,9 @@ export type PlatformKeyword = {
   language: "zh" | "en";
   searchType?: "moodboard" | "detail" | "consumer" | "benchmark";
   advancedQuery?: string;
+  calibratedQuery?: string;
+  hitRateConfidence?: number;
+  jevJudgement?: string;
 };
 
 export type PlatformSource = {

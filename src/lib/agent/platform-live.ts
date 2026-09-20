@@ -3,7 +3,7 @@ import { completeJson } from "./llm";
 import type { z } from "zod";
 import type { PlatformPlanInputSchema } from "./routes-schema";
 import { buildPlatformSearchUrl, PLATFORM_REGISTRY } from "./platform-registry";
-import { isJevCloudConfigured } from "./system-one";
+import { isJevCloudConfigured, calibratePlatformQuery } from "./system-one";
 
 type PlatformPlanInput = z.infer<typeof PlatformPlanInputSchema>;
 
@@ -48,9 +48,11 @@ const SYSTEM = `你是 SIFT 搜索计划与专业设计关键词 Agent。
    - 当前步骤探索 SaaS/界面时：必须选用 Mobbin / Godly / Dribbble，关键词聚焦 8px 栅格、状态色彩、数据卡片、深色模式。
 3. 融合参考图视觉关键词：
    - 若 state.visualKeywords 存在，必须将其中的色彩基调、排版层级、材质肌理融入关键词中。
-4. 检索式专业结构：
-   - 英文：[材质/排版细节特征] + [具体工艺/术语] + [载体/媒介]（如：uncoated cotton paper blind deboss packaging 350g）
-   - 中文：[具体材质抓手] + [版式特征] + [真实测评/实拍]（如：纯白原浆特种纸 侧光无墨压凹 实拍）
+4. 垂直搜索引擎专有语法结构（严禁多词长句，否则垂直平台将返回 0 结果）：
+   - 专业垂直设计平台（如 Mobbin、Godly、Fonts In Use、BP&O）使用的是结构化 Tag / 分类检索，非 Google 语义模糊搜索；
+   - 英文关键词：严格限制在 1–3 个高信息密度关键词（如：blind deboss packaging / minimal saas / dashboard table / sans-serif label）；
+   - 中文关键词：严格限制在 2 个高权重设计分词（如：特种纸 压凹 / SaaS 后台 / 数据看板 / 字体排版 网格）；
+   - 严禁将长定语、修饰词（如 350g、防蹭脏处理、侧光）放入 keyword，这些必须写在 meaning（检索意图解析）中！
 5. 高级去样机语法（Anti-Mockup Syntax）：
    - 针对 Behance/The Dieline/Pinterest/POTW：必须在 advancedQuery 中附带 -mockup -template -freepik；
    - 针对小红书：必须在 advancedQuery 中附带 实拍 -广告 -推广；
@@ -69,18 +71,18 @@ const SYSTEM = `你是 SIFT 搜索计划与专业设计关键词 Agent。
       "reason": "针对本步骤特种纸原浆肌理与侧光深压凹，BP&O 是全球对无墨工艺与高克重纸张细节记录最深的权威档案",
       "keywords": [
         {
-          "keyword": "uncoated cotton paper packaging blind deboss 350g",
+          "keyword": "blind deboss packaging",
           "meaning": "350g 原浆棉纸无墨深压凹打样与侧光阴影细节",
           "language": "en",
           "searchType": "detail",
-          "advancedQuery": "uncoated cotton paper packaging blind deboss -mockup -template"
+          "advancedQuery": "blind deboss packaging -mockup -template"
         },
         {
-          "keyword": "纯白特种纸 侧光无墨压凹 包装实拍",
+          "keyword": "特种纸 压凹",
           "meaning": "国内特种纸打样实拍案例与防蹭脏处理",
           "language": "zh",
           "searchType": "detail",
-          "advancedQuery": "纯白特种纸 压凹 实拍 -广告 -推广"
+          "advancedQuery": "特种纸 压凹 实拍 -广告 -推广"
         }
       ]
     }
@@ -145,26 +147,15 @@ export function normalizeLivePlatformPayload(
         ? (rec.searchType as (typeof validSearchTypes)[number])
         : lang === "zh" ? "consumer" : "detail";
 
-      let adv = typeof rec.advancedQuery === "string" && rec.advancedQuery.trim()
-        ? rec.advancedQuery.trim()
-        : "";
+      const cal = calibratePlatformQuery(regId, kw, {
+        stepTitle: input.currentStep.title,
+        themeName: input.selectedRoute.themeName,
+        meaning: nonEmpty(rec.meaning, ""),
+      });
 
-      if (!adv) {
-        if (
-          regId === "behance" ||
-          regId === "pinterest" ||
-          regId === "dieline" ||
-          regId === "packagingoftheworld"
-        ) {
-          adv = kw.includes("-mockup") ? kw : `${kw} -mockup -template`;
-        } else if (regId === "xiaohongshu") {
-          adv = kw.includes("-广告") ? kw : `${kw} 实拍 -广告`;
-        } else if (regId === "zcool") {
-          adv = kw.includes("-素材") ? kw : `${kw} 实物打样 -素材`;
-        } else if (regId === "instagram") {
-          adv = kw.startsWith("#") ? kw : `#${kw.replace(/[\s#]+/g, "")}`;
-        }
-      }
+      const adv = typeof rec.advancedQuery === "string" && rec.advancedQuery.trim()
+        ? rec.advancedQuery.trim()
+        : cal.advancedQuery;
 
       list.push({
         keyword: kw,
@@ -172,17 +163,27 @@ export function normalizeLivePlatformPayload(
         language: lang,
         searchType: st,
         advancedQuery: adv ? adv.slice(0, 160) : undefined,
+        calibratedQuery: cal.calibratedQuery,
+        hitRateConfidence: cal.hitConfidence,
+        jevJudgement: cal.jevJudgement,
       });
     }
     while (list.length < 2) {
       const idx = list.length + 1;
       const kw = `${input.currentStep.title} 案例 ${idx}`;
+      const cal = calibratePlatformQuery(regId, kw, {
+        stepTitle: input.currentStep.title,
+        themeName: input.selectedRoute.themeName,
+      });
       list.push({
         keyword: kw,
         meaning: "对应当前步骤的基础参考词",
         language: "zh",
         searchType: "detail",
-        advancedQuery: regId === "behance" || regId === "pinterest" ? `${kw} -mockup` : undefined,
+        advancedQuery: cal.advancedQuery,
+        calibratedQuery: cal.calibratedQuery,
+        hitRateConfidence: cal.hitConfidence,
+        jevJudgement: cal.jevJudgement,
       });
     }
     return list.slice(0, 4);
@@ -205,7 +206,7 @@ export function normalizeLivePlatformPayload(
       Array.isArray(s.keywords) ? s.keywords : [],
       reg.id,
     );
-    const firstKw = keywords[0]?.keyword ?? input.currentStep.title;
+    const targetQuery = keywords[0]?.calibratedQuery || keywords[0]?.keyword || input.currentStep.title;
 
     return {
       id: nonEmpty(s.id, `src_${reg.id}_${index + 1}`),
@@ -213,7 +214,7 @@ export function normalizeLivePlatformPayload(
       roleTag: nonEmpty(s.roleTag, reg.roleTag),
       reason: nonEmpty(s.reason, reg.description),
       keywords,
-      searchUrl: buildPlatformSearchUrl(reg.id, firstKw),
+      searchUrl: buildPlatformSearchUrl(reg.id, targetQuery),
     };
   }
 
@@ -239,29 +240,38 @@ export function normalizeLivePlatformPayload(
       usedRoles.add(reg.roleTag);
       const zhKw = `${input.currentStep.title} ${reg.roleTag}`;
       const enKw = `minimal ${reg.name.toLowerCase()} design benchmark`;
+      const calZh = calibratePlatformQuery(reg.id, zhKw, { stepTitle: input.currentStep.title });
+      const calEn = calibratePlatformQuery(reg.id, enKw, { stepTitle: input.currentStep.title });
       const kws: PlatformKeyword[] = [
         {
           keyword: zhKw,
           meaning: `${reg.name} 上的 ${reg.roleTag} 参考`,
           language: "zh",
           searchType: "detail",
-          advancedQuery: reg.id === "xiaohongshu" ? `${zhKw} 实拍 -广告` : undefined,
+          advancedQuery: calZh.advancedQuery,
+          calibratedQuery: calZh.calibratedQuery,
+          hitRateConfidence: calZh.hitConfidence,
+          jevJudgement: calZh.jevJudgement,
         },
         {
           keyword: enKw,
           meaning: "英文高质量设计标杆参考",
           language: "en",
           searchType: "benchmark",
-          advancedQuery: reg.id === "behance" || reg.id === "pinterest" ? `${enKw} -mockup -template` : undefined,
+          advancedQuery: calEn.advancedQuery,
+          calibratedQuery: calEn.calibratedQuery,
+          hitRateConfidence: calEn.hitConfidence,
+          jevJudgement: calEn.jevJudgement,
         },
       ];
+      const targetQuery = kws[0].calibratedQuery || kws[0].keyword;
       primarySources.push({
         id: `src_${reg.id}_${primarySources.length + 1}`,
         platform: reg.name,
         roleTag: reg.roleTag,
         reason: reg.description,
         keywords: kws,
-        searchUrl: buildPlatformSearchUrl(reg.id, kws[0].keyword),
+        searchUrl: buildPlatformSearchUrl(reg.id, targetQuery),
       });
     }
   }
@@ -287,29 +297,38 @@ export function normalizeLivePlatformPayload(
       usedPlatforms.add(reg.name);
       const zhKw = `${input.currentStep.title} 备选`;
       const enKw = "creative design benchmark";
+      const calZh = calibratePlatformQuery(reg.id, zhKw, { stepTitle: input.currentStep.title });
+      const calEn = calibratePlatformQuery(reg.id, enKw, { stepTitle: input.currentStep.title });
       const kws: PlatformKeyword[] = [
         {
           keyword: zhKw,
           meaning: `在 ${reg.name} 上拓展寻找更多可能性`,
           language: "zh",
           searchType: "consumer",
-          advancedQuery: reg.id === "xiaohongshu" ? `${zhKw} 真实晒单` : undefined,
+          advancedQuery: calZh.advancedQuery,
+          calibratedQuery: calZh.calibratedQuery,
+          hitRateConfidence: calZh.hitConfidence,
+          jevJudgement: calZh.jevJudgement,
         },
         {
           keyword: enKw,
           meaning: "跨领域创意标杆",
           language: "en",
           searchType: "moodboard",
-          advancedQuery: reg.id === "behance" || reg.id === "pinterest" ? `${enKw} -mockup` : undefined,
+          advancedQuery: calEn.advancedQuery,
+          calibratedQuery: calEn.calibratedQuery,
+          hitRateConfidence: calEn.hitConfidence,
+          jevJudgement: calEn.jevJudgement,
         },
       ];
+      const targetQuery = kws[0].calibratedQuery || kws[0].keyword;
       alternativeSources.push({
         id: `src_alt_${reg.id}_${alternativeSources.length + 1}`,
         platform: reg.name,
         roleTag: reg.roleTag,
         reason: reg.description,
         keywords: kws,
-        searchUrl: buildPlatformSearchUrl(reg.id, kws[0].keyword),
+        searchUrl: buildPlatformSearchUrl(reg.id, targetQuery),
       });
     }
   }

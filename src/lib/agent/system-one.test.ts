@@ -5,6 +5,7 @@ import {
   evaluateThemeAlignment,
   routePlatformMatrix,
   isJevCloudConfigured,
+  calibratePlatformQuery,
 } from "./system-one";
 
 describe("SIFT System 1 Jev Decision Engine", () => {
@@ -106,5 +107,41 @@ describe("SIFT System 1 Jev Decision Engine", () => {
 
   it("reports native engine when cloud API key is not set", () => {
     expect(typeof isJevCloudConfigured()).toBe("boolean");
+  });
+
+  it("calibrates vertical platform search queries with Jev System 1 pruning and hit confidence", () => {
+    // 1. Mobbin calibration: prunes bloated sentence to core UI component
+    const mobbinCal = calibratePlatformQuery("mobbin", "b2b saas dashboard dark mode 8px", {
+      stepTitle: "数据可视化与状态反馈",
+    });
+    expect(mobbinCal.calibratedQuery).toBe("dashboard");
+    expect(mobbinCal.hitConfidence).toBeGreaterThanOrEqual(95);
+    expect(mobbinCal.jevJudgement).toContain("Mobbin");
+
+    // 2. Godly calibration: maps to curated aesthetic tag
+    const godlyCal = calibratePlatformQuery("godly", "developer tool dark minimalist web design");
+    expect(godlyCal.calibratedQuery).toBe("developer dark");
+    expect(godlyCal.hitConfidence).toBeGreaterThanOrEqual(95);
+
+    // 3. BP&O calibration: maps to single-core craft keyword
+    const bpoCal = calibratePlatformQuery("bpando", "uncoated cotton paper packaging blind deboss 350g");
+    expect(bpoCal.calibratedQuery).toBe("blind deboss");
+    expect(bpoCal.hitConfidence).toBeGreaterThanOrEqual(95);
+
+    // 4. ZCOOL (站酷) calibration: extracts 2-word high-density Chinese design token
+    const zcoolCal = calibratePlatformQuery("zcool", "B端后台工作台 真实系统界面");
+    expect(zcoolCal.calibratedQuery).toBe("SaaS 后台");
+    expect(zcoolCal.advancedQuery).toContain("实物打样 -素材");
+    expect(zcoolCal.hitConfidence).toBe(98);
+
+    // 5. Instagram calibration: formats into clean single hashtag
+    const instaCal = calibratePlatformQuery("instagram", "minimal tea packaging");
+    expect(instaCal.calibratedQuery).toBe("packagingdesign");
+    expect(instaCal.hitConfidence).toBe(98);
+
+    // 6. Fonts In Use calibration: maps to format archive tag
+    const fontCal = calibratePlatformQuery("fontsinuse", "bilingual label hierarchy swiss grid");
+    expect(["bilingual", "packaging", "label", "swiss"]).toContain(fontCal.calibratedQuery);
+    expect(fontCal.hitConfidence).toBeGreaterThanOrEqual(95);
   });
 });

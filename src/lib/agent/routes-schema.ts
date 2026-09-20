@@ -61,6 +61,9 @@ export const PlatformKeywordSchema = z.object({
   language: z.enum(["zh", "en"]),
   searchType: z.enum(["moodboard", "detail", "consumer", "benchmark"]).optional(),
   advancedQuery: text.max(160).optional(),
+  calibratedQuery: text.max(100).optional(),
+  hitRateConfidence: z.number().min(0).max(100).optional(),
+  jevJudgement: text.max(200).optional(),
 });
 
 export const PlatformSourceSchema = z.object({
