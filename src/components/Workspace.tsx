@@ -42,7 +42,7 @@ export function Workspace() {
         <div>
           <h1 className="text-sm font-semibold tracking-wide text-ink">SIFT</h1>
           <p className="mt-0.5 text-xs text-muted">
-            设计方向收敛 · 少问一点，判断清楚一点
+            视觉策略与设计收敛
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -53,7 +53,7 @@ export function Workspace() {
               title="导出设计探索全案与策略提案简报"
             >
               <FileDown className="h-3.5 w-3.5" />
-              <span>导出探索简报</span>
+              <span>导出提案</span>
             </button>
           )}
           {state?.status === "questioning" && (
@@ -62,17 +62,17 @@ export function Workspace() {
               onClick={siftActions.converge}
               title="停止追问，按当前状态进入人工检查点"
             >
-              一键收敛
+              快速收敛
             </button>
           )}
           <button className="btn-ghost text-xs" onClick={siftActions.reset}>
-            新建收敛
+            新建
           </button>
         </div>
       </header>
       {(runtimeMode ?? mode) === "mock" && (
         <p className="border-b border-line/60 bg-mist/60 px-4 py-2 text-xs text-muted">
-          Mock 示例模式 · 用预设示例演示闭环；真实项目的判断需要配置模型。
+          Mock 示例模式；配置 API 密钥后可启用实时模型。
         </p>
       )}
       {storageWarning && (

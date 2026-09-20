@@ -13,8 +13,8 @@ export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
     if (next?.type !== "ask") return null;
     return (
       <NodeShell
-        kicker="01 视觉取向抉择 · 关键权衡"
-        title="动笔前，对齐核心视觉取向"
+        kicker="01 · 视觉抉择"
+        title="视觉取向对齐"
         selected={selected}
       >
         <QuestionBlock questions={next.questions} />
@@ -25,10 +25,10 @@ export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
             disabled={Boolean(activeRequest)}
             onClick={siftActions.converge}
           >
-            跳过本轮提问，按已有判断直接收敛 →
+            跳过提问，按已有判断收敛 →
           </button>
-          <p className="mt-1 text-center text-[10px] text-muted">
-            未选问题将保留为待定项，直接生成当前设计边界。
+          <p className="mt-1 text-center text-[10px] text-stone-400">
+            未选问题将保留为待定项
           </p>
         </div>
       </NodeShell>
@@ -60,13 +60,13 @@ export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
   }
   return (
     <NodeShell
-      kicker={`记录 · ${turn.afterRevision}`}
+      kicker={`RECORD · R${turn.afterRevision}`}
       title={
         turn.event.type === "correct"
           ? "已补充修改"
           : turn.event.type === "checkpoint"
             ? "检查点选择"
-            : "已确认视觉取向"
+            : "视觉抉择记录"
       }
       selected={selected}
     >
@@ -92,16 +92,16 @@ export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
                 <div className="pt-0.5">
                   {isCustom ? (
                     <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-900 border border-amber-200/70">
-                      <span>✍️ 自定义：</span>
+                      <span>其他：</span>
                       <span>{answer.text}</span>
                     </span>
                   ) : isUncertain ? (
                     <span className="inline-flex items-center gap-1 rounded bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">
-                      <span>❓ 暂不确定</span>
+                      <span>暂不确定</span>
                     </span>
                   ) : answer ? (
                     <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-900 border border-emerald-200/70">
-                      <span>✓ 已选：</span>
+                      <span>已选：</span>
                       <span>{answerText(question, answer)}</span>
                     </span>
                   ) : null}

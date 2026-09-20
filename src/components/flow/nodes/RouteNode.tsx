@@ -29,8 +29,8 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
   const isRecommended = Boolean(route.recommendedReason);
 
   const kicker = isRecommended
-    ? `ROUTE 0${index + 1} · 推荐路线`
-    : `ROUTE 0${index + 1} · 探索路线`;
+    ? `0${index + 1} · 推荐路线`
+    : `0${index + 1} · 探索路线`;
 
   return (
     <div
@@ -66,7 +66,7 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
             <div className="rounded-xl border border-amber-200/90 bg-amber-50/80 p-2.5 text-xs text-amber-900 leading-snug">
               <div className="flex items-center gap-1 font-semibold text-amber-800 text-[11px] mb-0.5">
                 <Sparkles className="h-3 w-3 text-amber-600" />
-                <span>推荐归因</span>
+                <span>推荐理由</span>
               </div>
               <p className="leading-relaxed">{route.recommendedReason}</p>
             </div>
@@ -86,22 +86,22 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
           <div className="grid grid-cols-2 gap-1.5 text-[11px]">
             <div className="rounded-lg bg-emerald-50/80 p-2 border border-emerald-100/90 text-emerald-950">
               <span className="font-semibold text-emerald-800 block text-[10px]">
-                视觉亮点
+                亮点
               </span>
               <p className="leading-snug mt-0.5">{route.pros}</p>
             </div>
             <div className="rounded-lg bg-stone-100/80 p-2 border border-stone-200/80 text-stone-800">
               <span className="font-semibold text-stone-600 block text-[10px]">
-                设计考量
+                考量
               </span>
               <p className="leading-snug mt-0.5">{route.cons}</p>
             </div>
           </div>
 
-          {/* Collapsible Steps Preview (Collapsed by default to eliminate text wall) */}
+          {/* Collapsible Steps Preview */}
           <details className="text-[11px] text-muted group pt-1">
             <summary className="cursor-pointer font-medium text-stone-700 flex items-center justify-between hover:text-ink">
-              <span>包含 {route.steps.length} 个递进步骤</span>
+              <span>{route.steps.length} 个递进步骤</span>
               <span className="text-[10px] text-muted group-open:rotate-90 transition-transform">
                 ▶
               </span>
@@ -127,7 +127,7 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
               <div className="flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
                   <Check className="h-4 w-4" />
-                  当前已选此路线
+                  已选此路线
                 </span>
                 <button
                   type="button"
@@ -148,7 +148,7 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
                 disabled={Boolean(activeRequest)}
                 onClick={() => siftActions.selectRoute(route.id)}
               >
-                <span>{hasSelection ? "切换至此路线" : "选择此路线推进"}</span>
+                <span>{hasSelection ? "切换路线" : "选择此路线"}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </button>
             )}

@@ -10,8 +10,8 @@ export function BriefInputNode({ selected }: NodeProps) {
     useSiftStore();
   return (
     <NodeShell
-      kicker="BRIEF · 任务"
-      title={state ? "原始任务" : "先把任务说清楚"}
+      kicker="00 · 设计简报"
+      title={state ? "设计简报" : "输入设计目标与背景"}
       selected={selected}
     >
       {state ? (
@@ -26,11 +26,11 @@ export function BriefInputNode({ selected }: NodeProps) {
           }}
         >
           <p className="mb-3 text-xs leading-relaxed text-muted">
-            输入你的设计需求与视觉意向，SIFT 将协助提炼收敛视觉探索方向。
+            描述设计背景、视觉意图与明确约束。
           </p>
           {importedBrief && (
             <p className="mb-2 text-xs text-accent">
-              已载入设计草案，点击开始收敛。
+              已载入草案
             </p>
           )}
           <textarea
@@ -49,7 +49,7 @@ export function BriefInputNode({ selected }: NodeProps) {
               className="btn-primary w-full text-xs"
               disabled={Boolean(activeRequest) || !rawBrief.trim()}
             >
-              {activeRequest ? "正在分析任务…" : "开始收敛"}
+              {activeRequest ? "正在分析…" : "对齐视觉取舍"}
             </button>
             <button
               type="button"
@@ -57,12 +57,12 @@ export function BriefInputNode({ selected }: NodeProps) {
               disabled={Boolean(activeRequest) || !rawBrief.trim()}
               onClick={() => void siftActions.fastStart()}
             >
-              一键快速收敛
+              直接推导收敛
             </button>
           </div>
           <div className="mt-3.5 border-t border-line/60 pt-2.5">
-            <p className="text-[11px] font-medium text-muted mb-1.5">
-              快速载入视觉设计场景：
+            <p className="text-[11px] font-medium text-stone-500 mb-1.5">
+              参考场景：
             </p>
             <div className="flex flex-wrap gap-1.5">
               {EXAMPLES.map((example) => (

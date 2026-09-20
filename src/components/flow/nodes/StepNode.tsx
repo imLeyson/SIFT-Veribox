@@ -78,7 +78,7 @@ export function StepNode({ selected }: NodeProps) {
   return (
     <div className="w-[390px]">
       <NodeShell
-        kicker="STEPS · 探索步骤推进"
+        kicker="05 · 步骤推进"
         title={route.title}
         selected={selected}
       >
@@ -128,7 +128,7 @@ export function StepNode({ selected }: NodeProps) {
               <div className="pt-2 border-t border-line/40">
                 <span className="text-[10px] font-medium text-stone-500 flex items-center gap-1 mb-1">
                   <PackageCheck className="h-3 w-3 text-accent" />
-                  阶段视觉物料目标
+                  阶段物料
                 </span>
                 <div className="flex flex-wrap gap-1">
                   {currentStep.deliverables.map((item, idx) => (
@@ -149,10 +149,10 @@ export function StepNode({ selected }: NodeProps) {
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-medium text-emerald-800 flex items-center gap-1">
                     <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                    视觉验收清单
+                    验收标准
                   </span>
                   <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.2 rounded-full">
-                    {currentChecked.length} / {currentStep.acceptanceCriteria.length} 已核验
+                    {currentChecked.length}/{currentStep.acceptanceCriteria.length}
                   </span>
                 </div>
 
@@ -199,10 +199,10 @@ export function StepNode({ selected }: NodeProps) {
             <div className="flex items-center justify-between text-xs font-semibold text-ink">
               <span className="flex items-center gap-1 text-[11px]">
                 <StickyNote className="h-3 w-3 text-amber-600" />
-                探索灵感与手记
+                探索手记
               </span>
               <span className="text-[10px] text-muted">
-                {currentNotes.length} 条记录
+                {currentNotes.length}
               </span>
             </div>
 
@@ -234,7 +234,7 @@ export function StepNode({ selected }: NodeProps) {
                 type="text"
                 value={noteInput}
                 onChange={(e) => setNoteInput(e.target.value)}
-                placeholder="记下灵感或粘贴 Behance/Pinterest 链接…"
+                placeholder="记录灵感或参考链接…"
                 className="flex-1 rounded-lg border border-line bg-white px-2 py-1 text-[11px] text-ink outline-none focus:border-accent"
               />
               <button
@@ -243,7 +243,7 @@ export function StepNode({ selected }: NodeProps) {
                 className="btn-ghost !py-1 !px-2 text-[11px] flex items-center gap-1 shrink-0"
               >
                 <Plus className="h-3 w-3" />
-                <span>记下</span>
+                <span>添加</span>
               </button>
             </form>
           </div>
@@ -260,7 +260,7 @@ export function StepNode({ selected }: NodeProps) {
                 }
               >
                 <Play className="h-3 w-3 fill-current" />
-                <span>开始这一步 · 推荐搜索方案</span>
+                <span>推荐搜索方案 →</span>
               </button>
             ) : (
               hasNextStep && (
@@ -280,7 +280,7 @@ export function StepNode({ selected }: NodeProps) {
               className="btn-ghost w-full !py-1 text-[11px] text-muted hover:text-red-700"
               onClick={() => siftActions.reselectRoute()}
             >
-              重新选择路线
+              重选路线
             </button>
           </div>
         </div>

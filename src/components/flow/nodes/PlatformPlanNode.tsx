@@ -64,7 +64,7 @@ export function PlatformPlanNode({
   return (
     <div className="w-[410px]">
       <NodeShell
-        kicker={`SEARCH · ${stepTitle}`}
+        kicker={`07 · ${stepTitle}`}
         title="推荐搜索方案"
         selected={selected}
       >
@@ -75,7 +75,7 @@ export function PlatformPlanNode({
               <div className="min-w-0">
                 <span className="text-[10px] font-semibold text-accent flex items-center gap-1">
                   <Sparkles className="h-3 w-3 text-accent" />
-                  首选平台直达
+                  首选直达
                 </span>
                 <p className="truncate text-xs font-bold text-ink mt-0.5">
                   {firstSource.platform} · {firstSource.keywords[0]?.keyword}
@@ -85,10 +85,10 @@ export function PlatformPlanNode({
                 <button
                   type="button"
                   title="批量打开前 3 推荐平台搜索"
-                  className="btn-ghost !py-1 !px-2 text-[10px] text-muted hover:text-ink hover:bg-white rounded-lg transition-colors"
+                  className="btn-ghost !py-1 !px-2 text-[10px] text-stone-600 hover:text-ink hover:bg-white rounded-lg transition-colors"
                   onClick={handleBatchOpen}
                 >
-                  批量打开 3 平台
+                  批量打开
                 </button>
                 <button
                   type="button"
@@ -178,7 +178,7 @@ export function PlatformPlanNode({
                   {replacingSourceId === source.id && (
                     <div className="mt-2 rounded-lg border border-line bg-cream p-2 text-xs">
                       <p className="font-medium text-ink mb-1 text-[11px]">
-                        替换为备选平台：
+                        替换为：
                       </p>
                       <div className="space-y-1">
                         {plan.alternativeSources.map((alt) => (
@@ -265,7 +265,7 @@ export function PlatformPlanNode({
                           title="复制去样机高级语法"
                         >
                           <Terminal className="h-2.5 w-2.5 text-stone-400" />
-                          <span>去样机语法: {source.keywords[0].advancedQuery}</span>
+                          <span>去样机: {source.keywords[0].advancedQuery}</span>
                           {copiedKw === source.keywords[0].advancedQuery ? (
                             <Check className="h-2.5 w-2.5 text-emerald-600" />
                           ) : (
@@ -288,7 +288,7 @@ export function PlatformPlanNode({
                 className="w-full flex items-center justify-between text-muted hover:text-ink py-1 font-medium"
                 onClick={() => setShowAlternatives(!showAlternatives)}
               >
-                <span>备选平台（另有 {plan.alternativeSources.length} 个）</span>
+                <span>备选平台 ({plan.alternativeSources.length})</span>
                 <span>{showAlternatives ? "▲" : "▼"}</span>
               </button>
 

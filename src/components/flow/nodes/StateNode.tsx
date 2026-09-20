@@ -27,10 +27,10 @@ export function StateNode({ selected }: NodeProps) {
     <NodeShell
       kicker={
         confirmed
-          ? "方向已确认 · 视觉探索"
+          ? "DIRECTION · 已确认"
           : checkpoint
-            ? "HUMAN CHECKPOINT · 请你确认"
-            : "DESIGN STATE · 视觉收敛"
+            ? "CHECKPOINT · 检查点"
+            : "DIRECTION · 收敛推导"
       }
       title="核心视觉方向"
       selected={selected}
@@ -41,7 +41,7 @@ export function StateNode({ selected }: NodeProps) {
           <div className="rounded-xl bg-amber-50/80 border border-amber-200/90 p-3 shadow-xs">
             <span className="text-[10px] font-semibold text-accent flex items-center gap-1 mb-1">
               <Sparkles className="h-3 w-3" />
-              核心视觉主张
+              视觉主张
             </span>
             <p className="text-xs sm:text-sm font-medium text-ink leading-relaxed font-serif">
               {state.direction.intent.text}
@@ -54,7 +54,7 @@ export function StateNode({ selected }: NodeProps) {
         {/* Target Meta */}
         <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
           <span className="rounded-md bg-mist px-2 py-0.5 font-medium text-ink">
-            🎯 {state.brief.goal ?? "设计任务"}
+            {state.brief.goal ?? "设计任务"}
           </span>
           {state.brief.audience && (
             <span className="rounded-md bg-stone-100 px-2 py-0.5 text-stone-600">
@@ -67,7 +67,7 @@ export function StateNode({ selected }: NodeProps) {
         {state.currentHypothesis && (
           <div className="rounded-lg bg-cream/70 p-2.5 border border-line/60">
             <span className="text-[10px] font-semibold text-stone-500 block mb-0.5">
-              视觉假设
+              设计假设
             </span>
             <p className="text-stone-800 leading-snug">
               {state.currentHypothesis}
@@ -103,7 +103,7 @@ export function StateNode({ selected }: NodeProps) {
           <div className="rounded-xl bg-stone-100/70 p-2.5 border border-stone-200/70">
             <span className="text-[10px] font-semibold text-stone-700 flex items-center gap-1 mb-1">
               <Ban className="h-3 w-3 text-stone-500" />
-              坚决避免
+              视觉红线
             </span>
             {state.direction.avoid.length > 0 ? (
               <div className="space-y-1">
@@ -117,7 +117,7 @@ export function StateNode({ selected }: NodeProps) {
                 ))}
               </div>
             ) : (
-              <span className="text-[10px] text-muted">暂无红线</span>
+              <span className="text-[10px] text-muted">暂无</span>
             )}
           </div>
         </div>
@@ -126,7 +126,7 @@ export function StateNode({ selected }: NodeProps) {
         {state.direction.criteria.length > 0 && (
           <div className="rounded-lg bg-mist/50 p-2 border border-line/40 text-[11px]">
             <span className="font-semibold text-stone-700 block mb-0.5">
-              评判标准
+              评估准则
             </span>
             <ul className="space-y-0.5 text-stone-800">
               {state.direction.criteria.slice(0, 2).map((c, i) => (
@@ -142,7 +142,7 @@ export function StateNode({ selected }: NodeProps) {
         {/* Collapsible Details: Traceability & Uncertainties */}
         <details className="pt-1 text-[11px] text-muted">
           <summary className="cursor-pointer hover:text-ink">
-            查看判断依据与未决项
+            依据来源与未决项
           </summary>
           <div className="mt-2 space-y-2 rounded-lg bg-white/60 p-2 border border-line/40 text-[10px]">
             {state.uncertainties.length > 0 && (
@@ -156,7 +156,7 @@ export function StateNode({ selected }: NodeProps) {
               </div>
             )}
             <div>
-              <p className="font-semibold text-stone-700">推导依据来源：</p>
+              <p className="font-semibold text-stone-700">推导依据：</p>
               <ul className="mt-0.5 space-y-0.5 text-muted">
                 {state.constraints.map((c, i) => (
                   <li key={i}>▪ {c.text}</li>
@@ -181,7 +181,7 @@ export function StateNode({ selected }: NodeProps) {
                 }
                 onClick={siftActions.confirm}
               >
-                <span>确认方向 · 开始设计</span>
+                <span>确认方向并推进</span>
                 <ArrowRight className="h-3 w-3" />
               </button>
               <button
@@ -190,7 +190,7 @@ export function StateNode({ selected }: NodeProps) {
                 disabled={Boolean(activeRequest)}
                 onClick={() => setEditing(true)}
               >
-                微调补充
+                调整意见
               </button>
             </div>
           </div>
@@ -207,13 +207,13 @@ export function StateNode({ selected }: NodeProps) {
                 onClick={() => void siftActions.generateRoutes()}
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                <span>{activeRequest ? "正在生成探索路线…" : "生成 3 条视觉探索路线"}</span>
+                <span>{activeRequest ? "正在生成探索路线…" : "生成探索路线"}</span>
               </button>
             ) : (
               <div className="flex items-center justify-between text-[11px] text-emerald-800 bg-emerald-50 rounded-lg px-2.5 py-1.5 border border-emerald-200">
                 <span className="flex items-center gap-1 font-medium">
                   <Check className="h-3.5 w-3.5 text-emerald-600" />
-                  已生成 3 条路线，请在右侧选择
+                  路线已就绪，于右侧选择
                 </span>
                 <ArrowRight className="h-3 w-3 text-emerald-600" />
               </div>

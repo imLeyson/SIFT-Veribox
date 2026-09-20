@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Answer, Question } from "@/types/convergence";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
-import { PenLine, Check, HelpCircle, ArrowRight } from "lucide-react";
+import { PenLine, Check, HelpCircle } from "lucide-react";
 
 function answerFor(drafts: Answer[], questionId: string) {
   return drafts.find((answer) => answer.questionId === questionId) ?? null;
@@ -98,7 +98,7 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
         tabIndex={-1}
         className="text-[11px] leading-relaxed text-muted outline-none"
       >
-        动笔前，对齐核心视觉取向。可选择预设选项、选择“其他”输入你想要的内容，或直接跳过继续。
+        对齐核心视觉取舍；未确定项可直接跳过。
       </p>
 
       {questions.map((question, index) => {
@@ -129,17 +129,13 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
                   <Check className="h-3 w-3 text-emerald-600" />
                   <span>
                     {isUncertain
-                      ? "已标暂不确定"
+                      ? "暂不确定"
                       : isCustomFilled
-                        ? "已填写其他"
+                        ? "其他"
                         : "已选择"}
                   </span>
                 </span>
-              ) : (
-                <span className="text-[10px] text-stone-400">
-                  未选（提交时默认跳过）
-                </span>
-              )}
+              ) : null}
             </div>
 
             <p className="text-xs sm:text-sm font-medium leading-snug text-ink">
@@ -197,7 +193,7 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
                         isCustomActive ? "text-cream" : "text-stone-400"
                       }`}
                     />
-                    <span>其他（输入你想要的内容…）</span>
+                    <span>其他</span>
                   </span>
                   <span
                     className={`h-2.5 w-2.5 rounded-full border transition-all ${
@@ -215,8 +211,8 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
               <div className="pt-1.5 space-y-1">
                 <label className="block text-[11px] font-medium text-stone-600">
                   {question.options.length > 0
-                    ? "输入你想要的内容或具体设计要求："
-                    : "用一两句话描述你的视觉倾向："}
+                    ? "补充具体设计要求："
+                    : "描述视觉倾向："}
                 </label>
                 <textarea
                   ref={(el) => {
@@ -226,7 +222,7 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
                   maxLength={2000}
                   value={customTexts[question.id] ?? ""}
                   disabled={disabled}
-                  placeholder="输入你想要的内容，例：希望采用低饱和茶青色，配合大面积负空间留白与中英文细线排版，突出冷冽克制感…"
+                  placeholder="例：低饱和茶青色，配合大面积负空间留白与中英文细线排版，冷冽克制…"
                   onChange={(e) =>
                     handleCustomTextChange(question.id, e.target.value)
                   }
@@ -238,37 +234,33 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
                 />
                 <div className="flex items-center justify-between text-[10px] text-muted">
                   <span>
-                    {isCustomEmpty ? (
-                      <span className="text-stone-500">
-                        未填写将作为暂不确定跳过
+                    {isCustomFilled ? (
+                      <span className="text-emerald-700 font-medium">
+                        ✓ 已就绪
                       </span>
                     ) : (
-                      <span className="text-emerald-700 font-medium">
-                        ✓ 已输入内容
-                      </span>
+                      <span className="text-stone-400">未填将跳过</span>
                     )}
                   </span>
-                  <span>{(customTexts[question.id] ?? "").length}/2000</span>
+                  <span className="text-stone-400">{(customTexts[question.id] ?? "").length}/2000</span>
                 </div>
               </div>
             )}
 
             {/* Uncertain Option */}
-            <div className="flex justify-end pt-1">
+            <div className="flex justify-end pt-0.5">
               <button
                 type="button"
                 disabled={disabled}
                 onClick={() => selectUncertain(question.id)}
                 className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] transition-all ${
                   isUncertain
-                    ? "bg-stone-200 text-stone-900 font-semibold"
+                    ? "bg-stone-200 text-stone-900 font-medium"
                     : "text-stone-400 hover:text-stone-700 hover:bg-stone-100"
                 }`}
               >
                 <HelpCircle className="h-3 w-3" />
-                <span>
-                  {isUncertain ? "已标记为暂不确定" : "暂不确定（先跳过此项）"}
-                </span>
+                <span>暂不确定</span>
               </button>
             </div>
           </fieldset>
@@ -285,21 +277,18 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
         disabled={disabled}
       >
         {disabled ? (
-          "正在整理视觉判断…"
+          "正在整理判断…"
         ) : answeredCount === questions.length ? (
           <>
-            <span>确认视觉取向，收敛方向</span>
-            <ArrowRight className="h-3.5 w-3.5" />
+            <span>确认视觉取向 →</span>
           </>
         ) : answeredCount > 0 ? (
           <>
-            <span>确认已选 ({answeredCount}/{questions.length})，其余跳过继续</span>
-            <ArrowRight className="h-3.5 w-3.5" />
+            <span>确认已选 ({answeredCount}/{questions.length}) 并继续 →</span>
           </>
         ) : (
           <>
-            <span>暂不确定，直接以此状态推进</span>
-            <ArrowRight className="h-3.5 w-3.5" />
+            <span>暂不确定，直接推进 →</span>
           </>
         )}
       </button>
