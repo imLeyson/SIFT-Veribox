@@ -27,10 +27,14 @@ export type RouteNodeData = {
 function cleanText(str: string | null | undefined): string {
   if (!str) return "";
   return str
-    .replace(/(?:针对\s*)?(?:state\.)?uncertainties(?:\s*(?:中|里|内)的?|\.)?\s*([a-zA-Z0-9_]+)?(?:\s*的未决(?:纠结|诉求|顾虑|问题))?/g, "针对前期的核心诉求与待定考量")
-    .replace(/\buncertainties\b/gi, "未决考量")
-    .replace(/\bquality_source\b/gi, "品质抓手")
+    .replace(/^针对前期(?:对于|关于)?[^，,]+的(?:纠结|未决|顾虑|诉求)[，,]\s*/g, "")
+    .replace(/^(?:针对)?(?:前期的)?核心诉求与待定考量[，,]\s*/g, "")
+    .replace(/(?:针对\s*)?(?:state\.)?uncertainties(?:\s*(?:中|里|内)的?|\.)?\s*([a-zA-Z0-9_]+)?(?:\s*的未决(?:纠结|诉求|顾虑|问题))?/g, "")
+    .replace(/\buncertainties\b/gi, "核心考量")
+    .replace(/\bquality_source\b/gi, "品质工艺")
     .replace(/\bconfirmedDimensions\b/gi, "已确认维度")
+    .replace(/（针对前期未决考量）/g, "")
+    .replace(/一眼看懂/g, "画面质感")
     .trim();
 }
 
@@ -50,8 +54,8 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
     : Boolean(route.recommendedReason);
 
   const kicker = isRecommended
-    ? `主题 0${index + 1} · 🌟 推荐主题`
-    : `主题 0${index + 1} · 探索主题`;
+    ? `领地 0${index + 1} · 首选方向`
+    : `领地 0${index + 1} · 探索方向`;
 
   // Display hero theme name
   const heroTitle = route.themeName?.trim() || (() => {
@@ -103,19 +107,19 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
         <div className="space-y-3 text-xs">
           {/* Visual Hook & Dimension Badges */}
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-md bg-mist px-2 py-0.5 text-[11px] font-medium text-ink">
+            <span className="inline-flex items-center gap-1 rounded-md bg-stone-100/90 px-2 py-0.5 text-[10.5px] font-medium text-stone-700 border border-stone-200/60">
               <Compass className="h-3 w-3 text-accent" />
               {route.startingPoint}
             </span>
             {visualHook && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-[10px] text-stone-600">
+              <span className="inline-flex items-center gap-1 rounded-md bg-stone-50 px-2 py-0.5 text-[10px] text-stone-500 border border-stone-200/50">
                 <Layers className="h-2.5 w-2.5 text-stone-400" />
                 {visualHook}
               </span>
             )}
             {route.timeframe && (
-              <span className="inline-flex items-center gap-0.5 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-700 font-medium border border-blue-100/80">
-                <Clock className="h-2.5 w-2.5" />
+              <span className="inline-flex items-center gap-0.5 rounded-md bg-stone-50 px-1.5 py-0.5 text-[10px] text-stone-600 font-medium border border-stone-200/50">
+                <Clock className="h-2.5 w-2.5 text-stone-400" />
                 {route.timeframe}
               </span>
             )}
@@ -138,68 +142,77 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
             )}
           </div>
 
-          {/* Key Visual Snapshot - Instant understanding of what it looks like */}
-          <div className="rounded-xl border border-indigo-100/90 bg-indigo-50/60 p-2.5 space-y-1">
-            <div className="flex items-center gap-1.5 font-semibold text-indigo-900 text-[11px]">
-              <Eye className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
-              <span>画面效果快照 · 一眼看懂</span>
+          {/* Visual Impression / Art Direction */}
+          <div className="rounded-xl border border-stone-200/90 bg-white/95 p-3 shadow-2xs space-y-1.5">
+            <div className="flex items-center justify-between font-semibold text-stone-900 text-[11px]">
+              <div className="flex items-center gap-1.5">
+                <Eye className="h-3.5 w-3.5 text-stone-700 shrink-0" />
+                <span>视觉呈象 · 画面质感</span>
+              </div>
+              <span className="text-[9px] font-mono text-stone-400 tracking-wider">ART DIRECTION</span>
             </div>
-            <p className="leading-relaxed text-[11.5px] text-indigo-950 font-medium">
+            <p className="leading-relaxed text-[11.5px] text-stone-800 font-medium">
               {snapshotText}
             </p>
           </div>
 
           {/* Recommended Reason - ONLY for strictly recommended route */}
           {isRecommended && recReason && (
-            <div className="rounded-xl border border-amber-200/90 bg-amber-50/80 p-2.5 text-xs text-amber-900 leading-snug">
-              <div className="flex items-center gap-1 font-semibold text-amber-800 text-[11px] mb-0.5">
+            <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 p-2.5 text-xs text-amber-950 leading-snug shadow-2xs">
+              <div className="flex items-center gap-1.5 font-semibold text-amber-900 text-[11px] mb-1">
                 <Sparkles className="h-3 w-3 text-amber-600" />
-                <span>为什么推荐此主题（针对前期未决考量）</span>
+                <span>首选推荐依据</span>
               </div>
-              <p className="leading-relaxed text-[11px]">{recReason}</p>
+              <p className="leading-relaxed text-[11px] text-amber-950/90">{recReason}</p>
             </div>
           )}
 
           {/* Core Visual Strategy */}
-          <div className="rounded-xl bg-cream/70 p-2.5 border border-line/60 space-y-1">
-            <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider block">
-              核心设计取舍与手法
-            </span>
+          <div className="rounded-xl bg-stone-50/70 p-2.5 border border-stone-200/70 space-y-1">
+            <div className="flex items-center justify-between text-[10px] font-semibold text-stone-500 uppercase tracking-wider">
+              <span>设计策略与取舍</span>
+              <span className="font-mono text-[9px] text-stone-400">STRATEGY</span>
+            </div>
             <p className="font-semibold text-ink leading-snug text-[11.5px]">
               {coreProblemText}
             </p>
-            <p className="text-stone-600 leading-relaxed text-[11px]">
-              {purposeText}
-            </p>
+            {purposeText && purposeText !== coreProblemText && (
+              <p className="text-stone-600 leading-relaxed text-[11px]">
+                {purposeText}
+              </p>
+            )}
           </div>
 
           {/* Visual Highlights & Anti-Drift Guardrails */}
           <div className="grid grid-cols-2 gap-2 text-[11px]">
-            <div className="rounded-lg bg-emerald-50/80 p-2 border border-emerald-200/80 text-emerald-950 flex flex-col justify-between shadow-2xs">
+            <div className="rounded-lg bg-emerald-50/60 p-2.5 border border-emerald-200/70 text-emerald-950 flex flex-col justify-between shadow-2xs">
               <div>
-                <span className="font-semibold text-emerald-800 flex items-center gap-1 text-[10px]">
+                <span className="font-semibold text-emerald-800 flex items-center gap-1 text-[10.5px]">
                   <Sparkles className="h-3 w-3 text-emerald-600" />
                   视觉亮点
                 </span>
-                <p className="leading-snug mt-1 text-[11px] text-emerald-950">{prosText}</p>
+                <p className="leading-relaxed mt-1 text-[11px] text-emerald-950">{prosText}</p>
               </div>
             </div>
-            <div className="rounded-lg bg-amber-50/70 p-2 border border-amber-200/80 text-amber-950 flex flex-col justify-between shadow-2xs">
+            <div className="rounded-lg bg-amber-50/60 p-2.5 border border-amber-200/70 text-amber-950 flex flex-col justify-between shadow-2xs">
               <div>
-                <span className="font-semibold text-amber-800 flex items-center gap-1 text-[10px]">
+                <span className="font-semibold text-amber-800 flex items-center gap-1 text-[10.5px]">
                   <Compass className="h-3 w-3 text-amber-600" />
                   防跑偏提示
                 </span>
-                <p className="leading-snug mt-1 text-[11px] text-amber-950">{consText}</p>
+                <p className="leading-relaxed mt-1 text-[11px] text-amber-950">{consText}</p>
               </div>
             </div>
           </div>
 
           {/* Collapsible Steps Preview */}
           <details className="text-[11px] text-muted group pt-1">
-            <summary className="cursor-pointer font-medium text-stone-700 flex items-center justify-between hover:text-ink">
-              <span>{route.steps.length} 个工位实操步骤清单</span>
-              <span className="text-[10px] text-muted group-open:rotate-90 transition-transform">
+            <summary className="cursor-pointer font-medium text-stone-700 flex items-center justify-between hover:text-ink py-1">
+              <span className="flex items-center gap-1.5">
+                <Layers className="h-3 w-3 text-stone-400" />
+                <span>{route.steps.length} 个工位实操步骤清单</span>
+              </span>
+              <span className="text-[10px] text-stone-400 group-open:rotate-90 transition-transform">
                 ▶
               </span>
             </summary>

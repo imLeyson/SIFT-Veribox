@@ -99,7 +99,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       : selectedRoute.title;
     lines.push(`### 📌 ${themeHeading}`);
     if (selectedRoute.visualSnapshot) {
-      lines.push(`- **画面效果快照**：${selectedRoute.visualSnapshot}`);
+      lines.push(`- **视觉呈象 (画面质感)**：${selectedRoute.visualSnapshot}`);
     }
     lines.push(`- **切入起点**：${selectedRoute.startingPoint}`);
     if (selectedRoute.timeframe) {
@@ -184,7 +184,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       const themeTitle = r.themeName ? `${r.themeName} — ${r.title}` : r.title;
       lines.push(`### 主题 0${idx + 1}：${themeTitle}`);
       if (r.visualSnapshot) {
-        lines.push(`- **画面效果快照**：${r.visualSnapshot}`);
+        lines.push(`- **视觉呈象 (画面质感)**：${r.visualSnapshot}`);
       }
       lines.push(`- **切入起点**：${r.startingPoint}`);
       lines.push(`- **核心问题**：${r.coreProblem}`);
