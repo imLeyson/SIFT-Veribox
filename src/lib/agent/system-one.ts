@@ -965,3 +965,163 @@ export function calibratePlatformQuery(
   };
 }
 
+export type PlatformInspirationClue = {
+  lookFor: string;
+  avoid: string;
+  lensRole: "benchmark" | "avant_garde" | "proofing";
+};
+
+/**
+ * Generates senior art director inspection clues for a platform in the given design step context.
+ */
+export function getPlatformInspirationClues(
+  platformIdOrName: string,
+  context?: {
+    stepTitle?: string;
+    stepQuestion?: string;
+    themeName?: string;
+  },
+): PlatformInspirationClue {
+  const normId = platformIdOrName
+    .toLowerCase()
+    .replace(/^src_/, "")
+    .replace(/[\s\-_()]+/g, "");
+
+  if (normId.includes("mobbin")) {
+    return {
+      lensRole: "benchmark",
+      lookFor: "关注真实生产环境下深色背景与 1px 冷灰描边卡片的层级关系，以及多态组件（hover/disabled）的 8px 栅格流线",
+      avoid: "避开概念设计图中的无逻辑悬浮投影与不可落地的虚假数据图表",
+    };
+  }
+  if (normId.includes("godly")) {
+    return {
+      lensRole: "avant_garde",
+      lookFor: "关注暗黑极客科技美学中的等宽字体排版、微妙微动效缓动曲线与 1px 精细网格分割",
+      avoid: "避开花哨但卡顿的重型 3D 渲染，保持页面信息阅读的主导性",
+    };
+  }
+  if (normId.includes("bpando")) {
+    return {
+      lensRole: "proofing",
+      lookFor: "关注 350g+ 原浆棉纸在 45° 侧光下的无墨深压凹阴影斜率与纸张原生态微孔肌理",
+      avoid: "避开缺乏克重支撑的平面假图与大面积高反光浮夸烫金",
+    };
+  }
+  if (normId.includes("fontsinuse")) {
+    return {
+      lensRole: "avant_garde",
+      lookFor: "关注真实商业落地中中西文字阶对比（1.8~2.5x 视觉落差）、紧凑字距与标尺网格骨架",
+      avoid: "避开无字重节奏、通篇默认字体扁平排版的视觉疲劳",
+    };
+  }
+  if (normId.includes("dieline")) {
+    return {
+      lensRole: "benchmark",
+      lookFor: "关注国际前沿包装的成套瓶型结构、阻尼感开启方式与环保包材的结构自锁设计",
+      avoid: "避开套用通用样机模板导致的比例畸变与无法量产结构",
+    };
+  }
+  if (normId.includes("packagingoftheworld")) {
+    return {
+      lensRole: "benchmark",
+      lookFor: "关注多品类真实成品的纸张折痕、外包装与内衬的卡位结构与实物打样厚度",
+      avoid: "避开无实际刀线结构的虚假贴图",
+    };
+  }
+  if (normId.includes("zcool")) {
+    return {
+      lensRole: "proofing",
+      lookFor: "关注国内顶尖商业团队实际印刷打样摄影、防蹭脏边缘处理与真实咬印压痕深度",
+      avoid: "避开带有明显商业模板水印与套版素材贴图的设计案，只认实物打样摄影",
+    };
+  }
+  if (normId.includes("xiaohongshu")) {
+    return {
+      lensRole: "proofing",
+      lookFor: "关注素人消费者在自然日光桌面下的无滤镜真实晒单、上手握持比例与货架真实心智",
+      avoid: "避开精修广告通稿与软文带货摆拍，优先看真实桌面切片",
+    };
+  }
+  if (normId.includes("behance")) {
+    return {
+      lensRole: "benchmark",
+      lookFor: "关注成套品牌视觉识别从草图、字阶网格推演到各介质物料延展的完整推演链路",
+      avoid: "避开使用去样机语法（-mockup）过滤掉的千篇一律免费 PSD 样机展示",
+    };
+  }
+  if (normId.includes("arena")) {
+    return {
+      lensRole: "avant_garde",
+      lookFor: "关注研究型设计师私人频道中的去算法化冷门灵感、瑞士国际主义平面与冷冽工业原型",
+      avoid: "避开社媒算法推荐的同质化网红流行审美",
+    };
+  }
+  if (normId.includes("typewolf")) {
+    return {
+      lensRole: "avant_garde",
+      lookFor: "关注当代流行独立西文字型的字重微调、字阶层级与排印学最新实践指南",
+      avoid: "避开泛滥的默认系统无衬线字体",
+    };
+  }
+  if (normId.includes("brandnew")) {
+    return {
+      lensRole: "benchmark",
+      lookFor: "关注权威品牌改版中的核心视觉锤提炼、负空间剪影与系统化多端规范延展",
+      avoid: "避开脱离品牌商业心智的纯装饰性图形",
+    };
+  }
+  if (normId.includes("dribbble")) {
+    return {
+      lensRole: "avant_garde",
+      lookFor: "关注高保真微交互动效曲线、胶囊徽章微间距与组件层级小样",
+      avoid: "避开无实际开发约束的纯概念飞线与渐变",
+    };
+  }
+  if (normId.includes("huaban")) {
+    return {
+      lensRole: "proofing",
+      lookFor: "关注本土商业消费场景下的陈列搭配、电商首屏视觉节奏与包装展开图细节",
+      avoid: "避开低像素重复采集的素材废图",
+    };
+  }
+  if (normId.includes("instagram")) {
+    return {
+      lensRole: "avant_garde",
+      lookFor: "关注海外小众独立品牌主理人的生活方式切片与即时社媒视觉质感",
+      avoid: "避开过度滤镜导致的色彩失真",
+    };
+  }
+
+  return {
+    lensRole: "benchmark",
+    lookFor: "关注官方设计规范与行业头部品牌的落地实践范例",
+    avoid: "避开非官方的二次解读与过时规范",
+  };
+}
+
+/**
+ * Classifies design keywords into 4 core inspiration dimensions:
+ * - form: 结构形态 / 版式骨架 / 栅格 / 界面组件
+ * - craft: 材质工艺 / 触感 / 压凹 / 阴影 / 动效
+ * - mood: 色彩意象 / 调性 / 氛围
+ * - reality: 真实打样 / 实拍晒单 / 货架反馈
+ */
+export function inferKeywordDimension(
+  keyword: string,
+  meaning: string = "",
+): "form" | "craft" | "mood" | "reality" {
+  const text = `${keyword} ${meaning}`.toLowerCase();
+  if (/实拍|晒单|打样|货架|真实|落地|印刷厂|开箱|测评|消费/.test(text)) {
+    return "reality";
+  }
+  if (/压凹|特种纸|肌理|纸样|材质|棉卡|克重|烫金|磨砂|工艺|触感|8px|阴影|描边|高保真|动效|deboss|cotton|foil|texture/.test(text)) {
+    return "craft";
+  }
+  if (/网格|字阶|排版|版式|结构|双栏|骨架|瓶型|盒型|圆筒|看板|组件|表单|导航|表格|布局|grid|layout|typography|box|canister|dashboard|table/.test(text)) {
+    return "form";
+  }
+  return "mood";
+}
+
+

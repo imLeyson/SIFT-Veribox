@@ -60,6 +60,7 @@ export const PlatformKeywordSchema = z.object({
   meaning: shortText,
   language: z.enum(["zh", "en"]),
   searchType: z.enum(["moodboard", "detail", "consumer", "benchmark"]).optional(),
+  dimension: z.enum(["form", "craft", "mood", "reality"]).optional(),
   advancedQuery: text.max(160).optional(),
   calibratedQuery: text.max(100).optional(),
   hitRateConfidence: z.number().min(0).max(100).optional(),
@@ -76,6 +77,13 @@ export const PlatformSourceSchema = z.object({
     .min(2, "每个来源至少提供 2 个关键词")
     .max(4, "每个来源最多提供 4 个关键词"),
   searchUrl: text,
+  inspirationClues: z
+    .object({
+      lookFor: text.max(300),
+      avoid: text.max(300),
+    })
+    .optional(),
+  lensRole: z.enum(["benchmark", "avant_garde", "proofing"]).optional(),
 });
 
 export const PlatformPlanSchema = z

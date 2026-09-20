@@ -3,7 +3,12 @@ import { completeJson } from "./llm";
 import type { z } from "zod";
 import type { PlatformPlanInputSchema } from "./routes-schema";
 import { buildPlatformSearchUrl, PLATFORM_REGISTRY } from "./platform-registry";
-import { isJevCloudConfigured, calibratePlatformQuery } from "./system-one";
+import {
+  isJevCloudConfigured,
+  calibratePlatformQuery,
+  getPlatformInspirationClues,
+  inferKeywordDimension,
+} from "./system-one";
 
 type PlatformPlanInput = z.infer<typeof PlatformPlanInputSchema>;
 
@@ -157,11 +162,17 @@ export function normalizeLivePlatformPayload(
         ? rec.advancedQuery.trim()
         : cal.advancedQuery;
 
+      const dim =
+        rec.dimension === "form" || rec.dimension === "craft" || rec.dimension === "mood" || rec.dimension === "reality"
+          ? rec.dimension
+          : inferKeywordDimension(kw, nonEmpty(rec.meaning, ""));
+
       list.push({
         keyword: kw,
         meaning: nonEmpty(rec.meaning, "探索参考检索词"),
         language: lang,
         searchType: st,
+        dimension: dim,
         advancedQuery: adv ? adv.slice(0, 160) : undefined,
         calibratedQuery: cal.calibratedQuery,
         hitRateConfidence: cal.hitConfidence,
@@ -180,6 +191,7 @@ export function normalizeLivePlatformPayload(
         meaning: "对应当前步骤的基础参考词",
         language: "zh",
         searchType: "detail",
+        dimension: inferKeywordDimension(kw, ""),
         advancedQuery: cal.advancedQuery,
         calibratedQuery: cal.calibratedQuery,
         hitRateConfidence: cal.hitConfidence,
@@ -207,6 +219,11 @@ export function normalizeLivePlatformPayload(
       reg.id,
     );
     const targetQuery = keywords[0]?.calibratedQuery || keywords[0]?.keyword || input.currentStep.title;
+    const clues = getPlatformInspirationClues(reg.id, {
+      stepTitle: input.currentStep.title,
+      stepQuestion: input.currentStep.question,
+      themeName: input.selectedRoute.themeName,
+    });
 
     return {
       id: nonEmpty(s.id, `src_${reg.id}_${index + 1}`),
@@ -215,6 +232,8 @@ export function normalizeLivePlatformPayload(
       reason: nonEmpty(s.reason, reg.description),
       keywords,
       searchUrl: buildPlatformSearchUrl(reg.id, targetQuery),
+      inspirationClues: clues,
+      lensRole: clues.lensRole,
     };
   }
 
@@ -248,6 +267,7 @@ export function normalizeLivePlatformPayload(
           meaning: `${reg.name} 上的 ${reg.roleTag} 参考`,
           language: "zh",
           searchType: "detail",
+          dimension: "reality",
           advancedQuery: calZh.advancedQuery,
           calibratedQuery: calZh.calibratedQuery,
           hitRateConfidence: calZh.hitConfidence,
@@ -258,6 +278,7 @@ export function normalizeLivePlatformPayload(
           meaning: "英文高质量设计标杆参考",
           language: "en",
           searchType: "benchmark",
+          dimension: "form",
           advancedQuery: calEn.advancedQuery,
           calibratedQuery: calEn.calibratedQuery,
           hitRateConfidence: calEn.hitConfidence,
@@ -265,6 +286,11 @@ export function normalizeLivePlatformPayload(
         },
       ];
       const targetQuery = kws[0].calibratedQuery || kws[0].keyword;
+      const clues = getPlatformInspirationClues(reg.id, {
+        stepTitle: input.currentStep.title,
+        stepQuestion: input.currentStep.question,
+        themeName: input.selectedRoute.themeName,
+      });
       primarySources.push({
         id: `src_${reg.id}_${primarySources.length + 1}`,
         platform: reg.name,
@@ -272,6 +298,8 @@ export function normalizeLivePlatformPayload(
         reason: reg.description,
         keywords: kws,
         searchUrl: buildPlatformSearchUrl(reg.id, targetQuery),
+        inspirationClues: clues,
+        lensRole: clues.lensRole,
       });
     }
   }
@@ -305,6 +333,7 @@ export function normalizeLivePlatformPayload(
           meaning: `在 ${reg.name} 上拓展寻找更多可能性`,
           language: "zh",
           searchType: "consumer",
+          dimension: "reality",
           advancedQuery: calZh.advancedQuery,
           calibratedQuery: calZh.calibratedQuery,
           hitRateConfidence: calZh.hitConfidence,
@@ -315,6 +344,7 @@ export function normalizeLivePlatformPayload(
           meaning: "跨领域创意标杆",
           language: "en",
           searchType: "moodboard",
+          dimension: "mood",
           advancedQuery: calEn.advancedQuery,
           calibratedQuery: calEn.calibratedQuery,
           hitRateConfidence: calEn.hitConfidence,
@@ -322,6 +352,11 @@ export function normalizeLivePlatformPayload(
         },
       ];
       const targetQuery = kws[0].calibratedQuery || kws[0].keyword;
+      const clues = getPlatformInspirationClues(reg.id, {
+        stepTitle: input.currentStep.title,
+        stepQuestion: input.currentStep.question,
+        themeName: input.selectedRoute.themeName,
+      });
       alternativeSources.push({
         id: `src_alt_${reg.id}_${alternativeSources.length + 1}`,
         platform: reg.name,
@@ -329,6 +364,8 @@ export function normalizeLivePlatformPayload(
         reason: reg.description,
         keywords: kws,
         searchUrl: buildPlatformSearchUrl(reg.id, targetQuery),
+        inspirationClues: clues,
+        lensRole: clues.lensRole,
       });
     }
   }

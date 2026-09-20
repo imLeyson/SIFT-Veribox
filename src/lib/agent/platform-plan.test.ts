@@ -121,4 +121,32 @@ describe("platform plan agent generation", () => {
     const pinSource = normalized.plan.primarySources.find((s) => s.platform === "Pinterest");
     expect(pinSource?.keywords[0]?.advancedQuery).toMatch(/-mockup/);
   });
+
+  it("enriches sources with Jev lensRole, inspirationClues, dimension, and calibratedQuery", async () => {
+    const route = mockRoutes[0];
+    const step = route.steps[0];
+
+    const result = await runPlatformPlanGeneration({
+      sessionId: "s1",
+      requestId: "p_req5",
+      state: confirmedState,
+      selectedRoute: route,
+      currentStep: step,
+      completedStepIds: [],
+    });
+
+    const plan = result.plan;
+    for (const src of plan.primarySources) {
+      expect(["benchmark", "avant_garde", "proofing"]).toContain(src.lensRole);
+      expect(src.inspirationClues).toBeDefined();
+      expect(src.inspirationClues?.lookFor).toBeTruthy();
+      expect(src.inspirationClues?.avoid).toBeTruthy();
+
+      for (const kw of src.keywords) {
+        expect(["form", "craft", "mood", "reality"]).toContain(kw.dimension);
+        expect(kw.calibratedQuery).toBeTruthy();
+      }
+    }
+  });
 });
+

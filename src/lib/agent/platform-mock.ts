@@ -2,7 +2,11 @@ import type { PlatformPlan, PlatformSource } from "@/types/routes";
 import type { Route, RouteStep } from "@/types/routes";
 import type { DesignState } from "@/types/convergence";
 import { buildPlatformSearchUrl, PLATFORM_REGISTRY } from "./platform-registry";
-import { calibratePlatformQuery } from "./system-one";
+import {
+  calibratePlatformQuery,
+  getPlatformInspirationClues,
+  inferKeywordDimension,
+} from "./system-one";
 
 export function getMockPlatformPlan(
   state: DesignState,
@@ -872,8 +876,10 @@ export function getMockPlatformPlan(
           themeName,
           meaning: kw.meaning,
         });
+        const dim = kw.dimension ?? inferKeywordDimension(kw.keyword, kw.meaning);
         return {
           ...kw,
+          dimension: dim,
           calibratedQuery: cal.calibratedQuery,
           hitRateConfidence: cal.hitConfidence,
           jevJudgement: cal.jevJudgement,
@@ -886,10 +892,18 @@ export function getMockPlatformPlan(
         calibratedKeywords[0]?.keyword ||
         src.keywords[0]?.keyword;
 
+      const clues = getPlatformInspirationClues(regId, {
+        stepTitle,
+        stepQuestion: currentStep.question,
+        themeName,
+      });
+
       return {
         ...src,
         keywords: calibratedKeywords,
         searchUrl: buildPlatformSearchUrl(regId, target),
+        inspirationClues: clues,
+        lensRole: clues.lensRole,
       };
     });
   }

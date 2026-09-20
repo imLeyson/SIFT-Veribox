@@ -25,11 +25,14 @@ export type Route = {
   alignmentScore?: number;
 };
 
+export type PlatformKeywordDimension = "form" | "craft" | "mood" | "reality";
+
 export type PlatformKeyword = {
   keyword: string;
   meaning: string;
   language: "zh" | "en";
   searchType?: "moodboard" | "detail" | "consumer" | "benchmark";
+  dimension?: PlatformKeywordDimension;
   advancedQuery?: string;
   calibratedQuery?: string;
   hitRateConfidence?: number;
@@ -43,6 +46,11 @@ export type PlatformSource = {
   reason: string;
   keywords: PlatformKeyword[];
   searchUrl: string;
+  inspirationClues?: {
+    lookFor: string;
+    avoid: string;
+  };
+  lensRole?: "benchmark" | "avant_garde" | "proofing";
 };
 
 export type PlatformPlan = {
