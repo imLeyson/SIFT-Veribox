@@ -157,24 +157,24 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
             </p>
           </div>
 
-          {/* Pitch Pros & Landing Cons */}
+          {/* Visual Highlights & Anti-Drift Guardrails */}
           <div className="grid grid-cols-2 gap-2 text-[11px]">
-            <div className="rounded-lg bg-emerald-50/90 p-2 border border-emerald-100 text-emerald-950 flex flex-col justify-between">
+            <div className="rounded-lg bg-emerald-50/80 p-2 border border-emerald-200/80 text-emerald-950 flex flex-col justify-between shadow-2xs">
               <div>
                 <span className="font-semibold text-emerald-800 flex items-center gap-1 text-[10px]">
-                  <Lightbulb className="h-3 w-3 text-emerald-600" />
-                  提案卖点 (Pros)
+                  <Sparkles className="h-3 w-3 text-emerald-600" />
+                  视觉亮点
                 </span>
-                <p className="leading-snug mt-1 text-[11px]">{prosText}</p>
+                <p className="leading-snug mt-1 text-[11px] text-emerald-950">{prosText}</p>
               </div>
             </div>
-            <div className="rounded-lg bg-stone-100/90 p-2 border border-stone-200 text-stone-800 flex flex-col justify-between">
+            <div className="rounded-lg bg-amber-50/70 p-2 border border-amber-200/80 text-amber-950 flex flex-col justify-between shadow-2xs">
               <div>
-                <span className="font-semibold text-stone-600 flex items-center gap-1 text-[10px]">
-                  <ShieldAlert className="h-3 w-3 text-stone-500" />
-                  避坑提示 (Cons)
+                <span className="font-semibold text-amber-800 flex items-center gap-1 text-[10px]">
+                  <Compass className="h-3 w-3 text-amber-600" />
+                  防跑偏提示
                 </span>
-                <p className="leading-snug mt-1 text-[11px]">{consText}</p>
+                <p className="leading-snug mt-1 text-[11px] text-amber-950">{consText}</p>
               </div>
             </div>
           </div>

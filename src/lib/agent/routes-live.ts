@@ -41,8 +41,8 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
 - startingPoint: 独特的探索起点（简短精炼）。
 - coreProblem: 核心设计抉择（说明主动放弃了什么、押注了什么，如"放弃多色插画装饰，把视觉质感全押在特种棉纸触感与无油墨压凹阴影上"）。
 - purpose: 具象的视觉执行手法。
-- pros: 提案卖点 / 说服话术（向客户或总监汇报时一锤定音的核心理由，如"货架同行都在堆插画，我们用纯粹大留白形成‘视觉真空’，客户一眼锁定；上手触感厚重耐看"）。
-- cons: 避坑提示 / 落地风险（实际打样和生产最容易翻车的隐患，如"正面无多余装饰遮丑，极度考验字距与压凹精度；浅色特种纸易蹭脏，需配外盒"）。
+- pros: 视觉亮点 / 灵感抓手（该主题在画面、构图、色彩或材质上最出彩、最打动人的审美特质，如"大面积留白形成纯粹视觉真空，靠棉纸微压凹显出雕塑感，耐看且极具呼吸感"）。
+- cons: 防跑偏提示 / 注意边界（探索该视觉方向时需警惕的调性陷阱或审美红线，如"留白过多若缺乏微工艺质感支撑，极易显得苍白空洞无物；必须把控好纸张肌理的层次"）。
 - feasibility: "high" | "medium" | "challenging"（落地可行性与打样难度）。
 - timeframe: 探索打样周期（如"0.5–1 天"、"1–2 天"）。
 - recommendedReason: 仅在推荐主题填写自然中文解题理由，其余两个探索主题严格填 null。
@@ -62,8 +62,8 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
       "startingPoint": "特种纸微触感与无墨压凹",
       "coreProblem": "放弃多色繁复装饰，依靠材料肌理与光影阴影建立静谧质感",
       "purpose": "以大面积素雅纸感与微光影细节构建耐看且具触觉温度的视觉体验",
-      "pros": "在琳琅满目的货架中形成大留白视觉真空，客户拿在手中触感高级耐看",
-      "cons": "正面无装饰遮丑，极度考验排版字距精度，浅色纸张需注意仓储防蹭脏",
+      "pros": "大面积留白在复杂环境中形成纯粹视觉真空，靠棉纸触感与压凹阴影呈现沉静雕塑感",
+      "cons": "留白若无微压凹与纸张肌理反差支撑，极易显得苍白空洞无物，必须严控纸张白度与阴影层次",
       "feasibility": "high",
       "timeframe": "0.5–1 天",
       "recommendedReason": "针对前期对于想要高品质感但担心过于花哨的纠结，纯纸感与无墨压凹能最稳妥解开顾虑",
@@ -265,8 +265,8 @@ export function normalizeLiveRoutesPayload(
       focusDimension: nonEmpty(r.focusDimension, defaultDimensions[i] ?? "视觉美学探索"),
       coreProblem: nonEmpty(r.coreProblem, "放弃多色繁复插画装饰，把视觉质感全押在特种棉纸触感与无墨压凹上"),
       purpose: nonEmpty(r.purpose, "以大面积素雅纸感与微光影细节构建耐看且具触觉温度的视觉体验"),
-      pros: nonEmpty(r.pros, "在琳琅满目的货架中形成大留白视觉真空，客户拿在手中触感高级耐看"),
-      cons: nonEmpty(r.cons, "正面无多余装饰遮丑，极度考验排版字距精度，浅色纸张需注意仓储防蹭脏"),
+      pros: nonEmpty(r.pros, "大面积留白在复杂环境中形成纯粹视觉真空，靠棉纸触感与压凹阴影呈现沉静雕塑感"),
+      cons: nonEmpty(r.cons, "留白若无微压凹与纸张肌理反差支撑，极易显得苍白空洞无物，必须严控纸张白度与阴影层次"),
       feasibility: feasibilityVal,
       timeframe: nonEmpty(r.timeframe, "0.5–1 天"),
       recommendedReason: recReason,
@@ -286,8 +286,8 @@ export function normalizeLiveRoutesPayload(
       focusDimension: defaultDimensions[i] ?? "综合美学表现",
       coreProblem: "放弃多色繁复装饰，依靠材料肌理与光影阴影建立静谧质感",
       purpose: "以大面积素雅纸感与微光影细节构建耐看且具触觉温度的视觉体验",
-      pros: "在琳琅满目的货架中形成大留白视觉真空，客户拿在手中触感高级耐看",
-      cons: "正面无多余装饰遮丑，极度考验排版字距精度，浅色纸张需注意仓储防蹭脏",
+      pros: "大面积留白在复杂环境中形成纯粹视觉真空，靠棉纸触感与压凹阴影呈现沉静雕塑感",
+      cons: "留白若无微压凹与纸张肌理反差支撑，极易显得苍白空洞无物，必须严控纸张白度与阴影层次",
       feasibility: "high",
       timeframe: "0.5–1 天",
       recommendedReason: null,

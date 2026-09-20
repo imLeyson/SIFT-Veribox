@@ -108,8 +108,8 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     }
     lines.push(`- **核心突破问题**：${selectedRoute.coreProblem}`);
     lines.push(`- **预期目标**：${selectedRoute.purpose}`);
-    lines.push(`- **优势**：${selectedRoute.pros}`);
-    lines.push(`- **潜在风险**：${selectedRoute.cons}\n`);
+    lines.push(`- **视觉亮点**：${selectedRoute.pros}`);
+    lines.push(`- **防跑偏提示**：${selectedRoute.cons}\n`);
 
     // Section 03: Steps & Execution
     lines.push(`## 03 探索步骤推进与验收清单 (Steps & Execution)`);
@@ -172,7 +172,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       }
       lines.push(`- **切入起点**：${r.startingPoint}`);
       lines.push(`- **核心问题**：${r.coreProblem}`);
-      lines.push(`- **优势/风险**：${r.pros} / ${r.cons}\n`);
+      lines.push(`- **视觉亮点 / 防跑偏**：${r.pros} / ${r.cons}\n`);
     });
   }
 
