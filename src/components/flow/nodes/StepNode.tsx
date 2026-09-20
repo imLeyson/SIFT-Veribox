@@ -78,7 +78,7 @@ export function StepNode({ selected }: NodeProps) {
   return (
     <div className="w-[390px]">
       <NodeShell
-        kicker="05 · 步骤推进"
+        kicker="05 · 工位实操推进"
         title={route.title}
         selected={selected}
       >
@@ -128,13 +128,13 @@ export function StepNode({ selected }: NodeProps) {
               <div className="pt-2 border-t border-line/40">
                 <span className="text-[10px] font-medium text-stone-500 flex items-center gap-1 mb-1">
                   <PackageCheck className="h-3 w-3 text-accent" />
-                  阶段物料
+                  阶段交付物清单 (Deliverables)
                 </span>
                 <div className="flex flex-wrap gap-1">
                   {currentStep.deliverables.map((item, idx) => (
                     <span
                       key={idx}
-                      className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-800"
+                      className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-800 border border-stone-200/50"
                     >
                       {item}
                     </span>
@@ -149,7 +149,7 @@ export function StepNode({ selected }: NodeProps) {
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-medium text-emerald-800 flex items-center gap-1">
                     <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                    验收标准
+                    工位验收清单 (Acceptance Checklist)
                   </span>
                   <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.2 rounded-full">
                     {currentChecked.length}/{currentStep.acceptanceCriteria.length}
@@ -199,7 +199,7 @@ export function StepNode({ selected }: NodeProps) {
             <div className="flex items-center justify-between text-xs font-semibold text-ink">
               <span className="flex items-center gap-1 text-[11px]">
                 <StickyNote className="h-3 w-3 text-amber-600" />
-                探索手记
+                工位灵感手记
               </span>
               <span className="text-[10px] text-muted">
                 {currentNotes.length}
