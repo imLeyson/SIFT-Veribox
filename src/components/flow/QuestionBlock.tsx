@@ -91,6 +91,12 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
         event.preventDefault();
         if (!disabled) void siftActions.answer();
       }}
+      onKeyDown={(e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+          e.preventDefault();
+          if (!disabled) void siftActions.answer();
+        }
+      }}
       className="space-y-4"
     >
       <p
@@ -148,7 +154,7 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
               aria-label={`第 ${index + 1} 题选项`}
               className="flex flex-col gap-1.5 pt-0.5"
             >
-              {question.options.map((option) => {
+              {question.options.map((option, optIdx) => {
                 const isSelected =
                   isOptionSelected && current.optionId === option.id;
                 return (
@@ -157,13 +163,24 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
                     type="button"
                     disabled={disabled}
                     onClick={() => selectOption(question.id, option.id)}
-                    className={`flex items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition-all ${
+                    className={`flex items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition-all active:scale-[0.99] cursor-pointer ${
                       isSelected
                         ? "border-ink bg-ink text-cream shadow-xs font-medium"
                         : "border-line/70 bg-white text-ink hover:border-ink/50 hover:bg-cream/40"
                     }`}
                   >
-                    <span>{option.label}</span>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center justify-center h-4 w-4 rounded text-[9px] font-mono font-medium ${
+                          isSelected
+                            ? "bg-white/20 text-cream"
+                            : "bg-stone-100 text-stone-500"
+                        }`}
+                      >
+                        0{optIdx + 1}
+                      </span>
+                      <span>{option.label}</span>
+                    </span>
                     <span
                       className={`h-2.5 w-2.5 rounded-full border transition-all ${
                         isSelected
@@ -181,7 +198,7 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
                   type="button"
                   disabled={disabled}
                   onClick={() => selectCustom(question.id)}
-                  className={`flex items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition-all ${
+                  className={`flex items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition-all active:scale-[0.99] cursor-pointer ${
                     isCustomActive
                       ? "border-ink bg-ink text-cream shadow-xs font-medium"
                       : "border-line/70 bg-white text-ink hover:border-ink/50 hover:bg-cream/40"
@@ -281,14 +298,23 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
         ) : answeredCount === questions.length ? (
           <>
             <span>确认视觉取向 →</span>
+            <kbd className="hidden sm:inline-block rounded bg-white/20 px-1 py-0.2 text-[10px] font-sans opacity-80">
+              ⌘↵
+            </kbd>
           </>
         ) : answeredCount > 0 ? (
           <>
             <span>确认已选 ({answeredCount}/{questions.length}) 并继续 →</span>
+            <kbd className="hidden sm:inline-block rounded bg-white/20 px-1 py-0.2 text-[10px] font-sans opacity-80">
+              ⌘↵
+            </kbd>
           </>
         ) : (
           <>
             <span>暂不确定，直接推进 →</span>
+            <kbd className="hidden sm:inline-block rounded bg-white/20 px-1 py-0.2 text-[10px] font-sans opacity-80">
+              ⌘↵
+            </kbd>
           </>
         )}
       </button>

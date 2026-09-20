@@ -19,6 +19,16 @@ export function StateNode({ selected }: NodeProps) {
     setCorrectionDraft,
   } = useSiftStore();
   const [editing, setEditing] = useState(false);
+  const [copiedKeyword, setCopiedKeyword] = useState<string | null>(null);
+
+  const handleCopyKeyword = (keyword: string) => {
+    void navigator.clipboard.writeText(keyword);
+    setCopiedKeyword(keyword);
+    setTimeout(() => {
+      setCopiedKeyword((prev) => (prev === keyword ? null : prev));
+    }, 1800);
+  };
+
   if (!state) return null;
 
   const checkpoint = next?.type === "checkpoint";
@@ -88,15 +98,26 @@ export function StateNode({ selected }: NodeProps) {
                 {briefImages.length > 0 ? "参考图与简报提炼" : "简报提炼"}
               </span>
             </div>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1.5">
               {state.visualKeywords.map((keyword, idx) => (
-                <span
+                <button
                   key={idx}
-                  className="inline-flex items-center rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-stone-800 border border-stone-200/90 shadow-2xs"
+                  type="button"
+                  onClick={() => handleCopyKeyword(keyword)}
+                  className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border transition-all cursor-pointer select-none active:scale-95 ${
+                    copiedKeyword === keyword
+                      ? "bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs"
+                      : "bg-white text-stone-800 border-stone-200/90 hover:border-accent hover:text-ink hover:-translate-y-0.5 shadow-2xs"
+                  }`}
+                  title="点击复制关键词"
                 >
-                  <span className="text-accent mr-0.5 font-normal">#</span>
-                  {keyword}
-                </span>
+                  {copiedKeyword === keyword ? (
+                    <Check className="h-3 w-3 text-emerald-600 mr-1" />
+                  ) : (
+                    <span className="text-accent mr-0.5 font-normal">#</span>
+                  )}
+                  <span>{copiedKeyword === keyword ? "已复制" : keyword}</span>
+                </button>
               ))}
             </div>
           </div>

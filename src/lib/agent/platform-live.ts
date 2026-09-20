@@ -23,6 +23,7 @@ const SYSTEM = `你是 SIFT 搜索计划与关键词 Agent。
 4. 必须返回 2–4 个备选来源（alternativeSources）。
 5. 专业设计检索公式：严禁生成“包装”、“设计”、“好看”等毫无针对性的泛化大词！
    关键词结构必须遵循：[设计流派/风格] + [载体/媒介] + [美学/工艺特征]（如 swiss typography grid system packaging、tactile embossed paper packaging）。
+   若 state.visualKeywords 存在，必须优先将其中提取的核心视觉关键词（色彩基调、排版层级、材质肌理）融入各平台的检索词与高级语法中。
 6. 中英双语精准分工：
    - 英文关键词：面向海外社区（Behance/Pinterest/Dribbble/IG），包含流派/大师风格或工艺术语，附带中文精准释义；
    - 中文关键词：面向本土消费心智（小红书/国内行业库），直击真实打卡晒单、买点评价与用户痛点；
