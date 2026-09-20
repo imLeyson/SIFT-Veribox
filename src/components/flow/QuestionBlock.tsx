@@ -211,8 +211,8 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
               <div className="pt-1.5 space-y-1">
                 <label className="block text-[11px] font-medium text-stone-600">
                   {question.options.length > 0
-                    ? "补充具体设计要求："
-                    : "描述视觉倾向："}
+                    ? "补充具体要求："
+                    : "视觉倾向："}
                 </label>
                 <textarea
                   ref={(el) => {
@@ -222,7 +222,7 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
                   maxLength={2000}
                   value={customTexts[question.id] ?? ""}
                   disabled={disabled}
-                  placeholder="例：低饱和茶青色，配合大面积负空间留白与中英文细线排版，冷冽克制…"
+                  placeholder="例：克制冷茶青、大面积留白、细线排版…"
                   onChange={(e) =>
                     handleCustomTextChange(question.id, e.target.value)
                   }
@@ -239,7 +239,7 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
                         ✓ 已就绪
                       </span>
                     ) : (
-                      <span className="text-stone-400">未填将跳过</span>
+                      <span className="text-stone-400">可留空跳过</span>
                     )}
                   </span>
                   <span className="text-stone-400">{(customTexts[question.id] ?? "").length}/2000</span>

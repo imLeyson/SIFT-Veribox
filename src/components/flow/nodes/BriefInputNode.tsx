@@ -40,7 +40,7 @@ export function BriefInputNode({ selected }: NodeProps) {
             disabled={Boolean(activeRequest)}
             maxLength={10000}
             rows={5}
-            placeholder="例：为冷泡茶做罐装包装视觉方向，希望克制有日常仪式感，不要大插画和红金茶叶罐，探索纸感质朴与极简排版…"
+            placeholder="例：冷泡茶包装，克制日常感，避免大插画与红金罐，探索特种纸与极简排版…"
             className="w-full resize-y rounded-xl border border-line bg-cream/70 px-3 py-2 text-xs sm:text-sm leading-relaxed outline-none focus:border-accent"
           />
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
