@@ -1,0 +1,63 @@
+export type RouteStep = {
+  id: string;
+  title: string;
+  question: string;
+  purpose: string;
+  deliverables?: string[];
+  acceptanceCriteria?: string[];
+};
+
+export type Route = {
+  id: string;
+  title: string;
+  startingPoint: string;
+  coreProblem: string;
+  purpose: string;
+  pros: string;
+  cons: string;
+  recommendedReason: string | null;
+  steps: RouteStep[];
+  timeframe?: string;
+  feasibility?: "high" | "medium" | "challenging";
+  focusDimension?: string;
+};
+
+export type PlatformKeyword = {
+  keyword: string;
+  meaning: string;
+  language: "zh" | "en";
+  searchType?: "moodboard" | "detail" | "consumer" | "benchmark";
+  advancedQuery?: string;
+};
+
+export type PlatformSource = {
+  id: string;
+  platform: string;
+  roleTag: string;
+  reason: string;
+  keywords: PlatformKeyword[];
+  searchUrl: string;
+};
+
+export type PlatformPlan = {
+  id: string;
+  routeId: string;
+  stepId: string;
+  primarySources: PlatformSource[];
+  alternativeSources: PlatformSource[];
+};
+
+export type ExplorationStage =
+  | "state_confirmed"
+  | "routes"
+  | "route_selected"
+  | "step_active"
+  | "platform_ready"
+  | "searching";
+
+export type SourceInteraction = {
+  skipped?: boolean;
+  replacedBy?: string;
+  opened?: boolean;
+  copiedKeywords?: string[];
+};

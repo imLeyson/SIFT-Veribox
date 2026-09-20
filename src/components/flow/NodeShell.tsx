@@ -6,16 +6,18 @@ export function NodeShell({
   kicker,
   title,
   selected,
+  className,
   children,
 }: {
   kicker: string;
   title: string;
   selected?: boolean;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
     <article
-      className={`vb-node card w-[360px] ${selected ? "vb-node-selected" : ""}`}
+      className={`vb-node card ${className ?? "w-[380px]"} ${selected ? "vb-node-selected" : ""}`}
     >
       <Handle
         type="target"

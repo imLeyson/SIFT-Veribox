@@ -16,12 +16,28 @@ import {
   TurnResultSchema,
 } from "./agent/convergence-schema";
 import {
+  RouteSchema,
+  PlatformPlanSchema,
+} from "./agent/routes-schema";
+import {
   hasDirection,
   type Answer,
   type TurnResult,
 } from "@/types/convergence";
+import type {
+  Route,
+  PlatformPlan,
+} from "@/types/routes";
 
-export const STORAGE_KEY = "sift-convergence-v2";
+export const STORAGE_KEY = "sift-convergence-v3";
+
+const SourceInteractionSchema = z.object({
+  skipped: z.boolean().optional(),
+  replacedBy: z.string().optional(),
+  opened: z.boolean().optional(),
+  copiedKeywords: z.array(z.string()).optional(),
+});
+
 const SessionSchema = z
   .object({
     sessionId: z.string().min(1),
@@ -38,6 +54,24 @@ const SessionSchema = z
     ),
     mode: z.enum(["live", "mock"]).nullable(),
     model: z.string().nullable(),
+    explorationStage: z
+      .enum([
+        "state_confirmed",
+        "routes",
+        "route_selected",
+        "step_active",
+        "platform_ready",
+        "searching",
+      ])
+      .nullable(),
+    routes: z.array(RouteSchema),
+    recommendedRouteId: z.string().nullable(),
+    selectedRouteId: z.string().nullable(),
+    activeStepId: z.string().nullable(),
+    platformPlans: z.array(PlatformPlanSchema),
+    sourceInteractions: z.record(z.string(), SourceInteractionSchema),
+    stepNotes: z.record(z.string(), z.array(z.string())).default({}),
+    completedCriteria: z.record(z.string(), z.array(z.string())).default({}),
   })
   .superRefine((value, ctx) => {
     if (
@@ -49,9 +83,11 @@ const SessionSchema = z
       ctx.addIssue({ code: "custom", message: "会话状态损坏" });
     }
   });
+
 type Session = z.infer<typeof SessionSchema>;
 type RequestToken = { id: string; sessionId: string; revision: number };
-type SiftStore = Session & {
+
+export type SiftStore = Session & {
   activeRequest: RequestToken | null;
   error: string | null;
   storageWarning: string | null;
@@ -67,8 +103,26 @@ type SiftStore = Session & {
   convergeNow: () => void;
   enterCheckpoint: () => void;
   confirm: () => void;
+  setRoutes: (routes: Route[], recommendedRouteId: string | null) => void;
+  selectRoute: (routeId: string) => void;
+  reselectRoute: () => void;
+  setActiveStep: (stepId: string) => void;
+  setPlatformPlan: (plan: PlatformPlan) => void;
+  setSearching: () => void;
+  skipSource: (stepId: string, sourceId: string) => void;
+  replaceSource: (stepId: string, oldSourceId: string, newSourceId: string) => void;
+  addStepNote: (stepId: string, text: string) => void;
+  removeStepNote: (stepId: string, index: number) => void;
+  toggleAcceptanceCriterion: (stepId: string, criterion: string) => void;
+  recordSourceAction: (
+    stepId: string,
+    sourceId: string,
+    action: "opened" | "copied",
+    keyword?: string,
+  ) => void;
   reset: () => void;
 };
+
 function emptySession(): Session {
   return {
     sessionId: crypto.randomUUID(),
@@ -82,6 +136,15 @@ function emptySession(): Session {
     positions: {},
     mode: null,
     model: null,
+    explorationStage: null,
+    routes: [],
+    recommendedRouteId: null,
+    selectedRouteId: null,
+    activeStepId: null,
+    platformPlans: [],
+    sourceInteractions: {},
+    stepNotes: {},
+    completedCriteria: {},
   };
 }
 
@@ -96,6 +159,37 @@ export function createSiftStore(providedStorage?: StateStorage) {
           JSON.parse(stored); // Recover malformed JSON before Zustand's decoder.
           return stored;
         }
+
+        // Migrate from sift-convergence-v2
+        const v2 = await target.getItem("sift-convergence-v2");
+        if (v2 !== null) {
+          const parsed = JSON.parse(v2);
+          const raw = parsed?.state ?? parsed;
+          const isConfirmed = raw?.state?.status === "confirmed";
+          return JSON.stringify({
+            state: {
+              ...emptySession(),
+              sessionId: typeof raw?.sessionId === "string" ? raw.sessionId : crypto.randomUUID(),
+              rawBrief: typeof raw?.rawBrief === "string" ? raw.rawBrief : "",
+              state: raw?.state ?? null,
+              next: raw?.next ?? (isConfirmed ? { type: "checkpoint", reason: "ready" } : null),
+              history: Array.isArray(raw?.history) ? raw.history : [],
+              positions: raw?.positions ?? {},
+              mode: raw?.mode ?? null,
+              model: raw?.model ?? null,
+              explorationStage: isConfirmed ? "state_confirmed" : null,
+              routes: [],
+              recommendedRouteId: null,
+              selectedRouteId: null,
+              activeStepId: null,
+              platformPlans: [],
+              sourceInteractions: {},
+            },
+            version: 1,
+          });
+        }
+
+        // Migrate from legacy sift-agent-v1
         const old = await target.getItem("sift-agent-v1");
         if (!old) return null;
         const legacy = JSON.parse(old);
@@ -129,6 +223,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
       await (providedStorage ?? localStorage).removeItem(name);
     },
   }));
+
   const useStore = create<SiftStore>()(
     persist(
       (set, get) => ({
@@ -228,8 +323,185 @@ export function createSiftStore(providedStorage?: StateStorage) {
               status: "confirmed",
               revision: state.revision + 1,
             },
+            explorationStage: "state_confirmed",
             activeRequest: null,
             error: null,
+          });
+        },
+        setRoutes: (routes, recommendedRouteId) => {
+          set({
+            routes,
+            recommendedRouteId,
+            explorationStage: "routes",
+            activeRequest: null,
+            error: null,
+          });
+        },
+        selectRoute: (routeId) => {
+          const route = get().routes.find((r) => r.id === routeId);
+          if (!route) return;
+          set({
+            selectedRouteId: routeId,
+            activeStepId: route.steps[0]?.id ?? null,
+            explorationStage: "route_selected",
+            platformPlans: [],
+            sourceInteractions: {},
+            completedCriteria: {},
+            error: null,
+          });
+        },
+        reselectRoute: () => {
+          set({
+            selectedRouteId: null,
+            activeStepId: null,
+            explorationStage: "routes",
+            platformPlans: [],
+            sourceInteractions: {},
+            completedCriteria: {},
+            error: null,
+          });
+        },
+        setActiveStep: (stepId) => {
+          const selectedRoute = get().routes.find(
+            (r) => r.id === get().selectedRouteId,
+          );
+          if (!selectedRoute) return;
+          const stepIndex = selectedRoute.steps.findIndex(
+            (s) => s.id === stepId,
+          );
+          if (stepIndex === -1) return;
+
+          // Rollback cleanup: clean up plans and interactions for steps after this step
+          const keptStepIds = new Set(
+            selectedRoute.steps.slice(0, stepIndex + 1).map((s) => s.id),
+          );
+          const filteredPlans = get().platformPlans.filter((p) =>
+            keptStepIds.has(p.stepId),
+          );
+          const hasPlanForStep = filteredPlans.some((p) => p.stepId === stepId);
+
+          set({
+            activeStepId: stepId,
+            platformPlans: filteredPlans,
+            explorationStage: hasPlanForStep ? "platform_ready" : "step_active",
+            error: null,
+          });
+        },
+        setPlatformPlan: (plan) => {
+          const existing = get().platformPlans.filter(
+            (p) => p.stepId !== plan.stepId,
+          );
+          set({
+            platformPlans: [...existing, plan],
+            explorationStage: "platform_ready",
+            activeRequest: null,
+            error: null,
+          });
+        },
+        setSearching: () => set({ explorationStage: "searching" }),
+        skipSource: (stepId, sourceId) => {
+          const key = `${stepId}_${sourceId}`;
+          const current = get().sourceInteractions[key] ?? {};
+          set({
+            sourceInteractions: {
+              ...get().sourceInteractions,
+              [key]: { ...current, skipped: true },
+            },
+          });
+        },
+        replaceSource: (stepId, oldSourceId, newSourceId) => {
+          const plans = get().platformPlans.map((plan) => {
+            if (plan.stepId !== stepId) return plan;
+            const oldIdx = plan.primarySources.findIndex(
+              (s) => s.id === oldSourceId,
+            );
+            const altIdx = plan.alternativeSources.findIndex(
+              (s) => s.id === newSourceId,
+            );
+            if (oldIdx === -1 || altIdx === -1) return plan;
+
+            const oldSource = plan.primarySources[oldIdx];
+            const newSource = plan.alternativeSources[altIdx];
+
+            const newPrimary = [...plan.primarySources];
+            newPrimary[oldIdx] = newSource;
+
+            const newAlt = [...plan.alternativeSources];
+            newAlt[altIdx] = oldSource;
+
+            return {
+              ...plan,
+              primarySources: newPrimary,
+              alternativeSources: newAlt,
+            };
+          });
+
+          const key = `${stepId}_${oldSourceId}`;
+          const current = get().sourceInteractions[key] ?? {};
+          set({
+            platformPlans: plans,
+            sourceInteractions: {
+              ...get().sourceInteractions,
+              [key]: { ...current, replacedBy: newSourceId },
+            },
+          });
+        },
+        recordSourceAction: (stepId, sourceId, action, keyword) => {
+          const key = `${stepId}_${sourceId}`;
+          const current = get().sourceInteractions[key] ?? {};
+          if (action === "opened") {
+            set({
+              sourceInteractions: {
+                ...get().sourceInteractions,
+                [key]: { ...current, opened: true },
+              },
+            });
+          } else if (action === "copied" && keyword) {
+            const copied = current.copiedKeywords ?? [];
+            set({
+              sourceInteractions: {
+                ...get().sourceInteractions,
+                [key]: {
+                  ...current,
+                  copiedKeywords: copied.includes(keyword)
+                    ? copied
+                    : [...copied, keyword],
+                },
+              },
+            });
+          }
+        },
+        addStepNote: (stepId, text) => {
+          const trimmed = text.trim();
+          if (!trimmed) return;
+          const currentNotes = get().stepNotes[stepId] ?? [];
+          set({
+            stepNotes: {
+              ...get().stepNotes,
+              [stepId]: [...currentNotes, trimmed],
+            },
+          });
+        },
+        removeStepNote: (stepId, index) => {
+          const currentNotes = get().stepNotes[stepId] ?? [];
+          set({
+            stepNotes: {
+              ...get().stepNotes,
+              [stepId]: currentNotes.filter((_, i) => i !== index),
+            },
+          });
+        },
+        toggleAcceptanceCriterion: (stepId, criterion) => {
+          const current = get().completedCriteria[stepId] ?? [];
+          const exists = current.includes(criterion);
+          const updated = exists
+            ? current.filter((c) => c !== criterion)
+            : [...current, criterion];
+          set({
+            completedCriteria: {
+              ...get().completedCriteria,
+              [stepId]: updated,
+            },
           });
         },
         reset: () =>
@@ -252,6 +524,15 @@ export function createSiftStore(providedStorage?: StateStorage) {
           positions,
           mode,
           model,
+          explorationStage,
+          routes,
+          recommendedRouteId,
+          selectedRouteId,
+          activeStepId,
+          platformPlans,
+          sourceInteractions,
+          stepNotes,
+          completedCriteria,
         }) => ({
           sessionId,
           rawBrief,
@@ -264,6 +545,15 @@ export function createSiftStore(providedStorage?: StateStorage) {
           positions,
           mode,
           model,
+          explorationStage,
+          routes,
+          recommendedRouteId,
+          selectedRouteId,
+          activeStepId,
+          platformPlans,
+          sourceInteractions,
+          stepNotes,
+          completedCriteria,
         }),
         merge: (saved, current) => {
           if (!saved) return { ...current, storageWarning: readWarning };

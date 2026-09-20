@@ -4,18 +4,23 @@ import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { InfiniteCanvas } from "./flow/InfiniteCanvas";
 import { ThinkingProgress } from "./canvas/ThinkingProgress";
+import { DossierModal } from "./dossier/DossierModal";
+import { FileDown } from "lucide-react";
 
 function subscribeHydration(onChange: () => void) {
   return useSiftStore.persist.onFinishHydration(onChange);
 }
 export function Workspace() {
-  const { state, error, storageWarning, activeRequest, mode } = useSiftStore();
+  const { state, error, storageWarning, activeRequest, mode, explorationStage } =
+    useSiftStore();
   const ready = useSyncExternalStore(
     subscribeHydration,
     () => useSiftStore.persist.hasHydrated(),
     () => false,
   );
   const [runtimeMode, setRuntimeMode] = useState<"live" | "mock" | null>(null);
+  const [dossierOpen, setDossierOpen] = useState(false);
+
   useEffect(() => {
     void useSiftStore.persist.rehydrate();
     const ac = new AbortController();
@@ -41,6 +46,16 @@ export function Workspace() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {Boolean(state) && (
+            <button
+              className="btn-ghost !bg-accent/10 !text-accent hover:!bg-accent hover:!text-white text-xs flex items-center gap-1 font-medium transition-all"
+              onClick={() => setDossierOpen(true)}
+              title="导出设计探索全案与策略提案简报"
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              <span>导出探索简报</span>
+            </button>
+          )}
           {state?.status === "questioning" && (
             <button
               className="btn-ghost text-xs"
@@ -78,7 +93,11 @@ export function Workspace() {
       )}
       {activeRequest && (
         <div className="flex items-center justify-between border-b border-line/70 bg-white/60 px-4 py-2">
-          <ThinkingProgress key={activeRequest.id} initial={!state} />
+          <ThinkingProgress
+            key={activeRequest.id}
+            initial={!state}
+            stage={explorationStage}
+          />
           <button
             className="btn-ghost !py-1 text-xs"
             onClick={siftActions.cancel}
@@ -88,8 +107,12 @@ export function Workspace() {
         </div>
       )}
       <div className="relative min-h-0 flex-1">
-        <InfiniteCanvas />
+        <InfiniteCanvas onOpenDossier={() => setDossierOpen(true)} />
       </div>
+      <DossierModal
+        isOpen={dossierOpen}
+        onClose={() => setDossierOpen(false)}
+      />
     </main>
   );
 }
