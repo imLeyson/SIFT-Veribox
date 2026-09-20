@@ -5,12 +5,14 @@ import { GripHorizontal } from "lucide-react";
 export function NodeShell({
   kicker,
   title,
+  badge,
   selected,
   className,
   children,
 }: {
   kicker: string;
   title: string;
+  badge?: React.ReactNode;
   selected?: boolean;
   className?: string;
   children: React.ReactNode;
@@ -34,9 +36,12 @@ export function NodeShell({
       <div className="overflow-hidden rounded-[1.25rem]">
         <div className="card-drag cursor-grab border-b border-line/70 bg-white/40 px-5 py-4 active:cursor-grabbing">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] font-medium tracking-wide text-muted">
-              {kicker}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-medium tracking-wide text-muted">
+                {kicker}
+              </p>
+              {badge}
+            </div>
             <GripHorizontal className="h-3.5 w-3.5 text-muted" aria-hidden />
           </div>
           <h2 className="mt-1 font-serif text-xl leading-snug text-ink">

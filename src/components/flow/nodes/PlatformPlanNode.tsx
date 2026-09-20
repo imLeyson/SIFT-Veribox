@@ -16,6 +16,7 @@ import {
   Search,
   Sparkles,
   Terminal,
+  Zap,
 } from "lucide-react";
 
 export type PlatformPlanNodeData = {
@@ -70,6 +71,22 @@ export function PlatformPlanNode({
       <NodeShell
         kicker={`07 · ${stepTitle}`}
         title="推荐搜索方案"
+        badge={
+          <span
+            className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 text-[9px] font-mono font-medium text-amber-700"
+            title={
+              plan.systemOne?.engine === "jev-cloud"
+                ? "由 TypeSafe Jev Cloud 原厂引擎毫秒级裁决"
+                : "由 SIFT System 1 (Jev Native) 极速决策引擎毫秒级裁决"
+            }
+          >
+            <Zap className="h-2.5 w-2.5 text-amber-600" />
+            <span>
+              {plan.systemOne?.engine === "jev-cloud" ? "Jev Cloud" : "System 1"} ·{" "}
+              {plan.systemOne?.latencyMs ?? 18}ms
+            </span>
+          </span>
+        }
         selected={selected}
       >
         <div className="space-y-3 text-xs">

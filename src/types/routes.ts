@@ -47,6 +47,11 @@ export type PlatformPlan = {
   stepId: string;
   primarySources: PlatformSource[];
   alternativeSources: PlatformSource[];
+  systemOne?: {
+    engine: "jev-cloud" | "jev-native";
+    latencyMs: number;
+    confidence?: number;
+  };
 };
 
 export type ExplorationStage =

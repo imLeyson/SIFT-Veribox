@@ -86,6 +86,13 @@ export const PlatformPlanSchema = z
       .array(PlatformSourceSchema)
       .min(2, "至少返回 2 个备选来源")
       .max(4, "最多返回 4 个备选来源"),
+    systemOne: z
+      .object({
+        engine: z.enum(["jev-cloud", "jev-native"]),
+        latencyMs: z.number(),
+        confidence: z.number().optional(),
+      })
+      .optional(),
   })
   .superRefine((plan, ctx) => {
     const primaryRoles = new Set(plan.primarySources.map((s) => s.roleTag));

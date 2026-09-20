@@ -145,7 +145,9 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       // Attached platform plan for this step
       const plan = platformPlans.find((p) => p.stepId === st.id);
       if (plan) {
-        lines.push(`\n#### 🔍 Step 0${idx + 1} 推荐搜索方案与关键词资产`);
+        const engineLabel = plan.systemOne?.engine === "jev-cloud" ? "Jev Cloud" : "System 1 (Jev Native)";
+        const latencyLabel = plan.systemOne?.latencyMs ? ` · ${plan.systemOne.latencyMs}ms 极速裁决` : "";
+        lines.push(`\n#### 🔍 Step 0${idx + 1} 推荐搜索方案与关键词资产 *(${engineLabel}${latencyLabel})*`);
         plan.primarySources.forEach((src, sIdx) => {
           lines.push(`**${sIdx + 1}. ${src.platform}** (角色定位：${src.roleTag})`);
           lines.push(`- *推荐依据*：${src.reason}`);

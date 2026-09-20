@@ -858,5 +858,10 @@ export function getMockPlatformPlan(
     stepId: currentStep.id,
     primarySources: primary,
     alternativeSources: alternative,
+    systemOne: {
+      engine: "jev-native",
+      latencyMs: 16,
+      confidence: 0.96,
+    },
   };
 }
