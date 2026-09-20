@@ -61,6 +61,20 @@ describe("routes contract schema", () => {
     expect(parsed.error?.issues[0].message).toMatch(/空泛的风格词/);
   });
 
+  it("validates route with optional themeName and visualSnapshot", () => {
+    const route = {
+      ...sampleRoute("r1", "特种纸肌理"),
+      themeName: "素纸微白 · 原生触觉",
+      visualSnapshot: "大面积纯白原浆棉纸留白，正面仅单色侧光深压凹，无多余插画装饰。",
+    };
+    const parsed = RouteSchema.safeParse(route);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.themeName).toBe("素纸微白 · 原生触觉");
+      expect(parsed.data.visualSnapshot).toContain("深压凹");
+    }
+  });
+
   it("rejects routes with fewer than 3 or more than 5 steps", () => {
     const tooFew = { ...sampleRoute("r1", "起点1"), steps: sampleSteps.slice(0, 2) };
     expect(RouteSchema.safeParse(tooFew).success).toBe(false);

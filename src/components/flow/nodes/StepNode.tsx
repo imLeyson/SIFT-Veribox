@@ -280,7 +280,7 @@ export function StepNode({ selected }: NodeProps) {
               className="btn-ghost w-full !py-1 text-[11px] text-muted hover:text-red-700"
               onClick={() => siftActions.reselectRoute()}
             >
-              重选路线
+              重选设计主题
             </button>
           </div>
         </div>

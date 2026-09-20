@@ -23,10 +23,12 @@ export const RouteSchema = z
       if (GENERIC_STYLE_REGEX.test(val)) {
         ctx.addIssue({
           code: "custom",
-          message: "路线标题必须描述探索方法，不能只是空泛的风格词",
+          message: "设计主题标题必须描述探索方法，不能只是空泛的风格词",
         });
       }
     }),
+    themeName: text.max(60).optional(),
+    visualSnapshot: text.max(300).optional(),
     startingPoint: text.max(120),
     coreProblem: shortText,
     purpose: shortText,

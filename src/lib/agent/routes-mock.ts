@@ -18,7 +18,9 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
     const routes: Route[] = [
       {
         id: "route_tea_material",
-        title: "【特种棉纸与深压凹】极端克制纸感路线",
+        themeName: "素纸微白 · 原生触觉",
+        title: "【特种棉纸与深压凹】极端克制纸感",
+        visualSnapshot: "大面积纯白原浆棉纸留白，正面无多余彩印，仅凭 0.5mm 侧光单色深压凹显露出茶品名与暗纹，在光线下呈现极简雕塑感。",
         startingPoint: "特种纸微触感与无墨压凹",
         focusDimension: "特种纸肌理与深压凹工艺",
         coreProblem: "放弃所有花哨插画与多色印刷，把视觉质感全押在 350g 原浆棉卡与 0.5mm 侧光压凹上",
@@ -57,7 +59,9 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
       },
       {
         id: "route_tea_typography",
-        title: "【瑞士网格与严谨字阶】档案式风味信息路线",
+        themeName: "瑞士理性 · 档案清单",
+        title: "【瑞士网格与严谨字阶】档案式风味信息",
+        visualSnapshot: "严谨双栏瑞士网格排版，中西文字阶 2.5 倍对比，冷冽黑白字符清晰罗列产地海拔与风味批号，呈现如专业档案般的权威可信度。",
         startingPoint: "双栏网格与微字阶层级",
         focusDimension: "双栏网格与微字阶层级",
         coreProblem: "在小尺寸罐身正面建立极度理性的文字骨架，将茶叶产地、海拔与风味批号转化为档案级信息美感",
@@ -96,7 +100,9 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
       },
       {
         id: "route_tea_desk",
-        title: "【极简几何色块与视觉锤】工位桌面静物路线",
+        themeName: "极简静物 · 桌面陪伴",
+        title: "【极简几何色块与视觉锤】工位桌面静物",
+        visualSnapshot: "低饱和莫兰迪茶色圆角罐身，正面仅居中一枚极简几何抚慰符号，在原木办公桌上呈现纯粹温和的现代艺术静物感。",
         startingPoint: "桌面静物陈列与微解压隐喻",
         focusDimension: "桌面陈列美学与视觉解压",
         coreProblem: "摆脱传统茶包装的沉重古板，以轻快纯净的几何符号让罐身成为现代办公桌上的视觉亮点",
@@ -142,7 +148,9 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
     const routes: Route[] = [
       {
         id: "route_skin_lab",
-        title: "【刻度排版与配方图表】理性实验室证据路线",
+        themeName: "科学证据 · 极细刻度",
+        title: "【刻度排版与配方图表】理性实验室证据",
+        visualSnapshot: "冷白透光玻璃瓶身搭配 0.25pt 极细数据标尺与成分浓度百分比，无多余装饰，像精密实验室试剂瓶般严谨可信。",
         startingPoint: "配方逻辑图表化与科学证据感",
         focusDimension: "数据图表美学与刻度排版",
         coreProblem: "放弃浮夸的‘神奇修护’大词宣传，将活性成分纯度与配方浓度转化为严谨的刻度与图表视觉",
@@ -181,7 +189,9 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
       },
       {
         id: "route_skin_nature",
-        title: "【微观原生肌理与哑光留白】通感纯净亲肤路线",
+        themeName: "原生肌理 · 哑光通感",
+        title: "【微观原生肌理与哑光留白】通感纯净亲肤",
+        visualSnapshot: "细腻磨砂触感与低饱和大地原色，大面积 60% 温润留白，借由微观原料肌理传递零添加、零刺激的安心亲肤感。",
         startingPoint: "原生植物微观肌理与温和触感",
         focusDimension: "微观纹理与有机色彩通感",
         coreProblem: "摒弃千篇一律的绿叶与滴水插画套路，以微观原料纹理与细腻哑光触感传递零刺激的安全感",
@@ -220,7 +230,9 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
       },
       {
         id: "route_skin_ritual",
-        title: "【晨暮光影微渐变】洗漱台桌面静物路线",
+        themeName: "晨暮光影 · 空间仪式",
+        title: "【晨暮光影微渐变】洗漱台桌面静物",
+        visualSnapshot: "瓶身带有晨光微白至暮色深灰蓝的平滑柔和微光晕渐变，放置在浴室大理石洗漱台上呈现沉静优雅的治愈静物感。",
         startingPoint: "晨暮光影流转与身心松弛",
         focusDimension: "光影微晕与情绪氛围",
         coreProblem: "突破传统护肤品工具属性，将早晚护肤流程转化为与光影共存的桌面治愈仪式",
@@ -266,7 +278,9 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
     const routes: Route[] = [
       {
         id: "route_saas_clarity",
-        title: "【纯粹栅格与高对比字阶】低认知负荷效率路线",
+        themeName: "纯粹网格 · 高效骨架",
+        title: "【纯粹栅格与高对比字阶】低认知负荷效率",
+        visualSnapshot: "严格 8px 模块化布局与 3 级高对比字阶，界面以极简黑白灰为骨架，无任何冗余插画装饰，海量数据 1 秒理清。",
         startingPoint: "高密度信息的秩序化重组",
         focusDimension: "栅格系统与视觉信息层级",
         coreProblem: "放弃花哨的多彩渐变与大插画，用严谨的 8px 栅格与 3 级清晰字阶让海量复杂操作 1 秒理清",
@@ -305,7 +319,9 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
       },
       {
         id: "route_saas_modular",
-        title: "【轻量卡片容器与弥散微阴影】现代亲和模组路线",
+        themeName: "轻盈模组 · 弥散微光",
+        title: "【轻量卡片容器与弥散微阴影】现代亲和模组",
+        visualSnapshot: "通透圆角卡片容器悬浮于灰白背景，搭配极其细腻的空气感弥散微阴影与胶囊标签，如同乐高积木般亲和易用。",
         startingPoint: "组件卡片化与视线轻量化",
         focusDimension: "卡片微投影与空间层次",
         coreProblem: "打破企业级软件厚重死板的陈旧印象，用轻盈圆角卡片与细腻空气感阴影让复杂功能像积木般易上手",
@@ -344,7 +360,9 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
       },
       {
         id: "route_saas_identity",
-        title: "【等宽排版与先锋暗色工程】极客字符美学路线",
+        themeName: "暗黑先锋 · 极客字符",
+        title: "【等宽排版与先锋暗色工程】极客字符美学",
+        visualSnapshot: "深炭灰科技背景配合等宽代码字体排版与高穿透荧光电光青点缀，呈现先锋利落的硬核工程技术美学。",
         startingPoint: "代码美学字符与现代极客精神",
         focusDimension: "等宽字体与极客符号美学",
         coreProblem: "为技术驱动型产品赋予前沿先锋的工程气质，以等宽字型、暗黑对比与精准字符构建极高品牌壁垒",
@@ -389,7 +407,9 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
   const routes: Route[] = [
     {
       id: "route_gen_core",
-      title: "【单一极简轮廓】高穿透力视觉锤路线",
+      themeName: "单一视觉锤 · 极简轮廓",
+      title: "【单一极简轮廓】高穿透力视觉锤",
+      visualSnapshot: "大面积纯净负空间中居中一枚极度洗练的标志性图形轮廓，即便缩小至 16px 图标或 10 米外远眺也能瞬间认出。",
       startingPoint: "标志性轮廓与第一眼记忆锚定",
       focusDimension: "极简图形符号与轮廓特征",
       coreProblem: "在信息极度过载的环境中，放弃复杂的叙事组合，仅凭一个纯粹的极简轮廓在 0.5 秒内被锁死记忆",
@@ -428,7 +448,9 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
     },
     {
       id: "route_gen_narrative",
-      title: "【纪实摄影与克制手绘】生活场景通感路线",
+      themeName: "真实切片 · 温暖通感",
+      title: "【纪实摄影与克制手绘】生活场景通感",
+      visualSnapshot: "低饱和温润色调的生活纪实瞬间切片，搭配克制的手写字标与疏朗大留白，散发真诚松弛的人文温度。",
       startingPoint: "真实生活瞬间与情感氛围营造",
       focusDimension: "氛围光影与情绪场景构图",
       coreProblem: "摒弃千篇一律的商业图库摆拍感，通过真实的生活场景切片与微弱手感笔触唤起真诚共鸣",
@@ -467,7 +489,9 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
     },
     {
       id: "route_gen_contrast",
-      title: "【经典符号几何重构】高反差现代平面路线",
+      themeName: "经典解构 · 现代几何",
+      title: "【经典符号几何重构】高反差现代平面",
+      visualSnapshot: "以当代利落的几何线条将传统文化意象彻底拆解重组，高反差明快色彩对撞大留白，先锋现代且张力十足。",
       startingPoint: "传统意象与现代几何碰撞",
       focusDimension: "文化符号解构与现代几何",
       coreProblem: "在保留品类经典文化熟悉感的同时，彻底摆脱古老陈旧的老气感，以当代几何语言重塑新貌",

@@ -120,10 +120,10 @@ export function DossierModal({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 border-b border-line/40 bg-mist/40 px-6 py-3 text-xs">
           <div className="rounded-lg bg-white/60 p-2 border border-line/40">
             <span className="text-[10px] text-muted block flex items-center gap-1">
-              <Sparkles className="h-3 w-3 text-accent" /> 选定探索路线
+              <Sparkles className="h-3 w-3 text-accent" /> 选定设计主题
             </span>
             <span className="font-semibold text-ink truncate block mt-0.5">
-              {selectedRoute?.title || "未选定路线"}
+              {selectedRoute?.themeName || selectedRoute?.title || "未选定主题"}
             </span>
           </div>
 

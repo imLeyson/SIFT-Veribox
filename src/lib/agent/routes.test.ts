@@ -133,4 +133,86 @@ describe("routes agent generation", () => {
       expect(step.acceptanceCriteria && step.acceptanceCriteria.length > 0).toBe(true);
     }
   });
+
+  it("sanitizes leaked variable names and enforces single recommended theme", () => {
+    const rawWithLeakedVariables = {
+      routes: [
+        {
+          id: "r1",
+          themeName: "素纸微白 · 原生触觉",
+          title: "【特种棉纸与深压凹】极端克制纸感",
+          visualSnapshot: "大面积纯白原浆棉纸留白，正面仅单色侧光深压凹",
+          startingPoint: "特种纸微触感与无墨压凹",
+          coreProblem: "放弃多色插画装饰",
+          purpose: "以大面积素雅纸感构建耐看品质",
+          pros: "大留白视觉真空",
+          cons: "考验排版字距精度",
+          recommendedReason: "针对 uncertainties 中 quality_source 的未决纠结，通过特种纸解决顾虑",
+          steps: [
+            { id: "s1", title: "步骤1", question: "问题1", purpose: "目的1" },
+            { id: "s2", title: "步骤2", question: "问题2", purpose: "目的2" },
+            { id: "s3", title: "步骤3", question: "问题3", purpose: "目的3" },
+          ],
+        },
+        {
+          id: "r2",
+          title: "【瑞士网格与严谨字阶】档案式清晰信息",
+          startingPoint: "双栏网格与微字阶层级",
+          coreProblem: "建立极度理性的文字骨架",
+          purpose: "呈现专业克制感",
+          pros: "一目了然",
+          cons: "容易沦为说明书",
+          // LLM mistakenly returned a recommendedReason on non-recommended route
+          recommendedReason: "针对 uncertainties 里的考量给出备选",
+          steps: [
+            { id: "s2_1", title: "步骤1", question: "问题1", purpose: "目的1" },
+            { id: "s2_2", title: "步骤2", question: "问题2", purpose: "目的2" },
+            { id: "s2_3", title: "步骤3", question: "问题3", purpose: "目的3" },
+          ],
+        },
+        {
+          id: "r3",
+          title: "【极简几何色块与视觉锤】高辨识度符号",
+          startingPoint: "几何符号隐喻",
+          coreProblem: "打造工位静物感",
+          purpose: "高辨识度符号",
+          pros: "年轻群体认可度高",
+          cons: "容易浮躁",
+          recommendedReason: null,
+          steps: [
+            { id: "s3_1", title: "步骤1", question: "问题1", purpose: "目的1" },
+            { id: "s3_2", title: "步骤2", question: "问题2", purpose: "目的2" },
+            { id: "s3_3", title: "步骤3", question: "问题3", purpose: "目的3" },
+          ],
+        },
+      ],
+      recommendedRouteId: "r1",
+    };
+
+    const normalized = normalizeLiveRoutesPayload(rawWithLeakedVariables, {
+      sessionId: "s1",
+      requestId: "req6",
+      baseRevision: 1,
+      rawBrief: "测试Brief",
+      state: confirmedState,
+    });
+
+    // 1. themeName & visualSnapshot are populated
+    expect(normalized.routes[0].themeName).toBe("素纸微白 · 原生触觉");
+    expect(normalized.routes[0].visualSnapshot).toContain("深压凹");
+    // r2 lacked explicit themeName, auto-extracted from title
+    expect(normalized.routes[1].themeName).toBeTruthy();
+    expect(normalized.routes[1].visualSnapshot).toBeTruthy();
+
+    // 2. Leaked variable names are sanitized cleanly
+    expect(normalized.routes[0].recommendedReason).not.toContain("uncertainties");
+    expect(normalized.routes[0].recommendedReason).not.toContain("quality_source");
+    expect(normalized.routes[0].recommendedReason).toContain("针对前期的核心诉求与待定考量");
+
+    // 3. Strict single recommended theme rule: ONLY r1 has recommendedReason, r2 is wiped to null
+    expect(normalized.recommendedRouteId).toBe("r1");
+    expect(normalized.routes[0].recommendedReason).toBeTruthy();
+    expect(normalized.routes[1].recommendedReason).toBeNull();
+    expect(normalized.routes[2].recommendedReason).toBeNull();
+  });
 });

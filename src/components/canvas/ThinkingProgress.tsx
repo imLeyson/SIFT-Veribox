@@ -37,7 +37,7 @@ export function ThinkingProgress({
       }
     }
   } else if (stage === "state_confirmed" || stage === "routes") {
-    label = seconds < 3 ? "正在推导 3 条风格迥异的探索路线" : "正在梳理各路线关键突破口";
+    label = seconds < 3 ? "正在推导 3 条风格迥异的设计主题" : "正在梳理各主题关键突破口与画面快照";
   } else if (stage === "route_selected" || stage === "step_active") {
     label = seconds < 3 ? "正在规划搜索平台与专业检索式" : "正在过滤低质样机，匹配标杆案例";
   } else {

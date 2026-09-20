@@ -81,10 +81,16 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     }
   }
 
-  // Section 02: Selected Route
+  // Section 02: Selected Theme
   if (selectedRoute) {
-    lines.push(`## 02 选定探索路线 (Chosen Route)`);
-    lines.push(`### 📌 ${selectedRoute.title}`);
+    lines.push(`## 02 选定设计主题 (Chosen Design Theme)`);
+    const themeHeading = selectedRoute.themeName
+      ? `${selectedRoute.themeName} — ${selectedRoute.title}`
+      : selectedRoute.title;
+    lines.push(`### 📌 ${themeHeading}`);
+    if (selectedRoute.visualSnapshot) {
+      lines.push(`- **画面效果快照**：${selectedRoute.visualSnapshot}`);
+    }
     lines.push(`- **切入起点**：${selectedRoute.startingPoint}`);
     if (selectedRoute.timeframe) {
       lines.push(`- **预计周期**：${selectedRoute.timeframe}`);
@@ -157,9 +163,13 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       lines.push("---\n");
     });
   } else if (routes.length > 0) {
-    lines.push(`## 02 生成的备选探索路线 (${routes.length} 条待选)`);
+    lines.push(`## 02 生成的备选设计主题 (${routes.length} 个待选)`);
     routes.forEach((r, idx) => {
-      lines.push(`### 路线 0${idx + 1}：${r.title}`);
+      const themeTitle = r.themeName ? `${r.themeName} — ${r.title}` : r.title;
+      lines.push(`### 主题 0${idx + 1}：${themeTitle}`);
+      if (r.visualSnapshot) {
+        lines.push(`- **画面效果快照**：${r.visualSnapshot}`);
+      }
       lines.push(`- **切入起点**：${r.startingPoint}`);
       lines.push(`- **核心问题**：${r.coreProblem}`);
       lines.push(`- **优势/风险**：${r.pros} / ${r.cons}\n`);

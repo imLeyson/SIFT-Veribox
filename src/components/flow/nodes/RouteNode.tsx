@@ -14,6 +14,8 @@ import {
   Clock,
   ShieldAlert,
   Lightbulb,
+  Eye,
+  Layers,
 } from "lucide-react";
 
 export type RouteNodeData = {
@@ -21,19 +23,51 @@ export type RouteNodeData = {
   index: number;
 };
 
+function cleanText(str: string | null | undefined): string {
+  if (!str) return "";
+  return str
+    .replace(/(?:针对\s*)?(?:state\.)?uncertainties(?:\s*(?:中|里|内)的?|\.)?\s*([a-zA-Z0-9_]+)?(?:\s*的未决(?:纠结|诉求|顾虑|问题))?/g, "针对前期的核心诉求与待定考量")
+    .replace(/\buncertainties\b/gi, "未决考量")
+    .replace(/\bquality_source\b/gi, "品质抓手")
+    .replace(/\bconfirmedDimensions\b/gi, "已确认维度")
+    .trim();
+}
+
 export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
   const { route, index } = data;
   const selectedRouteId = useSiftStore((s) => s.selectedRouteId);
+  const recommendedRouteId = useSiftStore((s) => s.recommendedRouteId);
   const activeRequest = useSiftStore((s) => s.activeRequest);
 
   const isSelected = selectedRouteId === route.id;
   const hasSelection = Boolean(selectedRouteId);
   const isWeakened = hasSelection && !isSelected;
-  const isRecommended = Boolean(route.recommendedReason);
+
+  // Strict single-recommendation rule
+  const isRecommended = recommendedRouteId
+    ? route.id === recommendedRouteId
+    : Boolean(route.recommendedReason);
 
   const kicker = isRecommended
-    ? `0${index + 1} · 推荐路线`
-    : `0${index + 1} · 探索路线`;
+    ? `主题 0${index + 1} · 🌟 推荐主题`
+    : `主题 0${index + 1} · 探索主题`;
+
+  // Display hero theme name
+  const heroTitle = route.themeName?.trim() || (() => {
+    const match = route.title.match(/【(.*?)】(.*)/);
+    if (match) return match[2].trim() || match[1].trim();
+    return route.title;
+  })();
+
+  const rawSubtitle = route.title.replace(/【.*?】/, "").trim();
+  const visualHook = rawSubtitle && rawSubtitle !== heroTitle ? rawSubtitle : route.focusDimension;
+
+  const snapshotText = cleanText(route.visualSnapshot || route.purpose);
+  const recReason = cleanText(route.recommendedReason);
+  const coreProblemText = cleanText(route.coreProblem);
+  const purposeText = cleanText(route.purpose);
+  const prosText = cleanText(route.pros);
+  const consText = cleanText(route.cons);
 
   return (
     <div
@@ -47,19 +81,20 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
     >
       <NodeShell
         kicker={kicker}
-        title={route.title}
+        title={heroTitle}
         selected={selected || isSelected}
       >
         <div className="space-y-3 text-xs">
-          {/* Starting Dimension & Badges */}
+          {/* Visual Hook & Dimension Badges */}
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="inline-flex items-center gap-1 rounded-md bg-mist px-2 py-0.5 text-[11px] font-medium text-ink">
               <Compass className="h-3 w-3 text-accent" />
               {route.startingPoint}
             </span>
-            {route.focusDimension && (
-              <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] text-stone-600">
-                {route.focusDimension}
+            {visualHook && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-[10px] text-stone-600">
+                <Layers className="h-2.5 w-2.5 text-stone-400" />
+                {visualHook}
               </span>
             )}
             {route.timeframe && (
@@ -87,27 +122,38 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
             )}
           </div>
 
-          {/* Recommended Reason */}
-          {isRecommended && route.recommendedReason && (
+          {/* Key Visual Snapshot - Instant understanding of what it looks like */}
+          <div className="rounded-xl border border-indigo-100/90 bg-indigo-50/60 p-2.5 space-y-1">
+            <div className="flex items-center gap-1.5 font-semibold text-indigo-900 text-[11px]">
+              <Eye className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+              <span>画面效果快照 · 一眼看懂</span>
+            </div>
+            <p className="leading-relaxed text-[11.5px] text-indigo-950 font-medium">
+              {snapshotText}
+            </p>
+          </div>
+
+          {/* Recommended Reason - ONLY for strictly recommended route */}
+          {isRecommended && recReason && (
             <div className="rounded-xl border border-amber-200/90 bg-amber-50/80 p-2.5 text-xs text-amber-900 leading-snug">
               <div className="flex items-center gap-1 font-semibold text-amber-800 text-[11px] mb-0.5">
                 <Sparkles className="h-3 w-3 text-amber-600" />
-                <span>为什么推荐（针对前期未决死结）</span>
+                <span>为什么推荐此主题（针对前期未决考量）</span>
               </div>
-              <p className="leading-relaxed text-[11px]">{route.recommendedReason}</p>
+              <p className="leading-relaxed text-[11px]">{recReason}</p>
             </div>
           )}
 
           {/* Core Visual Strategy */}
           <div className="rounded-xl bg-cream/70 p-2.5 border border-line/60 space-y-1">
             <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider block">
-              核心设计抉择与手法
+              核心设计取舍与手法
             </span>
             <p className="font-semibold text-ink leading-snug text-[11.5px]">
-              {route.coreProblem}
+              {coreProblemText}
             </p>
             <p className="text-stone-600 leading-relaxed text-[11px]">
-              {route.purpose}
+              {purposeText}
             </p>
           </div>
 
@@ -119,7 +165,7 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
                   <Lightbulb className="h-3 w-3 text-emerald-600" />
                   提案卖点 (Pros)
                 </span>
-                <p className="leading-snug mt-1 text-[11px]">{route.pros}</p>
+                <p className="leading-snug mt-1 text-[11px]">{prosText}</p>
               </div>
             </div>
             <div className="rounded-lg bg-stone-100/90 p-2 border border-stone-200 text-stone-800 flex flex-col justify-between">
@@ -128,7 +174,7 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
                   <ShieldAlert className="h-3 w-3 text-stone-500" />
                   避坑提示 (Cons)
                 </span>
-                <p className="leading-snug mt-1 text-[11px]">{route.cons}</p>
+                <p className="leading-snug mt-1 text-[11px]">{consText}</p>
               </div>
             </div>
           </div>
@@ -174,14 +220,14 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
               <div className="flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
                   <Check className="h-4 w-4" />
-                  已选此路线
+                  已选此主题
                 </span>
                 <button
                   type="button"
                   className="btn-ghost !py-1 !px-2.5 text-xs hover:text-red-700"
                   onClick={() => siftActions.reselectRoute()}
                 >
-                  重选
+                  重选主题
                 </button>
               </div>
             ) : (
@@ -195,7 +241,7 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
                 disabled={Boolean(activeRequest)}
                 onClick={() => siftActions.selectRoute(route.id)}
               >
-                <span>{hasSelection ? "切换路线" : "选择此路线"}</span>
+                <span>{hasSelection ? "切换设计主题" : "选择此设计主题"}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </button>
             )}

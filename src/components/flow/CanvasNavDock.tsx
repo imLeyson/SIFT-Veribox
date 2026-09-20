@@ -86,10 +86,10 @@ export function CanvasNavDock({
 
       <span className="text-[10px] text-stone-300">›</span>
 
-      {/* 03 Routes */}
+      {/* 03 Themes */}
       <button
         type="button"
-        title="跳转到 03 探索路线"
+        title="跳转到 03 设计主题"
         disabled={routes.length === 0}
         onClick={() =>
           void fitView({
@@ -110,7 +110,7 @@ export function CanvasNavDock({
             routes.length > 0 ? "text-amber-600" : "text-stone-300"
           }`}
         />
-        <span>03 路线</span>
+        <span>03 主题</span>
         {routes.length > 0 && (
           <span className="rounded-full bg-stone-200/80 px-1 text-[10px] font-semibold text-stone-700">
             {routes.length}

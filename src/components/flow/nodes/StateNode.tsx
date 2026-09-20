@@ -255,13 +255,13 @@ export function StateNode({ selected }: NodeProps) {
                 onClick={() => void siftActions.generateRoutes()}
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                <span>{activeRequest ? "正在生成探索路线…" : "生成探索路线"}</span>
+                <span>{activeRequest ? "正在构思设计主题…" : "生成设计主题"}</span>
               </button>
             ) : (
               <div className="flex items-center justify-between text-[11px] text-emerald-800 bg-emerald-50 rounded-lg px-2.5 py-1.5 border border-emerald-200">
                 <span className="flex items-center gap-1 font-medium">
                   <Check className="h-3.5 w-3.5 text-emerald-600" />
-                  路线已就绪，于右侧选择
+                  设计主题已就绪，于右侧选择
                 </span>
                 <ArrowRight className="h-3 w-3 text-emerald-600" />
               </div>

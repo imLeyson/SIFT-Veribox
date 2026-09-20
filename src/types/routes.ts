@@ -10,6 +10,8 @@ export type RouteStep = {
 export type Route = {
   id: string;
   title: string;
+  themeName?: string;
+  visualSnapshot?: string;
   startingPoint: string;
   coreProblem: string;
   purpose: string;

@@ -5,33 +5,38 @@ import type { RoutesInputSchema } from "./routes-schema";
 
 type RoutesInput = z.infer<typeof RoutesInputSchema>;
 
-const SYSTEM = `你是 SIFT 路线探索 Agent，充当资深设计总监（Design Director）与实战派品牌策略搭档。
+const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监（Design Director）与实战派品牌策略搭档。
 当前设计任务的方向（Design State）已经收敛并由用户正式确认。
-你的任务是基于设计学界成熟的 Creative Territories（创意领地）提案模型（借鉴 Pentagram / Wolff Olins 的商业提案实践），为该任务生成正好 3 条互不相同、正交互补、画面感极强的视觉探索路线。
+你的任务是基于设计学界成熟的 Creative Territories（创意领地）提案模型（借鉴 Pentagram / Wolff Olins 的商业提案实践），为该任务生成正好 3 条互不相同、正交互补、画面感极强的【设计主题（Design Themes）】。
 
 关键原则与语言风格（杜绝伪需求，彻底摒弃假大空套话）：
 1. 绝对禁词：严禁使用“赋能、多维共鸣、叙事解构、心流体验、空间重构、生态感知、交融升华、高级感、轻奢风、自然简约”等任何空洞浮夸的公关与咨询大词。
-2. 通俗易懂、但不 low、体现懂行的专业感：
+2. 严禁泄漏代码变量名：绝对禁止在任何输出文本中包含任何英文代码变量名或系统字段词（严禁输出 uncertainties、quality_source、confirmedDimensions、id、state、payload 等！）。若需提及用户纠结的考量，必须转换成地道、自然的中文业务描述（例如：“针对前期对于想要高品质感但担心过于花哨的纠结”）。
+3. 通俗易懂、体现懂行的专业感，且【画面感第一】：
    - 必须使用设计师在工位上真实沟通与商业提案中的大白话与专业词汇（如：“300g 原浆棉卡”、“0.5mm 侧光深压凹”、“双栏模块化网格”、“中西文字阶 2.5 倍对比”、“负空间呼吸感”、“货架视觉真空”、“1.5米盲测辨识”）。
-   - 画面感第一：读完标题与说明，设计师和甲方脑海中必须立即能浮现出具象的画面与动笔做法。
-3. 聚焦视觉与设计决策：完全聚焦于平面版式、网格骨架、字阶对比、材质触感、工艺光影、色彩纯度与视觉焦点。严禁涉及开模、产线装配等工业工程细节。
+   - 必须提供 themeName：4–8 字响亮直观的大主题名（如「素纸微白 · 原生触觉」、「瑞士理性 · 档案清单」、「极简几何 · 视觉重锤」）。必须让人一眼看出要做什么设计主题。
+   - 必须提供 visualSnapshot：用 1–2 句通俗直观的大白话描绘成品长什么样（如：“罐身大面积纯白原浆棉纸留白，正面仅单色侧光深压凹，无多余插画，在 45 度侧光下靠压凹阴影显出极简雕塑感”）。让甲方或总监不看其他字，仅看这 1 句话就能在脑海中浮现出设计成品的真实样貌！
+4. 严格单推荐规则：
+   - 3 个主题中，只能有且仅有 1 个主题被选为推荐主题（recommendedRouteId 指向它），且只有该主题能填写 recommendedReason；其余两个探索主题的 recommendedReason 必须填 null！
 
 三条正交领地（Creative Territories）：
-1. 路线一【材质工艺与微触感】（借鉴 Dieter Rams "少，但更好" 与原研哉触觉设计）：
+1. 主题一【材质工艺与微触感】（借鉴 Dieter Rams "少，但更好" 与原研哉触觉设计）：
    - 依靠实体材料的原生肌理、留白微光影与表面工艺（如特种纸浆颗粒、单色深压凹、微弱局部 UV、触感膜）；
    - 不靠花哨多余插画遮丑，用纯净材料触感与极端留白取胜。
-2. 路线二【信息网格与排版秩序】（借鉴 Josef Müller-Brockmann 网格法则与排印学）：
+2. 主题二【信息网格与排版秩序】（借鉴 Josef Müller-Brockmann 网格法则与排印学）：
    - 依靠严谨的信息骨架、强弱字阶梯级对比、极致留白与冷冽排版；
    - 打造极高信息阅读效率与档案式可信度。
-3. 路线三【视觉锤与符号化跳脱】（借鉴 Laura Ries 视觉锤理论与几何图形隐喻）：
+3. 主题三【视觉锤与符号化跳脱】（借鉴 Laura Ries 视觉锤理论与几何图形隐喻）：
    - 提炼极简且穿透力极强的单一视觉符号或高反差色块；
    - 远距离（1.5–3米）或 16px 缩微尺寸下 0.5 秒抓人眼球，形成货架或社媒瞬间辨识。
 
 严格字段契约：
-- title: 必须采用【视觉抓手/工艺手法】具象路线名 格式。例如：
-  * 【特种棉纸与单色深压凹】极端克制纸感路线
-  * 【瑞士网格与严谨字阶】档案式风味信息路线
-  * 【极简几何色块与视觉锤】高辨识度桌面静物路线
+- themeName: 4–8 字响亮直观的大主题名（如「素纸微白 · 原生触觉」）。
+- title: 必须采用【视觉抓手/工艺手法】具体手法名 格式。例如：
+  * 【特种棉纸与单色深压凹】极端克制纸感
+  * 【瑞士网格与严谨字阶】档案式风味信息
+  * 【极简几何色块与视觉锤】高辨识度桌面静物
+- visualSnapshot: 1–2 句具象大白话描绘“最终画面长什么样”，画面感极强。
 - focusDimension: 视觉核心切入点（如"特种纸肌理与深压凹工艺"、"双栏网格与微字阶层级"、"高对比几何符号视觉锤"）。
 - startingPoint: 独特的探索起点（简短精炼）。
 - coreProblem: 核心设计抉择（说明主动放弃了什么、押注了什么，如"放弃多色插画装饰，把视觉质感全押在特种棉纸触感与无油墨压凹阴影上"）。
@@ -40,7 +45,7 @@ const SYSTEM = `你是 SIFT 路线探索 Agent，充当资深设计总监（Desi
 - cons: 避坑提示 / 落地风险（实际打样和生产最容易翻车的隐患，如"正面无多余装饰遮丑，极度考验字距与压凹精度；浅色特种纸易蹭脏，需配外盒"）。
 - feasibility: "high" | "medium" | "challenging"（落地可行性与打样难度）。
 - timeframe: 探索打样周期（如"0.5–1 天"、"1–2 天"）。
-- recommendedReason: 务实解题，引用当前任务收敛阶段的未决纠结（uncertainties）或核心偏好，解释为什么这条路线能解开死结；非推荐路线填 null。
+- recommendedReason: 仅在推荐主题填写自然中文解题理由，其余两个探索主题严格填 null。
 - steps: 3–5 个工位实操步骤（如：Step 1 白模比例与纸样筛选 -> Step 2 核心字阶与视距盲测 -> Step 3 侧光打样与耐脏测试）。
   * deliverables: 2–3 个工位实操交付物（如"1:1 纸样白模（3款触感纸）"、"中西文字阶排版样张"、"1.5米视距盲测稿"）。
   * acceptanceCriteria: 2–3 条可操作核验的准则（如"核心品名在 1 秒内清晰识别"、"留白面积保持 50% 以上"、"45度侧光下压凹阴影边缘清晰"）。
@@ -50,7 +55,9 @@ const SYSTEM = `你是 SIFT 路线探索 Agent，充当资深设计总监（Desi
   "routes": [
     {
       "id": "route_1",
-      "title": "【特种棉纸与深压凹】极端克制纸感路线",
+      "themeName": "素纸微白 · 原生触觉",
+      "title": "【特种棉纸与深压凹】极端克制纸感",
+      "visualSnapshot": "大面积纯白原浆棉纸留白，正面仅单色侧光深压凹，无多余插画，在 45 度侧光下靠压凹阴影显出极简雕塑感",
       "focusDimension": "特种纸肌理与深压凹工艺",
       "startingPoint": "特种纸微触感与无墨压凹",
       "coreProblem": "放弃多色繁复装饰，依靠材料肌理与光影阴影建立静谧质感",
@@ -59,7 +66,7 @@ const SYSTEM = `你是 SIFT 路线探索 Agent，充当资深设计总监（Desi
       "cons": "正面无装饰遮丑，极度考验排版字距精度，浅色纸张需注意仓储防蹭脏",
       "feasibility": "high",
       "timeframe": "0.5–1 天",
-      "recommendedReason": "针对用户未决判断中对高级质感但怕花哨的顾虑，纯纸感与无墨压凹能最稳妥解开纠结",
+      "recommendedReason": "针对前期对于想要高品质感但担心过于花哨的纠结，纯纸感与无墨压凹能最稳妥解开顾虑",
       "steps": [
         {
           "id": "step_1_1",
@@ -72,7 +79,7 @@ const SYSTEM = `你是 SIFT 路线探索 Agent，充当资深设计总监（Desi
       ]
     }
   ],
-  "recommendedRouteId": "route_1 或 null"
+  "recommendedRouteId": "route_1"
 }`;
 
 type RecordLike = Record<string, unknown>;
@@ -82,8 +89,21 @@ function record(v: unknown): RecordLike {
     : {};
 }
 
+export function sanitizeLeakedVariables(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/(?:针对\s*)?(?:state\.)?uncertainties(?:\s*(?:中|里|内)的?|\.)?\s*([a-zA-Z0-9_]+)?(?:\s*的未决(?:纠结|诉求|顾虑|问题))?/g, "针对前期的核心诉求与待定考量")
+    .replace(/\buncertainties\b/gi, "未决考量")
+    .replace(/\bquality_source\b/gi, "品质与工艺")
+    .replace(/\bconfirmedDimensions\b/gi, "已确认维度")
+    .replace(/\bdesign_state\b/gi, "设计方向")
+    .trim();
+}
+
 function nonEmpty(v: unknown, fallback: string): string {
-  return typeof v === "string" && v.trim() ? v.trim() : fallback;
+  return typeof v === "string" && v.trim()
+    ? sanitizeLeakedVariables(v.trim())
+    : fallback;
 }
 
 export function normalizeLiveRoutesPayload(
@@ -110,10 +130,22 @@ export function normalizeLiveRoutesPayload(
     "高对比几何符号视觉锤",
   ];
 
+  const defaultThemeNames = [
+    "素纸微白 · 原生触觉",
+    "瑞士理性 · 档案清单",
+    "极简静物 · 视觉重锤",
+  ];
+
   const defaultTitles = [
-    "【特种棉纸与深压凹】极端克制纸感路线",
-    "【瑞士网格与严谨字阶】档案式清晰信息路线",
-    "【极简几何色块与视觉锤】高辨识度符号路线",
+    "【特种棉纸与深压凹】极端克制纸感",
+    "【瑞士网格与严谨字阶】档案式清晰信息",
+    "【极简几何色块与视觉锤】高辨识度符号",
+  ];
+
+  const defaultSnapshots = [
+    "大面积纯白原浆棉纸留白，正面仅单色侧光深压凹，无多余插画，在 45 度侧光下靠压凹阴影显出极简雕塑感。",
+    "严谨双栏瑞士网格排版，中西文字阶 2.5 倍对比，冷冽黑白字符清晰罗列核心信息，呈现如档案般的权威可信度。",
+    "低饱和和谐色调搭配极度洗练的单一几何符号，无论远视还是微缩都能被瞬间锁定，呈现纯粹现代的视觉焦点。",
   ];
 
   const routes: Route[] = rawRoutes.slice(0, 3).map((r, i) => {
@@ -124,9 +156,30 @@ export function normalizeLiveRoutesPayload(
     }
     seenStarting.add(starting);
 
-    let title = nonEmpty(r.title, defaultTitles[i] ?? `探索路线 ${i + 1}`);
+    let title = nonEmpty(r.title, defaultTitles[i] ?? `设计主题 ${i + 1}`);
     if (/^(自然|极简|高级|复古|现代|轻奢|科技感|温暖|可爱|优雅|大气|高端|简约|清新|质感|时尚|酷炫|潮流)$/.test(title)) {
-      title = `【${title}】风格视觉转译与落地法`;
+      title = `【${title}】视觉转译与落地法`;
+    }
+
+    let themeName = typeof r.themeName === "string" && r.themeName.trim()
+      ? sanitizeLeakedVariables(r.themeName.trim())
+      : "";
+
+    if (!themeName) {
+      const match = title.match(/【(.*?)】(.*)/);
+      if (match) {
+        themeName = match[2].trim() || match[1].trim();
+      } else {
+        themeName = defaultThemeNames[i] ?? `主题 0${i + 1}`;
+      }
+    }
+
+    let visualSnapshot = typeof r.visualSnapshot === "string" && r.visualSnapshot.trim()
+      ? sanitizeLeakedVariables(r.visualSnapshot.trim())
+      : "";
+
+    if (!visualSnapshot) {
+      visualSnapshot = defaultSnapshots[i] ?? "大面积克制留白，突出核心材质与文字层级，呈现纯净耐看的现代视觉质感。";
     }
 
     const rawSteps = Array.isArray(r.steps) ? r.steps.map(record) : [];
@@ -142,7 +195,9 @@ export function normalizeLiveRoutesPayload(
       seenStepTitles.add(stitle);
 
       const rawDeliverables = Array.isArray(s.deliverables)
-        ? s.deliverables.filter((d): d is string => typeof d === "string" && Boolean(d.trim()))
+        ? s.deliverables
+            .filter((d): d is string => typeof d === "string" && Boolean(d.trim()))
+            .map(sanitizeLeakedVariables)
         : [];
       const deliverables =
         rawDeliverables.length > 0
@@ -153,7 +208,9 @@ export function normalizeLiveRoutesPayload(
             ];
 
       const rawCriteria = Array.isArray(s.acceptanceCriteria)
-        ? s.acceptanceCriteria.filter((c): c is string => typeof c === "string" && Boolean(c.trim()))
+        ? s.acceptanceCriteria
+            .filter((c): c is string => typeof c === "string" && Boolean(c.trim()))
+            .map(sanitizeLeakedVariables)
         : [];
       const acceptanceCriteria =
         rawCriteria.length > 0
@@ -192,7 +249,7 @@ export function normalizeLiveRoutesPayload(
 
     const recReason =
       typeof r.recommendedReason === "string" && r.recommendedReason.trim()
-        ? r.recommendedReason.trim()
+        ? sanitizeLeakedVariables(r.recommendedReason.trim())
         : null;
 
     const feasibilityVal = r.feasibility === "high" || r.feasibility === "medium" || r.feasibility === "challenging"
@@ -202,6 +259,8 @@ export function normalizeLiveRoutesPayload(
     return {
       id: routeId,
       title,
+      themeName,
+      visualSnapshot,
       startingPoint: starting,
       focusDimension: nonEmpty(r.focusDimension, defaultDimensions[i] ?? "视觉美学探索"),
       coreProblem: nonEmpty(r.coreProblem, "放弃多色繁复插画装饰，把视觉质感全押在特种棉纸触感与无墨压凹上"),
@@ -220,7 +279,9 @@ export function normalizeLiveRoutesPayload(
     const i = routes.length;
     routes.push({
       id: `route_${i + 1}`,
-      title: defaultTitles[i] ?? `【工艺与排版】实战探索路线 0${i + 1}`,
+      title: defaultTitles[i] ?? `【工艺与排版】实战探索 0${i + 1}`,
+      themeName: defaultThemeNames[i] ?? `设计主题 0${i + 1}`,
+      visualSnapshot: defaultSnapshots[i] ?? "大面积纯净留白，依靠材质微肌理与清晰字阶呈现克制现代美感。",
       startingPoint: defaultStarts[i] ?? `领地 0${i + 1}`,
       focusDimension: defaultDimensions[i] ?? "综合美学表现",
       coreProblem: "放弃多色繁复装饰，依靠材料肌理与光影阴影建立静谧质感",
@@ -259,19 +320,29 @@ export function normalizeLiveRoutesPayload(
     });
   }
 
-  const recommendedRouteId =
+  // Determine exactly ONE recommendedRouteId
+  let recommendedRouteId: string | null = null;
+  if (
     typeof root.recommendedRouteId === "string" &&
     routes.some((r) => r.id === root.recommendedRouteId)
-      ? root.recommendedRouteId
-      : routes.find((r) => r.recommendedReason !== null)?.id ?? null;
-
-  if (recommendedRouteId) {
-    const recRoute = routes.find((r) => r.id === recommendedRouteId);
-    if (recRoute && !recRoute.recommendedReason) {
-      recRoute.recommendedReason =
-        "结合当前任务的核心诉求与待验证项，该路线最具针对性。";
-    }
+  ) {
+    recommendedRouteId = root.recommendedRouteId;
+  } else {
+    // Pick the first route that has a recommendedReason, or default to the first route
+    recommendedRouteId = routes.find((r) => Boolean(r.recommendedReason))?.id ?? routes[0]?.id ?? null;
   }
+
+  // Strict single-recommendation guarantee:
+  // ONLY the route matching recommendedRouteId gets a non-null recommendedReason!
+  routes.forEach((r) => {
+    if (r.id === recommendedRouteId) {
+      if (!r.recommendedReason) {
+        r.recommendedReason = "针对前期核心诉求与待定考量，该主题切入角度最稳妥直接。";
+      }
+    } else {
+      r.recommendedReason = null;
+    }
+  });
 
   return {
     sessionId: input.sessionId,
