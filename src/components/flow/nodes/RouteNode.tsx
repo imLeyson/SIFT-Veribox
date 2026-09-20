@@ -53,9 +53,11 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
     ? route.id === recommendedRouteId
     : Boolean(route.recommendedReason);
 
-  const kicker = isRecommended
-    ? `领地 0${index + 1} · 首选方向`
-    : `领地 0${index + 1} · 探索方向`;
+  const kicker = isSelected
+    ? `主题 0${index + 1} · 当前选定`
+    : isRecommended
+      ? `主题 0${index + 1} · 首选推荐`
+      : `主题 0${index + 1} · 备选方向`;
 
   // Display hero theme name
   const heroTitle = route.themeName?.trim() || (() => {
@@ -78,19 +80,26 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
     <div
       className={`transition-all duration-300 w-[390px] ${
         isWeakened
-          ? "opacity-40 hover:opacity-90 grayscale-[30%] hover:grayscale-0"
+          ? "opacity-60 hover:opacity-100"
           : isSelected
-            ? "ring-2 ring-accent/60 shadow-lg"
+            ? "ring-2 ring-indigo-600/70 shadow-md"
             : "hover:shadow-md"
       }`}
     >
       <NodeShell
+        stage="03"
         kicker={kicker}
         title={heroTitle}
         badge={
-          <span className="text-[10px] font-mono text-stone-400">
-            契合度 {route.alignmentScore ?? (isRecommended ? 96 : index === 1 ? 91 : 87)}%
-          </span>
+          isSelected ? (
+            <span className="text-[10px] font-medium text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.2 rounded font-sans">
+              ✓ 当前激活
+            </span>
+          ) : (
+            <span className="text-[10px] font-mono text-stone-400">
+              契合度 {route.alignmentScore ?? (isRecommended ? 96 : index === 1 ? 91 : 87)}%
+            </span>
+          )
         }
         selected={selected || isSelected}
       >

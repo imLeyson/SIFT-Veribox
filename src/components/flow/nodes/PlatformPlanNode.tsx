@@ -89,7 +89,8 @@ export function PlatformPlanNode({
   return (
     <div className="w-[390px]">
       <NodeShell
-        kicker={`07 · ${stepTitle}`}
+        stage="07"
+        kicker={`灵感方案 · ${stepTitle}`}
         title="推荐搜索方案"
         badge={
           <span className="text-[10px] font-mono text-stone-400">

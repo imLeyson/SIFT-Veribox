@@ -36,12 +36,13 @@ export function StateNode({ selected }: NodeProps) {
 
   return (
     <NodeShell
+      stage="01"
       kicker={
         confirmed
-          ? "DIRECTION · 已确认"
+          ? "视觉主张 · 已确认"
           : checkpoint
-            ? "CHECKPOINT · 检查点"
-            : "DIRECTION · 收敛推导"
+            ? "视觉主张 · 检查点"
+            : "视觉主张 · 收敛推导"
       }
       title="核心视觉方向"
       selected={selected}

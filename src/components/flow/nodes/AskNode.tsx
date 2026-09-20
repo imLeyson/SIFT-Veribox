@@ -13,7 +13,8 @@ export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
     if (next?.type !== "ask") return null;
     return (
       <NodeShell
-        kicker="01 · 视觉抉择"
+        stage="02"
+        kicker="取向对齐"
         title="视觉取向对齐"
         selected={selected}
       >

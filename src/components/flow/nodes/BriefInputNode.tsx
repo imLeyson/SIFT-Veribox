@@ -80,7 +80,8 @@ export function BriefInputNode({ selected }: NodeProps) {
   return (
     <>
       <NodeShell
-        kicker="00 · 设计简报"
+        stage="00"
+        kicker={state ? "简报诊断 · 已锁定" : "输入设计目标与背景"}
         title={state ? "设计简报" : "输入设计目标与背景"}
         badge={
           state && confirmedDiagnostics ? (

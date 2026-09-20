@@ -78,7 +78,8 @@ export function StepNode({ selected }: NodeProps) {
   return (
     <div className="w-[390px]">
       <NodeShell
-        kicker="05 · 工位实操推进"
+        stage="05"
+        kicker={`实操推进 · 步骤 0${activeIdx + 1}/${route.steps.length}`}
         title={route.title}
         selected={selected}
       >
