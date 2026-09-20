@@ -74,25 +74,34 @@ export const AnswerBatchSchema = z
     if (new Set(answers.map((answer) => answer.questionId)).size !== answers.length)
       ctx.addIssue({ code: "custom", message: "同一轮不能重复回答同一题" });
   });
+const StartEventSchema = z.object({ type: z.literal("start") });
+const FastStartEventSchema = z.object({ type: z.literal("fast_start") });
+const AnswerEventSchema = z.object({
+  type: z.literal("answer"),
+  answers: z.array(AnswerSchema).min(2).max(3),
+});
+const CorrectEventSchema = z.object({
+  type: z.literal("correct"),
+  text: text.max(2000),
+});
+const CheckpointEventSchema = z.object({
+  type: z.literal("checkpoint"),
+  action: z.enum(["converge", "start_design", "deepen", "revise"]),
+});
 export const EventSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("start") }),
-  z.object({
-    type: z.literal("answer"),
-    answers: z.array(AnswerSchema).min(2).max(3),
-  }),
-  z.object({ type: z.literal("correct"), text: text.max(2000) }),
-  z.object({
-    type: z.literal("checkpoint"),
-    action: z.enum(["start_design", "deepen", "revise"]),
-  }),
+  StartEventSchema,
+  AnswerEventSchema,
+  CorrectEventSchema,
+  CheckpointEventSchema,
+  FastStartEventSchema,
 ]);
 export const HistoryEntrySchema = z.object({
   id: text,
   questions: z.array(QuestionSchema).min(2).max(3).nullable(),
   event: z.union([
-    EventSchema.options[1],
-    EventSchema.options[2],
-    EventSchema.options[3],
+    AnswerEventSchema,
+    CorrectEventSchema,
+    CheckpointEventSchema,
   ]),
   beforeRevision: z.number().int().nonnegative(),
   afterRevision: z.number().int().positive(),
@@ -104,7 +113,12 @@ export const NextSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("checkpoint"),
-    reason: z.enum(["ready", "needs_evidence", "user_requested"]),
+    reason: z.enum([
+      "ready",
+      "needs_evidence",
+      "user_requested",
+      "fast_converged",
+    ]),
   }),
 ]);
 export const TurnPayloadSchema = z
@@ -150,7 +164,7 @@ export const ConvergenceInputSchema = z
   .superRefine((value, ctx) => {
     const issue = (message: string) =>
       ctx.addIssue({ code: "custom", message });
-    if (value.event.type === "start") {
+    if (value.event.type === "start" || value.event.type === "fast_start") {
       if (value.state || value.history.length || value.pendingQuestions)
         issue("开始时不能携带旧状态");
       return;

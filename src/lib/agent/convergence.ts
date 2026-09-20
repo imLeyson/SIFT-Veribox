@@ -3,6 +3,7 @@ import type {
   DesignState,
   HistoryEntry,
   Question,
+  TurnPayload,
   TurnResult,
 } from "@/types/convergence";
 import {
@@ -54,21 +55,39 @@ function questionKey(question: Question) {
   return question.prompt.replace(/[\s？?，,。]/g, "");
 }
 
+function forceFastCheckpoint(payload: TurnPayload): TurnPayload {
+  return {
+    state: { ...payload.state, status: "checkpoint" },
+    next: { type: "checkpoint", reason: "fast_converged" },
+  };
+}
+
 export async function runConvergenceTurn(
   value: ConvergenceInput,
 ): Promise<TurnResult> {
   const input = parseContract(ConvergenceInputSchema, value);
   const { event, state: previous } = input;
+  const raw = llmConfigured()
+    ? ((await liveConvergence(input)) as TurnPayload)
+    : mockConvergence(input);
   const result = parseContract(
     TurnPayloadSchema,
-    llmConfigured() ? await liveConvergence(input) : mockConvergence(input),
+    event.type === "fast_start" ? forceFastCheckpoint(raw) : raw,
   );
   if (result.state.status === "confirmed")
     throw new Error("方向必须由用户确认");
 
   const revision = (previous?.revision ?? 0) + 1;
   const history: HistoryEntry[] = [...input.history];
-  if (event.type !== "start") {
+  if (event.type === "fast_start") {
+    history.push({
+      id: input.requestId,
+      questions: null,
+      event: { type: "checkpoint", action: "converge" },
+      beforeRevision: previous?.revision ?? 0,
+      afterRevision: revision,
+    });
+  } else if (event.type !== "start") {
     history.push({
       id: input.requestId,
       questions: event.type === "answer" ? input.pendingQuestions : null,

@@ -103,4 +103,38 @@ describe("convergence requests", () => {
     expect(store.getState().error).toMatch(/超时/);
     expect(store.getState().rawBrief).toBe(EXAMPLES[0].brief);
   });
+
+  it("sends fast_start to the brief endpoint", async () => {
+    const store = createSiftStore(memory);
+    store.getState().setRawBrief(EXAMPLES[0].brief);
+    const fetcher = vi.fn(async (_url, init) =>
+      serverResponse(JSON.parse(init.body)),
+    );
+    await createConvergenceActions(store, fetcher).fastStart();
+    expect(fetcher.mock.calls[0]?.[0]).toBe("/api/brief");
+    expect(JSON.parse(fetcher.mock.calls[0]?.[1].body).event).toEqual({
+      type: "fast_start",
+    });
+    expect(store.getState().next).toEqual({
+      type: "checkpoint",
+      reason: "fast_converged",
+    });
+  });
+
+  it("does not call the model when converging during questions", async () => {
+    const store = createSiftStore(memory);
+    store.getState().setRawBrief(EXAMPLES[0].brief);
+    const fetcher = vi.fn(async (_url, init) =>
+      serverResponse(JSON.parse(init.body)),
+    );
+    const actions = createConvergenceActions(store, fetcher);
+    await actions.start();
+    fetcher.mockClear();
+    actions.converge();
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(store.getState().next).toEqual({
+      type: "checkpoint",
+      reason: "user_requested",
+    });
+  });
 });

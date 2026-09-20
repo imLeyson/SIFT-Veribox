@@ -44,9 +44,10 @@ export function Workspace() {
           {state?.status === "questioning" && (
             <button
               className="btn-ghost text-xs"
-              onClick={siftActions.checkpoint}
+              onClick={siftActions.converge}
+              title="停止追问，按当前状态进入人工检查点"
             >
-              先确认当前状态
+              一键收敛
             </button>
           )}
           <button className="btn-ghost text-xs" onClick={siftActions.reset}>

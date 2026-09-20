@@ -44,5 +44,41 @@ describe("live contract guards", () => {
   });
 
   it("rejects a model that confirms on the user's behalf", async () => { const payload = mockConvergence(initial()); payload.state.status = "confirmed"; payload.next = { type: "checkpoint", reason: "ready" }; vi.mocked(completeJson).mockResolvedValue(payload); await expect(runConvergenceTurn(initial())).rejects.toThrow(/用户确认/); });
+  it("coerces fast_start to a checkpoint even if the model asks questions", async () => {
+    vi.mocked(completeJson).mockResolvedValue(mockConvergence(initial()));
+    const result = await runConvergenceTurn({ ...initial(), event: { type: "fast_start" } });
+    expect(result.next).toEqual({ type: "checkpoint", reason: "fast_converged" });
+    expect(result.state.status).toBe("checkpoint");
+    expect(result.state.status).not.toBe("confirmed");
+    expect(result.history.at(-1)?.event).toEqual({ type: "checkpoint", action: "converge" });
+  });
+  it("defaults unlabeled fast_start judgments to assumptions", () => {
+    const input = { ...initial(), event: { type: "fast_start" as const } };
+    const normalized = normalizeLivePayload(
+      {
+        state: {
+          brief: { goal: "冷泡茶包装", audience: null, deliverable: null },
+          direction: {
+            intent: { text: "干净有仪式感", sourceIds: ["brief"] },
+            priorities: [{ text: "先按版式推进", sourceIds: ["r1"] }],
+            avoid: [],
+            criteria: [],
+          },
+          uncertainties: [],
+        },
+        next: { type: "ask", questions: [] },
+      },
+      input,
+    ) as {
+      state: {
+        direction: {
+          intent: { basis: string };
+          priorities: { basis: string }[];
+        };
+      };
+    };
+    expect(normalized.state.direction.intent.basis).toBe("assumption");
+    expect(normalized.state.direction.priorities[0].basis).toBe("assumption");
+  });
   it("rejects a question unrelated to an open uncertainty", async () => { const payload = mockConvergence(initial()); if (payload.next.type !== "ask") throw new Error("ask"); payload.next.questions[0].uncertaintyId = "unrelated"; vi.mocked(completeJson).mockResolvedValue(payload); await expect(runConvergenceTurn(initial())).rejects.toThrow(/未决判断/); });
 });

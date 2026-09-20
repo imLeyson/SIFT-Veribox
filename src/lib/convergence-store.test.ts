@@ -29,11 +29,52 @@ describe("convergence session", () => {
     expect(store.getState().drafts).toHaveLength(2);
   });
 
-  it("does not auto-confirm when entering a checkpoint", () => {
+  it("one-click convergence enters an audited checkpoint without changing the direction", () => {
     const store = createSiftStore(memoryStorage());
     store.getState().commitTurn(response(store));
-    store.getState().enterCheckpoint();
-    expect(store.getState().next?.type).toBe("checkpoint");
-    expect(store.getState().state?.status).not.toBe("confirmed");
+    const before = structuredClone(store.getState().state!);
+    const next = store.getState().next;
+    if (!next || next.type !== "ask") throw new Error("Expected ask");
+    store.getState().setDrafts(
+      next.questions.map((question) => ({
+        questionId: question.id,
+        kind: "uncertain" as const,
+      })),
+    );
+
+    store.getState().convergeNow();
+
+    const after = store.getState();
+    expect(after.next).toEqual({ type: "checkpoint", reason: "user_requested" });
+    expect(after.state).toEqual({
+      ...before,
+      status: "checkpoint",
+      revision: before.revision + 1,
+    });
+    expect(after.state?.status).not.toBe("confirmed");
+    expect(after.drafts).toEqual([]);
+    expect(after.history.at(-1)).toMatchObject({
+      questions: null,
+      event: { type: "checkpoint", action: "converge" },
+      beforeRevision: before.revision,
+      afterRevision: before.revision + 1,
+    });
+  });
+
+  it("ignores repeated one-click convergence", () => {
+    const store = createSiftStore(memoryStorage());
+    store.getState().commitTurn(response(store));
+    store.getState().convergeNow();
+    const afterFirstClick = {
+      state: structuredClone(store.getState().state),
+      next: structuredClone(store.getState().next),
+      history: structuredClone(store.getState().history),
+    };
+
+    store.getState().convergeNow();
+
+    expect(store.getState().state).toEqual(afterFirstClick.state);
+    expect(store.getState().next).toEqual(afterFirstClick.next);
+    expect(store.getState().history).toEqual(afterFirstClick.history);
   });
 });

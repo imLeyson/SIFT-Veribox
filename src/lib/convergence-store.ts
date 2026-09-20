@@ -64,6 +64,7 @@ type SiftStore = Session & {
   cancelRequest: () => void;
   failRequest: (id: string, error: string) => void;
   commitTurn: (response: TurnResult) => boolean;
+  convergeNow: () => void;
   enterCheckpoint: () => void;
   confirm: () => void;
   reset: () => void;
@@ -190,20 +191,33 @@ export function createSiftStore(providedStorage?: StateStorage) {
           });
           return true;
         },
-        enterCheckpoint: () => {
+        convergeNow: () => {
           const state = get().state;
-          if (!state || state.status === "confirmed") return;
+          if (!state || state.status !== "questioning") return;
+          const nextRevision = state.revision + 1;
           set({
             state: {
               ...state,
               status: "checkpoint",
-              revision: state.revision + 1,
+              revision: nextRevision,
             },
             next: { type: "checkpoint", reason: "user_requested" },
+            history: [
+              ...get().history,
+              {
+                id: crypto.randomUUID(),
+                questions: null,
+                event: { type: "checkpoint", action: "converge" },
+                beforeRevision: state.revision,
+                afterRevision: nextRevision,
+              },
+            ],
             activeRequest: null,
             error: null,
+            drafts: [],
           });
         },
+        enterCheckpoint: () => get().convergeNow(),
         confirm: () => {
           const state = get().state;
           if (!state || state.status !== "checkpoint" || !hasDirection(state))

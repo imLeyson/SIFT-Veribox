@@ -53,6 +53,7 @@ const reasons = {
   ready: "当前没有明显高价值问题了。由你决定下一步。",
   needs_evidence: "剩余判断需要更多依据。由你决定继续深化还是先做验证。",
   user_requested: "已暂停追问。请检查当前假设和待定项。",
+  fast_converged: "已按 Brief 直接收敛。请检查待确认假设和未决项。",
 };
 
 export function StateNode({ selected }: NodeProps) {

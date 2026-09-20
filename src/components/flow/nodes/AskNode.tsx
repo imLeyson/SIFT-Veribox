@@ -3,16 +3,28 @@ import type { Node, NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { QuestionBlock } from "../QuestionBlock";
 import { useSiftStore } from "@/lib/convergence-store";
+import { siftActions } from "@/lib/convergence-client";
 import { answerText } from "@/types/convergence";
 
 export type FlowData = { historyId?: string };
 export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
-  const { history, next } = useSiftStore();
+  const { history, next, activeRequest } = useSiftStore();
   if (!data.historyId) {
     if (next?.type !== "ask") return null;
     return (
       <NodeShell kicker="当前问题 · 一轮" title="先一起判断这几件事" selected={selected}>
         <QuestionBlock questions={next.questions} />
+        <button
+          type="button"
+          className="btn-ghost mt-3 w-full text-sm"
+          disabled={Boolean(activeRequest)}
+          onClick={siftActions.converge}
+        >
+          一键收敛
+        </button>
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          停止追问，按当前判断进入检查点。未决项会保留。
+        </p>
       </NodeShell>
     );
   }
@@ -20,7 +32,15 @@ export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
   if (!turn) return null;
   let text = "";
   if (turn.event.type === "correct") text = turn.event.text;
-  if (turn.event.type === "checkpoint") text = `用户选择：${turn.event.action}`;
+  if (turn.event.type === "checkpoint") {
+    const labels = {
+      converge: "一键收敛",
+      start_design: "开始设计",
+      deepen: "继续深化",
+      revise: "回退修改",
+    } as const;
+    text = `用户选择：${labels[turn.event.action]}`;
+  }
   if (turn.event.type === "answer") {
     const answers = turn.event.answers;
     text = (turn.questions ?? [])

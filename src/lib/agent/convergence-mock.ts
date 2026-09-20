@@ -104,10 +104,14 @@ const chosenText: Record<string, string> = {
   paper: "采用现成纸盒；不再要求定制金属盒",
 };
 
-function judgment(text: string, source = "brief"): Judgment {
+function judgment(
+  text: string,
+  source = "brief",
+  basis: Judgment["basis"] = "user",
+): Judgment {
   return {
     text: text.length > 240 ? text.slice(0, 239) + "…" : text,
-    basis: source === "brief" ? "user" : "user",
+    basis,
     sourceIds: [source],
   };
 }
@@ -254,9 +258,38 @@ function questionFor(
   });
 }
 
+function assumeOpenJudgments(state: DesignState, requestId: string) {
+  const remaining: DesignState["uncertainties"] = [];
+  for (const item of state.uncertainties) {
+    if (item.status !== "open" || item.impact === "minor") {
+      remaining.push(item);
+      continue;
+    }
+    const decision = decisions[item.id];
+    const label = decision.labels[0]?.[1] ?? decision.affected;
+    const assumed = judgment(`先按${label}推进`, requestId, "assumption");
+    if (item.id === "perception" && !state.direction.intent) {
+      state.direction.intent = assumed;
+    } else {
+      state.direction.priorities.push(assumed);
+    }
+  }
+  state.uncertainties = remaining;
+}
+
 export function mockConvergence(input: ConvergenceInput): TurnPayload {
   const state = input.state ? structuredClone(input.state) : initialize(input.rawBrief);
   const { event } = input;
+  if (event.type === "fast_start") {
+    assumeOpenJudgments(state, input.requestId);
+    state.currentHypothesis = hypothesis(state);
+    state.validationAction = validation(state);
+    state.status = "checkpoint";
+    return {
+      state,
+      next: { type: "checkpoint", reason: "fast_converged" },
+    };
+  }
   if (event.type === "answer") {
     const answers = event.answers;
     for (const answer of answers) {

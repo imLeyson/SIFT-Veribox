@@ -54,4 +54,12 @@ describe("convergence API", () => {
     expect(result.baseRevision).toBe(1);
     expect(result.state.revision).toBe(2);
   });
+  it("accepts fast_start on brief and rejects it on clarify", async () => {
+    const body = { ...initial(), event: { type: "fast_start" } };
+    const allowed = await handleTurn(request(body), true);
+    expect(allowed.status).toBe(200);
+    const result = await allowed.json();
+    expect(result.next).toEqual({ type: "checkpoint", reason: "fast_converged" });
+    expect((await handleTurn(request(body), false)).status).toBe(400);
+  });
 });

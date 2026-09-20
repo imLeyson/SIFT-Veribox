@@ -20,7 +20,9 @@ export async function handleTurn(request: Request, start: boolean) {
       },
       { status: 400 },
     );
-  if ((input.data.event.type === "start") !== start)
+  const briefEvent =
+    input.data.event.type === "start" || input.data.event.type === "fast_start";
+  if (briefEvent !== start)
     return NextResponse.json(
       { error: "请求类型与接口不匹配" },
       { status: 400 },

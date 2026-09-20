@@ -26,7 +26,8 @@ export function BriefInputNode({ selected }: NodeProps) {
           }}
         >
           <p className="mb-4 text-sm leading-relaxed text-muted">
-            先分析任务，再一次问 2–3 个最影响方向的问题。
+            先分析任务，再一次问 2–3 个最影响方向的问题。也可以按 Brief
+            直接收敛，没写清的判断会标成待确认。
           </p>
           {importedBrief && (
             <p className="mb-3 text-xs text-muted">
@@ -46,13 +47,23 @@ export function BriefInputNode({ selected }: NodeProps) {
             placeholder="要设计什么、给谁、希望传达什么、有哪些限制…"
             className="mt-2 w-full resize-y rounded-xl border border-line bg-cream/70 px-3 py-2 text-sm leading-relaxed outline-none focus:border-accent"
           />
-          <button
-            type="submit"
-            className="btn-primary mt-3 w-full"
-            disabled={Boolean(activeRequest) || !rawBrief.trim()}
-          >
-            {activeRequest ? "正在理解任务…" : "开始收敛"}
-          </button>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <button
+              type="submit"
+              className="btn-primary w-full"
+              disabled={Boolean(activeRequest) || !rawBrief.trim()}
+            >
+              {activeRequest ? "正在理解任务…" : "开始收敛"}
+            </button>
+            <button
+              type="button"
+              className="btn-ghost w-full"
+              disabled={Boolean(activeRequest) || !rawBrief.trim()}
+              onClick={() => void siftActions.fastStart()}
+            >
+              一键收敛
+            </button>
+          </div>
           <details className="mt-4 text-xs text-muted">
             <summary className="cursor-pointer">试一份示例 Brief</summary>
             <div className="mt-2 flex flex-wrap gap-2">

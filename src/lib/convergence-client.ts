@@ -39,7 +39,9 @@ export function createConvergenceActions(
         event,
       });
       const response = await fetcher(
-        event.type === "start" ? "/api/brief" : "/api/clarify",
+        event.type === "start" || event.type === "fast_start"
+          ? "/api/brief"
+          : "/api/clarify",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -84,6 +86,7 @@ export function createConvergenceActions(
   }
   return {
     start: () => send({ type: "start" }),
+    fastStart: () => send({ type: "fast_start" }),
     answer: () => {
       const drafts = store.getState().drafts;
       return drafts.length
@@ -98,9 +101,13 @@ export function createConvergenceActions(
       return send({ type: "correct", text });
     },
     cancel,
+    converge: () => {
+      cancel();
+      store.getState().convergeNow();
+    },
     checkpoint: () => {
       cancel();
-      store.getState().enterCheckpoint();
+      store.getState().convergeNow();
     },
     deepen: () => send({ type: "checkpoint", action: "deepen" }),
     confirm: () => {

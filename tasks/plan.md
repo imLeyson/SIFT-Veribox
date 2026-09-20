@@ -62,3 +62,13 @@
 ## Open Questions
 
 - Whether “回退修改” should immediately submit a correction or only open the existing correction editor. Initial implementation uses the existing editor so the user controls the text.
+
+## One-click convergence (2026-09-20)
+
+Brief 快路径走 `{ type: "fast_start" }` → `POST /api/brief`，服务端强制 `checkpoint` / `fast_converged`，推导标 assumption。追问中走本地 `convergeNow()`，不打模型，写 `checkpoint/converge` 历史，reason 为 `user_requested`。两者都不 `confirmed`。
+
+- [x] Task A: Schema — `fast_start` 事件、`converge` 历史动作、`fast_converged` 原因
+- [x] Task B: Engine — Mock 补全待确认判断；Live 提示；服务端强制检查点
+- [x] Task C: Store/client — 本地停问审计；Brief 请求发到 `/api/brief`
+- [x] Task D: UI — Brief 与追问入口；检查点文案
+- [x] Task E: Tests + lint + build + 浏览器两条路径

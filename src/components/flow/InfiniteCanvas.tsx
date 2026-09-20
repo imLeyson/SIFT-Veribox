@@ -68,7 +68,10 @@ function FlowInner() {
       nodes.push({
         id: "direction",
         type: "state",
-        position: positions.direction ?? { x: 880, y: 60 },
+        position: positions.direction ?? {
+          x: next?.type === "ask" ? 880 : 460,
+          y: 60,
+        },
         data: {},
       });
       edges.push({

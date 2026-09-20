@@ -52,6 +52,7 @@ priorities 是表达主次，avoid 是禁忌，criteria 是检验后续设计的
 8. 每次回答后必须重写 currentHypothesis，使它比上一轮更具体；只写一句，不写总结段落，不列多个方向。
 9. validationAction 只有确实能快速区分一个关键判断时才给，否则为 null；动作必须轻量、可观察、不可替用户做最终选择。
 10. 无高价值未决判断→ready；剩余判断均暂缓或需外部证据→needs_evidence。等待用户在检查点决定开始设计、继续深化或回退修改。
+若 event.type 为 fast_start：禁止提问，不要返回 next.type=ask，不要输出 confirmed。从 Brief 提取的明确事实标 basis=user；为填满方向而做的推导必须写入 direction 并标 basis=assumption。无法合理假设的判断留在 uncertainties。state.status=checkpoint，next={"type":"checkpoint","reason":"fast_converged"}。
 
 示例：用户已说不要荧光色、大插画，不重复问禁忌。可以同时问“品质感主要靠表面触感，还是字体与版式？”和“包装正面先突出茶品，还是品牌？”。用户回答后，把两项选择合并成一句当前设计假设；必要时只给一个小型黑白对照验证。
 若目标是 SaaS 的专业感，应问“专业感更应来自功能实力，还是容易上手？”，不要问瓶型或材质。`;
@@ -76,12 +77,21 @@ function nullableText(value: unknown, fallback: string | null) {
       : fallback;
 }
 
-function judgment(value: unknown, fallback: RecordLike | null) {
+function judgment(
+  value: unknown,
+  fallback: RecordLike | null,
+  preferAssumption = false,
+) {
   const item = record(value);
   const old = fallback ?? {};
   return {
     text: nonEmpty(item.text, nonEmpty(old.text, "待确认的设计判断")),
-    basis: item.basis === "assumption" ? "assumption" : "user",
+    basis:
+      item.basis === "assumption" || item.basis === "user"
+        ? item.basis
+        : preferAssumption
+          ? "assumption"
+          : "user",
     sourceIds:
       Array.isArray(item.sourceIds) && item.sourceIds.every((id) => typeof id === "string" && id.trim())
         ? item.sourceIds
@@ -165,16 +175,26 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
   const brief = record(state.brief);
   const previousDirection = record(previous?.direction);
   const direction = record(state.direction);
+  const preferAssumption = input.event.type === "fast_start";
   const normalizeJudgments = (value: unknown, oldValue: unknown) => {
     const values = Array.isArray(value) ? value : Array.isArray(oldValue) ? oldValue : [];
-    return values.map((item, index) => judgment(item, Array.isArray(oldValue) ? record(oldValue[index]) : null));
+    return values.map((item, index) =>
+      judgment(
+        item,
+        Array.isArray(oldValue) ? record(oldValue[index]) : null,
+        preferAssumption,
+      ),
+    );
   };
   const intentValue =
     state.direction && Object.prototype.hasOwnProperty.call(direction, "intent")
       ? direction.intent
       : previousDirection.intent;
   const normalizedDirection = {
-    intent: intentValue === null || intentValue === undefined ? null : judgment(intentValue, record(previousDirection.intent)),
+    intent:
+      intentValue === null || intentValue === undefined
+        ? null
+        : judgment(intentValue, record(previousDirection.intent), preferAssumption),
     priorities: normalizeJudgments(direction.priorities, previousDirection.priorities),
     avoid: normalizeJudgments(direction.avoid, previousDirection.avoid),
     criteria: normalizeJudgments(direction.criteria, previousDirection.criteria),
@@ -206,7 +226,9 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
     : {
         type: "checkpoint" as const,
         reason:
-          nextRecord.reason === "needs_evidence" || nextRecord.reason === "user_requested"
+          nextRecord.reason === "needs_evidence" ||
+          nextRecord.reason === "user_requested" ||
+          nextRecord.reason === "fast_converged"
             ? nextRecord.reason
             : "ready" as const,
       };

@@ -9,6 +9,8 @@
 - 先处理限制冲突，再判断表达重点、受众感知和评价标准。没有高价值问题时不凑轮数。
 - 暂不确定不生成偏好；同一判断最多换一个场景或对照问法，第二次仍不确定则暂缓。
 - 没有关键问题、剩余问题需要外部依据或用户主动停止时进入 Human Checkpoint。
+- Brief 上可「一键收敛」：一次模型调用，不提问，按 Brief 填方向；没写清的判断标成待确认，然后进入检查点。
+- 追问中可「一键收敛」：立即停止提问，按当前 Design State 进入检查点；未决项保留，不调用模型，不替用户确认。
 - 仅用户可确认方向；确认保留未决项和待确认假设。没有任何方向判断时，只可保存状态和继续补充。
 - 修改或补充会重新评估，不要求从头填问卷。
 
@@ -26,12 +28,14 @@
 
 保留 `GET /api/status`。两个 POST 共用 `runConvergenceTurn`，一次正常轮转调用一次模型，返回完整状态，不用 JSON Patch。
 
-- `POST /api/brief`：event 为 `{ type: "start" }`，state 为 null，history 为空，pendingQuestion 为 null。
+- `POST /api/brief`：event 为 `{ type: "start" }` 或 `{ type: "fast_start" }`，state 为 null，history 为空，pendingQuestions 为 null。
+- `fast_start` 必须返回检查点，reason 为 `fast_converged`；服务端若收到提问会强制改成检查点。推导标 `assumption`。
+- 追问中的「一键收敛」是本地状态转换，不调用模型；递增 revision、清空未提交草稿，并写入 `checkpoint/converge` 历史。
 - `POST /api/clarify`：event 为 `{ type: "answer", answer }` 或 `{ type: "correct", text }`。
 - 公共输入：sessionId、requestId、rawBrief、state、history、pendingQuestion、event。
 - answer：`{ questionId, kind: "option", optionId }` / `{ questionId, kind: "custom", text }` / `{ questionId, kind: "uncertain" }`。
 - 公共输出：state、next、history、sessionId、requestId、baseRevision、mode、model。
-- next：`{ type: "ask", question }` 或 `{ type: "checkpoint", reason }`；reason 为 ready / needs_evidence。用户主动停止在本地记录 user_requested，不消耗模型请求。
+- next：`{ type: "ask", questions }` 或 `{ type: "checkpoint", reason }`；reason 为 ready / needs_evidence / user_requested / fast_converged。用户主动停止在本地记录 user_requested，不消耗模型请求。
 - 无效输入返回 400；模型或契约失败返回 502 和可读 error。不会返回半份新状态。
 
 旧 /api/routes、/api/platform-plan、/api/canvas-chat 已删除。这是内部 API 的不兼容变更；旧客户端需要升级。

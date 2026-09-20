@@ -58,4 +58,36 @@ describe("batch design convergence", () => {
     next.event = { type: "answer", answers: [{ questionId: "made-up", kind: "uncertain" }] };
     await expect(runConvergenceTurn(next)).rejects.toThrow(/当前问题/);
   });
+
+  it("fast-starts an incomplete brief into an assumed checkpoint without confirming", async () => {
+    const result = await runConvergenceTurn({
+      ...start(),
+      event: { type: "fast_start" },
+    });
+    expect(result.next).toEqual({ type: "checkpoint", reason: "fast_converged" });
+    expect(result.state.status).toBe("checkpoint");
+    expect(result.state.status).not.toBe("confirmed");
+    expect(result.state.direction.intent?.basis).toBe("user");
+    expect(
+      result.state.direction.priorities.some((item) => item.basis === "assumption"),
+    ).toBe(true);
+    expect(result.history.at(-1)?.event).toEqual({
+      type: "checkpoint",
+      action: "converge",
+    });
+  });
+
+  it("rejects fast_start when a session already exists", async () => {
+    const first = await runConvergenceTurn(start());
+    await expect(
+      runConvergenceTurn({
+        ...start(),
+        requestId: "request-fast",
+        state: first.state,
+        history: first.history,
+        pendingQuestions: first.next.type === "ask" ? first.next.questions : null,
+        event: { type: "fast_start" },
+      }),
+    ).rejects.toThrow(/开始时不能携带旧状态/);
+  });
 });
