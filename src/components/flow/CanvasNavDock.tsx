@@ -22,6 +22,7 @@ export function CanvasNavDock({
   const hasState = useSiftStore((s) => Boolean(s.state));
   const routes = useSiftStore((s) => s.routes);
   const selectedRouteId = useSiftStore((s) => s.selectedRouteId);
+  const activeStepId = useSiftStore((s) => s.activeStepId);
   const platformPlans = useSiftStore((s) => s.platformPlans);
 
   const isConfirmed = useSiftStore((s) => s.state?.status === "confirmed");
@@ -151,25 +152,45 @@ export function CanvasNavDock({
       {/* 07 Search Plans */}
       <button
         type="button"
-        title="跳转到 07 搜索方案"
-        disabled={platformPlans.length === 0}
-        onClick={() =>
-          void fitView({
-            nodes: platformPlans.map((p) => ({ id: `plan-${p.stepId}` })),
-            padding: 0.25,
-            maxZoom: 0.95,
-            duration: 350,
-          })
-        }
-        className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium transition-all ${
+        title={
           platformPlans.length > 0
+            ? "跳转到 07 搜索方案"
+            : selectedRouteId
+              ? "查看步骤并生成搜索方案"
+              : "暂无搜索方案"
+        }
+        disabled={platformPlans.length === 0 && !selectedRouteId}
+        onClick={() => {
+          if (platformPlans.length > 0) {
+            const target =
+              platformPlans.find((p) => p.stepId === activeStepId) ??
+              platformPlans.at(-1);
+            if (target) {
+              void fitView({
+                nodes: [{ id: `plan-${target.stepId}` }],
+                padding: 0.28,
+                maxZoom: 0.95,
+                duration: 350,
+              });
+            }
+          } else if (selectedRouteId) {
+            void fitView({
+              nodes: [{ id: "steps" }],
+              padding: 0.28,
+              maxZoom: 0.95,
+              duration: 350,
+            });
+          }
+        }}
+        className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium transition-all ${
+          platformPlans.length > 0 || selectedRouteId
             ? "text-ink hover:bg-white/80"
             : "text-stone-300 cursor-not-allowed"
         }`}
       >
         <Search
           className={`h-3.5 w-3.5 ${
-            platformPlans.length > 0 ? "text-blue-600" : "text-stone-300"
+            platformPlans.length > 0 ? "text-blue-600" : selectedRouteId ? "text-stone-500" : "text-stone-300"
           }`}
         />
         <span>07 搜索</span>

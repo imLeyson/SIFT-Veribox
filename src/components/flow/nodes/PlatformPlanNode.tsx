@@ -6,6 +6,7 @@ import { NodeShell } from "../NodeShell";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import type { PlatformPlan, PlatformSource } from "@/types/routes";
+import { buildPlatformSearchUrl } from "@/lib/agent/platform-registry";
 import {
   ExternalLink,
   Copy,
@@ -20,6 +21,12 @@ import {
 export type PlatformPlanNodeData = {
   plan: PlatformPlan;
 };
+
+function getSearchUrl(source: PlatformSource, kw?: string): string {
+  const query = kw || source.keywords[0]?.keyword || "";
+  if (!query) return source.searchUrl;
+  return buildPlatformSearchUrl(source.platform, query);
+}
 
 export function PlatformPlanNode({
   data,
@@ -46,10 +53,7 @@ export function PlatformPlanNode({
 
   const handleOpenSearch = (source: PlatformSource, kw?: string) => {
     const query = kw ?? source.keywords[0]?.keyword ?? "";
-    const url = source.searchUrl.replace(
-      encodeURIComponent(source.keywords[0]?.keyword ?? ""),
-      encodeURIComponent(query),
-    );
+    const url = getSearchUrl(source, query);
     siftActions.openSearch(url, plan.stepId, source.id, query);
   };
 
@@ -90,16 +94,23 @@ export function PlatformPlanNode({
                 >
                   批量打开
                 </button>
-                <button
-                  type="button"
-                  className="btn-primary !py-1 !px-2.5 text-xs flex items-center gap-1 shadow-xs"
+                <a
+                  href={getSearchUrl(firstSource, firstSource.keywords[0]?.keyword)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary !py-1 !px-2.5 text-xs flex items-center gap-1 shadow-xs no-underline text-white hover:text-white"
                   onClick={() =>
-                    handleOpenSearch(firstSource, firstSource.keywords[0]?.keyword)
+                    siftActions.recordSourceAction(
+                      plan.stepId,
+                      firstSource.id,
+                      "opened",
+                      firstSource.keywords[0]?.keyword,
+                    )
                   }
                 >
                   <span>搜索</span>
                   <ExternalLink className="h-3 w-3" />
-                </button>
+                </a>
               </div>
             </div>
           )}
@@ -163,14 +174,23 @@ export function PlatformPlanNode({
                       >
                         <RefreshCw className="h-3 w-3" />
                       </button>
-                      <button
-                        type="button"
-                        title="打开搜索"
-                        className="rounded p-1 text-accent hover:bg-accent/10 transition-colors"
-                        onClick={() => handleOpenSearch(source)}
+                      <a
+                        href={getSearchUrl(source)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`在 ${source.platform} 打开搜索`}
+                        className="rounded p-1 text-accent hover:bg-accent/10 transition-colors inline-flex items-center"
+                        onClick={() =>
+                          siftActions.recordSourceAction(
+                            plan.stepId,
+                            source.id,
+                            "opened",
+                            source.keywords[0]?.keyword,
+                          )
+                        }
                       >
                         <ExternalLink className="h-3 w-3" />
-                      </button>
+                      </a>
                     </div>
                   </div>
 
@@ -236,16 +256,23 @@ export function PlatformPlanNode({
                                   <Copy className="h-2.5 w-2.5 opacity-30 group-hover:opacity-100" />
                                 )}
                               </button>
-                              <button
-                                type="button"
+                              <a
+                                href={getSearchUrl(source, k.keyword)}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 onClick={() =>
-                                  handleOpenSearch(source, k.keyword)
+                                  siftActions.recordSourceAction(
+                                    plan.stepId,
+                                    source.id,
+                                    "opened",
+                                    k.keyword,
+                                  )
                                 }
-                                className="text-muted hover:text-accent p-0.5"
-                                title="直接搜索"
+                                className="text-muted hover:text-accent p-0.5 inline-flex items-center cursor-pointer"
+                                title={`直接在 ${source.platform} 搜索 “${k.keyword}”`}
                               >
                                 <Search className="h-2.5 w-2.5" />
-                              </button>
+                              </a>
                             </div>
                           );
                         })}
@@ -302,13 +329,22 @@ export function PlatformPlanNode({
                       <span className="font-medium text-ink">
                         {alt.platform} · {alt.roleTag}
                       </span>
-                      <button
-                        type="button"
-                        className="text-[10px] text-accent hover:underline"
-                        onClick={() => handleOpenSearch(alt)}
+                      <a
+                        href={getSearchUrl(alt)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-accent hover:underline cursor-pointer"
+                        onClick={() =>
+                          siftActions.recordSourceAction(
+                            plan.stepId,
+                            alt.id,
+                            "opened",
+                            alt.keywords[0]?.keyword,
+                          )
+                        }
                       >
                         直达搜索
-                      </button>
+                      </a>
                     </div>
                   ))}
                 </div>

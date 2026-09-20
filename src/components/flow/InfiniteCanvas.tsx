@@ -180,13 +180,16 @@ function FlowInner({ onOpenDossier }: { onOpenDossier?: () => void }) {
 
   useEffect(() => {
     if (!initialized) return;
-    void fitView({
-      nodes: [{ id: currentFocusId }],
-      padding: 0.28,
-      duration: 350,
-      maxZoom: 0.95,
-    });
-  }, [initialized, currentFocusId, sessionId, fitView]);
+    const timer = setTimeout(() => {
+      void fitView({
+        nodes: [{ id: currentFocusId }],
+        padding: 0.28,
+        duration: 350,
+        maxZoom: 0.95,
+      });
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [initialized, currentFocusId, sessionId, fitView, nodes.length]);
 
   return (
     <ReactFlow

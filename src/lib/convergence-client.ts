@@ -296,9 +296,24 @@ export function createConvergenceActions(
       keyword?: string,
     ) => {
       if (typeof window !== "undefined") {
-        window.open(url, "_blank", "noopener,noreferrer");
+        try {
+          const win = window.open(url, "_blank", "noopener,noreferrer");
+          if (!win || win.closed || typeof win.closed === "undefined") {
+            window.location.href = url;
+          }
+        } catch {
+          window.location.href = url;
+        }
       }
       store.getState().recordSourceAction(stepId, sourceId, "opened", keyword);
+    },
+    recordSourceAction: (
+      stepId: string,
+      sourceId: string,
+      action: "opened" | "copied",
+      keyword?: string,
+    ) => {
+      store.getState().recordSourceAction(stepId, sourceId, action, keyword);
     },
     reset: () => {
       cancel();
