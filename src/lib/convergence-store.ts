@@ -42,6 +42,7 @@ const SessionSchema = z
   .object({
     sessionId: z.string().min(1),
     rawBrief: z.string().max(10000),
+    briefImages: z.array(z.string()).default([]),
     state: DesignStateSchema.nullable(),
     next: NextSchema.nullable(),
     history: z.array(HistoryEntrySchema),
@@ -92,6 +93,9 @@ export type SiftStore = Session & {
   error: string | null;
   storageWarning: string | null;
   setRawBrief: (text: string) => void;
+  setBriefImages: (images: string[]) => void;
+  addBriefImage: (image: string) => void;
+  removeBriefImage: (index: number) => void;
   setDrafts: (answers: Answer[]) => void;
   setCorrectionDraft: (text: string) => void;
   setPosition: (id: string, position: { x: number; y: number }) => void;
@@ -127,6 +131,7 @@ function emptySession(): Session {
   return {
     sessionId: crypto.randomUUID(),
     rawBrief: "",
+    briefImages: [],
     state: null,
     next: null,
     history: [],
@@ -233,6 +238,15 @@ export function createSiftStore(providedStorage?: StateStorage) {
         storageWarning: null,
         setRawBrief: (rawBrief) =>
           set({ rawBrief, error: null, importedBrief: false }),
+        setBriefImages: (briefImages) => set({ briefImages }),
+        addBriefImage: (image) => {
+          const current = get().briefImages;
+          if (current.length >= 3) return;
+          set({ briefImages: [...current, image] });
+        },
+        removeBriefImage: (index) => {
+          set({ briefImages: get().briefImages.filter((_, i) => i !== index) });
+        },
         setDrafts: (drafts) => set({ drafts }),
         setCorrectionDraft: (correctionDraft) => set({ correctionDraft }),
         setPosition: (id, position) =>
@@ -515,6 +529,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
         partialize: ({
           sessionId,
           rawBrief,
+          briefImages,
           state,
           next,
           history,
@@ -536,6 +551,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
         }) => ({
           sessionId,
           rawBrief,
+          briefImages,
           state,
           next,
           history,

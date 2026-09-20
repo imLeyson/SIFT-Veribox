@@ -81,4 +81,18 @@ describe("live contract guards", () => {
     expect(normalized.state.direction.priorities[0].basis).toBe("assumption");
   });
   it("rejects a question unrelated to an open uncertainty", async () => { const payload = mockConvergence(initial()); if (payload.next.type !== "ask") throw new Error("ask"); payload.next.questions[0].uncertaintyId = "unrelated"; vi.mocked(completeJson).mockResolvedValue(payload); await expect(runConvergenceTurn(initial())).rejects.toThrow(/未决判断/); });
+
+  it("forwards images to completeJson and extracts visualKeywords in normalized state", async () => {
+    const payload = mockConvergence(initial());
+    payload.state.visualKeywords = ["冷茶青", "60%留白", "特种棉纸"];
+    vi.mocked(completeJson).mockResolvedValue(payload);
+
+    const inputWithImages: ConvergenceInput = {
+      ...initial(),
+      images: ["data:image/jpeg;base64,abc"],
+    };
+    const result = (await liveConvergence(inputWithImages)) as typeof payload;
+    expect(vi.mocked(completeJson).mock.calls[0]?.[3]).toEqual(["data:image/jpeg;base64,abc"]);
+    expect(result.state.visualKeywords).toEqual(["冷茶青", "60%留白", "特种棉纸"]);
+  });
 });

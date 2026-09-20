@@ -39,6 +39,7 @@ export function createConvergenceActions(
         sessionId: token.sessionId,
         requestId: token.id,
         rawBrief: s.rawBrief,
+        images: s.briefImages,
         state: s.state,
         history: s.history,
         pendingQuestions: s.next?.type === "ask" ? s.next.questions : null,

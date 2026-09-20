@@ -146,13 +146,16 @@ export async function completeJson<T>(
   // is on by default, so JSON completions always send thinking.disabled even
   // if a stale env still says medium/low.
   reasoningEffort = "none",
+  images: string[] = [],
 ): Promise<T> {
   void reasoningEffort;
   if (!API_KEY) throw new Error("未配置 LLM_API_KEY");
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    return await withRetry(() => completeJsonOnce<T>(system, user, controller.signal));
+    return await withRetry(() =>
+      completeJsonOnce<T>(system, user, controller.signal, images),
+    );
   } finally {
     clearTimeout(timer);
   }
@@ -169,9 +172,21 @@ async function completeJsonOnce<T>(
   system: string,
   user: string,
   signal: AbortSignal,
+  images: string[] = [],
 ): Promise<T> {
   let res: Response;
   let raw: string;
+  const userContent =
+    images.length > 0
+      ? [
+          { type: "text", text: user },
+          ...images.map((img) => ({
+            type: "image_url",
+            image_url: { url: img },
+          })),
+        ]
+      : user;
+
   try {
     res = await fetch(`${BASE_URL}/chat/completions`, {
       method: "POST",
@@ -190,7 +205,7 @@ async function completeJsonOnce<T>(
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: system },
-          { role: "user", content: user },
+          { role: "user", content: userContent },
         ],
       }),
     });

@@ -120,4 +120,25 @@ describe("completeJson provider boundary", () => {
     await expect(completeJson("system", "user")).resolves.toEqual({ ok: true });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
+
+  it("structures multi-part content with image_url when images are passed", async () => {
+    const fetchImpl = vi.fn(async () =>
+      completion({ content: '{"ok":true}' }),
+    );
+    const { completeJson } = await loadCompleteJson(fetchImpl);
+    await completeJson("system", "user-prompt", "none", [
+      "data:image/jpeg;base64,123",
+      "data:image/png;base64,456",
+    ]);
+    const request = fetchImpl.mock.calls[0] as unknown as [
+      string,
+      { body: string },
+    ];
+    const body = JSON.parse(request[1].body);
+    expect(body.messages[1].content).toEqual([
+      { type: "text", text: "user-prompt" },
+      { type: "image_url", image_url: { url: "data:image/jpeg;base64,123" } },
+      { type: "image_url", image_url: { url: "data:image/png;base64,456" } },
+    ]);
+  });
 });

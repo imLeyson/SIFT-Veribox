@@ -160,6 +160,7 @@ function initialize(rawBrief: string): DesignState {
     currentHypothesis: null,
     validationAction: null,
     uncertainties: [],
+    visualKeywords: ["极简版式", "克制微质感", "网格留白"],
   };
   state.direction.avoid = state.constraints.filter((item) =>
     /不要|避免/.test(item.text),

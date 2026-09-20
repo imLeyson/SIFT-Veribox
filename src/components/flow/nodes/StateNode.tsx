@@ -5,7 +5,7 @@ import { NodeShell } from "../NodeShell";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { hasDirection } from "@/types/convergence";
-import { Check, Sparkles, ArrowRight, ShieldCheck, Ban } from "lucide-react";
+import { Check, Sparkles, ArrowRight, ShieldCheck, Ban, Palette } from "lucide-react";
 
 export function StateNode({ selected }: NodeProps) {
   const {
@@ -15,6 +15,7 @@ export function StateNode({ selected }: NodeProps) {
     activeRequest,
     storageWarning,
     routes,
+    briefImages,
     setCorrectionDraft,
   } = useSiftStore();
   const [editing, setEditing] = useState(false);
@@ -72,6 +73,32 @@ export function StateNode({ selected }: NodeProps) {
             <p className="text-stone-800 leading-snug">
               {state.currentHypothesis}
             </p>
+          </div>
+        )}
+
+        {/* Extracted Visual Keywords */}
+        {state.visualKeywords && state.visualKeywords.length > 0 && (
+          <div className="rounded-xl bg-stone-50/90 p-2.5 border border-stone-200/80 shadow-2xs">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-semibold text-stone-600 flex items-center gap-1">
+                <Palette className="h-3 w-3 text-accent" />
+                视觉关键词
+              </span>
+              <span className="text-[9px] text-stone-600 font-medium">
+                {briefImages.length > 0 ? "参考图与简报提炼" : "简报提炼"}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {state.visualKeywords.map((keyword, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-stone-800 border border-stone-200/90 shadow-2xs"
+                >
+                  <span className="text-accent mr-0.5 font-normal">#</span>
+                  {keyword}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 

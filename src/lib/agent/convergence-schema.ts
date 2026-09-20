@@ -42,6 +42,7 @@ export const DesignStateSchema = z.object({
       (items) => new Set(items.map((x) => x.id)).size === items.length,
       "未决判断 ID 重复",
     ),
+  visualKeywords: z.array(text.max(40)).optional(),
 });
 export const QuestionSchema = z.object({
   id: text,
@@ -156,6 +157,7 @@ export const ConvergenceInputSchema = z
     sessionId: text,
     requestId: text,
     rawBrief: text.max(10000),
+    images: z.array(z.string()).max(3).optional(),
     state: DesignStateSchema.nullable(),
     history: z.array(HistoryEntrySchema),
     pendingQuestions: z.array(QuestionSchema).min(2).max(3).nullable(),

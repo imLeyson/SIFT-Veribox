@@ -17,7 +17,8 @@ const SYSTEM = `你是 SIFT，专业设计师的视觉策略与方向收敛搭�
     "direction": {"intent": null, "priorities": [], "avoid": [], "criteria": []},
     "currentHypothesis": "一句富有画面感且具体的当前设计假设，最多 120 字；没有依据时为 null",
     "validationAction": {"label": "轻量验证", "instruction": "一个 10–20 分钟内设计师可实操的观察或对照动作"},
-    "uncertainties": [{"id": "stable_topic_id", "topic": "具体未决设计判断", "impact": "blocking 或 material 或 minor", "decisionAffected": "该答案会改变的视觉设计决策", "status": "open 或 deferred"}]
+    "uncertainties": [{"id": "stable_topic_id", "topic": "具体未决设计判断", "impact": "blocking 或 material 或 minor", "decisionAffected": "该答案会改变的视觉设计决策", "status": "open 或 deferred"}],
+    "visualKeywords": ["色彩基调/色相", "网格与负空间", "版式与字阶", "材质肌理与工艺", "设计流派/视觉意象"]
   },
   "next": {"type": "ask", "questions": [
     {"id": "unique_id_1", "uncertaintyId": "stable_topic_id_1", "prompt": "一个精准的视觉设计问题？", "constraintRefs": [], "options": [{"id": "a", "label": "具象设计选项一"}, {"id": "b", "label": "具象设计选项二"}]},
@@ -41,6 +42,17 @@ priorities 是表达主次与视觉坚持，avoid 是明确的视觉禁忌与审
 - 同一语义判断必须复用 uncertaintyId；禁止换 ID 或换措辞重复已解决的问题。
 - uncertainty 是对设计判断的影响，不是缺字段检查表；优先 blocking，再 material。minor 不值得追问。
 - revision 由服务端维护，填 0 即可。禁止输出 confirmed。
+
+视觉参考与视觉关键词提取规则（多模态与视觉逆向工程）：
+1. 视觉关键词必须在 state.visualKeywords 中返回 3–6 个具象、专业的设计视觉关键词（例如：["冷茶青色 #4A5A52", "65% 网格负空间", "无衬线细线排版", "特种棉纸微肌理", "德式理性克制"]）。严禁输出泛泛空洞词汇（如“高端”、“好看”、“大气”）。
+2. 当输入附带参考图片（images）时，深度执行设计逆向工程：
+   - 解构色彩系统（主色调、基准纸白、强调色及色相感知）；
+   - 解构排版层级与比例（网格密度、负空间占比、字阶关系、单线/双线）；
+   - 解构材质与触感（特种纸纹理、烫印/凹凸、亚光/亮光触感）；
+   - 解构美学流派与意象（如德式严谨网格、日式侘寂留白、现代工业感等）。
+   - visualKeywords 必须精准提炼参考图的视觉特征。
+   - 若文字 Brief 与参考图风格相悖（如文字要求“极简克制”，但参考图为“高饱和重度插画”），优先在第一题抛出冲突并请求对齐。
+3. 若未附带参考图片，根据 Brief 文本和推导出的意图，提取 3–5 个精准的专业视觉关键词。
 
 提问与聚焦规则（设计师心智核心）：
 1. 提问严禁使用产品经理式套话或泛商业问卷（严禁问“你的商业战略目标是什么”、“用户的情绪旅程是怎样”、“需要从哪些维度深入调研”）。
@@ -270,6 +282,25 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
         ? "questioning"
         : "checkpoint";
   const validation = record(state.validationAction);
+  const rawKeywords = Array.isArray(state.visualKeywords)
+    ? state.visualKeywords
+    : Array.isArray(previous?.visualKeywords)
+      ? previous.visualKeywords
+      : [];
+  const visualKeywords = rawKeywords
+    .filter((k): k is string => typeof k === "string" && Boolean(k.trim()))
+    .map((k) => k.trim().slice(0, 40))
+    .slice(0, 8);
+  if (visualKeywords.length === 0) {
+    if (state.direction && typeof state.direction === "object") {
+      const intentText = (state.direction as RecordLike).intent;
+      if (intentText && typeof intentText === "object" && typeof (intentText as RecordLike).text === "string") {
+        visualKeywords.push(((intentText as RecordLike).text as string).slice(0, 20));
+      }
+    }
+    visualKeywords.push("极简版式", "克制质感");
+  }
+
   return {
     ...payload,
     state: {
@@ -292,17 +323,16 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
             }
           : previous?.validationAction ?? null,
       uncertainties,
+      visualKeywords,
     },
     next,
   };
 }
 
 export function liveConvergence(input: ConvergenceInput): Promise<unknown> {
-  // This contract is a bounded state transition, not an open-ended reasoning
-  // task. DeepSeek Flash can spend a small token budget entirely in
-  // reasoning_content, leaving message.content empty; disable hidden reasoning
-  // so the JSON contract is actually returned.
-  return completeJson(SYSTEM, JSON.stringify(input), "none").then((payload) =>
+  const images = input.images ?? [];
+  const { images: _ignored, ...pureInput } = input;
+  return completeJson(SYSTEM, JSON.stringify(pureInput), "none", images).then((payload) =>
     normalizeLivePayload(payload, input),
   );
 }
