@@ -12,19 +12,25 @@ export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
   if (!data.historyId) {
     if (next?.type !== "ask") return null;
     return (
-      <NodeShell kicker="当前问题 · 一轮" title="先一起判断这几件事" selected={selected}>
+      <NodeShell
+        kicker="01 视觉取向抉择 · 关键权衡"
+        title="动笔前，对齐核心视觉取向"
+        selected={selected}
+      >
         <QuestionBlock questions={next.questions} />
-        <button
-          type="button"
-          className="btn-ghost mt-3 w-full text-sm"
-          disabled={Boolean(activeRequest)}
-          onClick={siftActions.converge}
-        >
-          一键收敛
-        </button>
-        <p className="mt-2 text-xs leading-relaxed text-muted">
-          停止追问，按当前判断进入检查点。未决项会保留。
-        </p>
+        <div className="mt-3 border-t border-line/60 pt-2.5">
+          <button
+            type="button"
+            className="btn-ghost w-full text-xs !py-1.5 text-stone-600 hover:text-ink"
+            disabled={Boolean(activeRequest)}
+            onClick={siftActions.converge}
+          >
+            跳过本轮提问，按已有判断直接收敛 →
+          </button>
+          <p className="mt-1 text-center text-[10px] text-muted">
+            未选问题将保留为待定项，直接生成当前设计边界。
+          </p>
+        </div>
       </NodeShell>
     );
   }
@@ -55,19 +61,60 @@ export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
   return (
     <NodeShell
       kicker={`记录 · ${turn.afterRevision}`}
-      title={turn.event.type === "correct" ? "已补充" : turn.event.type === "checkpoint" ? "检查点选择" : "已回答一轮"}
+      title={
+        turn.event.type === "correct"
+          ? "已补充修改"
+          : turn.event.type === "checkpoint"
+            ? "检查点选择"
+            : "已确认视觉取向"
+      }
       selected={selected}
     >
-      {turn.questions && (
-        <div className="mb-3 space-y-2 text-sm leading-relaxed text-ink">
-          {turn.questions.map((question, index) => (
-            <p key={question.id}>{index + 1}. {question.prompt}</p>
-          ))}
+      {turn.questions && turn.event.type === "answer" ? (
+        <div className="space-y-2">
+          {turn.questions.map((question, index) => {
+            const answer =
+              turn.event.type === "answer"
+                ? turn.event.answers.find(
+                    (a) => a.questionId === question.id,
+                  )
+                : null;
+            const isCustom = answer?.kind === "custom";
+            const isUncertain = answer?.kind === "uncertain";
+            return (
+              <div
+                key={question.id}
+                className="rounded-xl border border-line/60 bg-white/60 p-2.5 text-xs space-y-1"
+              >
+                <p className="font-medium text-ink leading-snug">
+                  {index + 1}. {question.prompt}
+                </p>
+                <div className="pt-0.5">
+                  {isCustom ? (
+                    <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-900 border border-amber-200/70">
+                      <span>✍️ 自定义：</span>
+                      <span>{answer.text}</span>
+                    </span>
+                  ) : isUncertain ? (
+                    <span className="inline-flex items-center gap-1 rounded bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">
+                      <span>❓ 暂不确定</span>
+                    </span>
+                  ) : answer ? (
+                    <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-900 border border-emerald-200/70">
+                      <span>✓ 已选：</span>
+                      <span>{answerText(question, answer)}</span>
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
         </div>
+      ) : (
+        <p className="whitespace-pre-wrap rounded-xl bg-mist px-3 py-2 text-xs leading-relaxed text-ink">
+          {text}
+        </p>
       )}
-      <p className="whitespace-pre-wrap rounded-xl bg-mist px-3 py-2 text-sm leading-relaxed text-ink">
-        {text}
-      </p>
     </NodeShell>
   );
 }

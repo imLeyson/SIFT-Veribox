@@ -77,4 +77,58 @@ describe("convergence session", () => {
     expect(store.getState().next).toEqual(afterFirstClick.next);
     expect(store.getState().history).toEqual(afterFirstClick.history);
   });
+
+  it("supports submitting custom user input for questions when options do not fit", () => {
+    const store = createSiftStore(memoryStorage());
+    store.getState().commitTurn(response(store));
+    const next = store.getState().next;
+    if (!next || next.type !== "ask") throw new Error("Expected ask");
+
+    // User selects option for Q1, but provides custom text for Q2
+    const customText = "通过大面积负空间留白与中英文细线排版，突出冷冽克制感";
+    store.getState().setDrafts([
+      { questionId: next.questions[0].id, kind: "option", optionId: next.questions[0].options[0].id },
+      { questionId: next.questions[1].id, kind: "custom", text: customText },
+    ]);
+
+    expect(store.getState().drafts).toHaveLength(2);
+    expect(store.getState().drafts[1]).toEqual({
+      questionId: next.questions[1].id,
+      kind: "custom",
+      text: customText,
+    });
+
+    // Simulate answering with the custom input
+    const s = store.getState();
+    const token = s.beginRequest()!;
+    const input: ConvergenceInput = {
+      sessionId: s.sessionId,
+      requestId: token.id,
+      state: s.state,
+      history: s.history,
+      pendingQuestions: next.questions,
+      rawBrief: EXAMPLES[0].brief,
+      event: { type: "answer", answers: s.drafts },
+    };
+    const payload = mockConvergence(input);
+    const baseRev = s.state?.revision ?? 0;
+    const turnResult: TurnResult = {
+      ...payload,
+      state: { ...payload.state, revision: baseRev + 1 },
+      baseRevision: baseRev,
+      sessionId: s.sessionId,
+      requestId: token.id,
+      mode: "mock",
+      model: null,
+      history: s.history,
+    };
+    expect(store.getState().commitTurn(turnResult)).toBe(true);
+
+    const updatedState = store.getState().state;
+    expect(updatedState).toBeTruthy();
+    // Verify custom text was ingested into direction priorities
+    const customPriority = updatedState?.direction.priorities.find((p) => p.text === customText);
+    expect(customPriority).toBeTruthy();
+    expect(customPriority?.basis).toBe("user");
+  });
 });
