@@ -55,8 +55,8 @@ const SYSTEM = `你是 SIFT 搜索计划与专业设计关键词 Agent。
    - 若 state.visualKeywords 存在，必须将其中的色彩基调、排版层级、材质肌理融入关键词中。
 4. 垂直搜索引擎专有语法结构（严禁多词长句，否则垂直平台将返回 0 结果）：
    - 专业垂直设计平台（如 Mobbin、Godly、Fonts In Use、BP&O）使用的是结构化 Tag / 分类检索，非 Google 语义模糊搜索；
-   - 英文关键词：严格限制在 1–3 个高信息密度关键词（如：blind deboss packaging / minimal saas / dashboard table / sans-serif label）；
-   - 中文关键词：严格限制在 2 个高权重设计分词（如：特种纸 压凹 / SaaS 后台 / 数据看板 / 字体排版 网格）；
+   - 英文关键词：严格限制在 1–2 个核心实体词（如：deboss / dashboard / grid layout / dark mode）；
+   - 中文关键词：严格限制在 2 个核心设计分词（如：特种纸 压凹 / SaaS 后台 / 数据看板 / 双栏排版）；
    - 严禁将长定语、修饰词（如 350g、防蹭脏处理、侧光）放入 keyword，这些必须写在 meaning（检索意图解析）中！
 5. 高级去样机语法（Anti-Mockup Syntax）：
    - 针对 Behance/The Dieline/Pinterest/POTW：必须在 advancedQuery 中附带 -mockup -template -freepik；
@@ -65,7 +65,7 @@ const SYSTEM = `你是 SIFT 搜索计划与专业设计关键词 Agent。
 6. 结构契约：
    - 必须返回正好 3 个主来源（primarySources），且 3 个主来源的 roleTag 必须互不相同！
    - 必须返回 2–4 个备选来源（alternativeSources），平台名称不能与主来源重复。
-   - 每个来源提供 2–4 个中英文分工明确的高质量关键词。
+   - 每个来源提供 2–4 个短小精悍的高质量关键词。
 
 返回纯 JSON，格式严格如下：
 {
@@ -73,14 +73,14 @@ const SYSTEM = `你是 SIFT 搜索计划与专业设计关键词 Agent。
     {
       "platform": "BP&O",
       "roleTag": "品牌识别与微工艺档案",
-      "reason": "针对本步骤特种纸原浆肌理与侧光深压凹，BP&O 是全球对无墨工艺与高克重纸张细节记录最深的权威档案",
+      "reason": "针对本步骤特种纸原浆肌理与侧光深压凹，BP&O 记录了全球最权威的无墨微工艺落地档案",
       "keywords": [
         {
-          "keyword": "blind deboss packaging",
+          "keyword": "blind deboss",
           "meaning": "350g 原浆棉纸无墨深压凹打样与侧光阴影细节",
           "language": "en",
           "searchType": "detail",
-          "advancedQuery": "blind deboss packaging -mockup -template"
+          "advancedQuery": "blind deboss -mockup -template"
         },
         {
           "keyword": "特种纸 压凹",
@@ -96,14 +96,14 @@ const SYSTEM = `你是 SIFT 搜索计划与专业设计关键词 Agent。
     {
       "platform": "The Dieline",
       "roleTag": "全球包装与造型标杆",
-      "reason": "作为全球顶级包装案例库，提供成套罐装包装结构与陈列实物参考",
+      "reason": "全球包装案例标杆，提供成套罐装结构与陈列实物参考",
       "keywords": [
         {
-          "keyword": "minimalist tactile paper canister packaging",
+          "keyword": "paper canister",
           "meaning": "极简触感纸罐实物落地案",
           "language": "en",
           "searchType": "benchmark",
-          "advancedQuery": "tactile paper canister packaging -mockup"
+          "advancedQuery": "paper canister -mockup"
         }
       ]
     }
@@ -167,9 +167,13 @@ export function normalizeLivePlatformPayload(
           ? rec.dimension
           : inferKeywordDimension(kw, nonEmpty(rec.meaning, ""));
 
+      const isWordy = kw.split(/\s+/).length > 3 || kw.length > 25;
+      const cleanKeyword = isWordy && cal.calibratedQuery ? cal.calibratedQuery : kw;
+      const cleanMeaning = isWordy && (!rec.meaning || rec.meaning === "探索参考检索词") ? kw : nonEmpty(rec.meaning, "探索参考检索词");
+
       list.push({
-        keyword: kw,
-        meaning: nonEmpty(rec.meaning, "探索参考检索词"),
+        keyword: cleanKeyword,
+        meaning: cleanMeaning,
         language: lang,
         searchType: st,
         dimension: dim,
