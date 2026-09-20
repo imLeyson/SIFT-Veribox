@@ -4,7 +4,7 @@ import type { Node, NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
-import type { Route } from "@/types/routes";
+import { cleanStepLabel, type Route } from "@/types/routes";
 import {
   Sparkles,
   Check,
@@ -177,43 +177,24 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
             </div>
           </div>
 
-          {/* Collapsible Steps Preview */}
-          <details className="text-[11px] text-muted group pt-1">
-            <summary className="cursor-pointer font-medium text-stone-700 flex items-center justify-between hover:text-ink py-1">
-              <span className="flex items-center gap-1.5">
-                <Layers className="h-3 w-3 text-stone-400" />
-                <span>{route.steps.length} 个工位实操步骤清单</span>
-              </span>
-              <span className="text-[10px] text-stone-400 group-open:rotate-90 transition-transform">
-                ▶
-              </span>
-            </summary>
-            <ol className="mt-2 space-y-2 border-l-2 border-line/80 pl-2.5">
+          {/* Visual Inspiration Angles - Pure Visual Ideation */}
+          <div className="pt-2 border-t border-line/60 space-y-1.5">
+            <div className="flex items-center justify-between text-[10px] font-semibold text-stone-500 uppercase tracking-wider">
+              <span>灵感切入视点</span>
+              <span className="font-mono text-[9px] text-stone-400">INSPIRATION ANGLES</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
               {route.steps.map((st, i) => (
-                <li key={st.id} className="leading-tight">
-                  <div className="flex items-center gap-1 font-medium text-ink">
-                    <CheckCircle2 className="h-3 w-3 text-accent shrink-0" />
-                    <span>0{i + 1}. {st.title}</span>
-                  </div>
-                  <p className="text-[10px] text-stone-500 pl-4 mt-0.5">
-                    {st.question}
-                  </p>
-                  {st.deliverables && st.deliverables.length > 0 && (
-                    <div className="pl-4 mt-1 flex flex-wrap gap-1">
-                      {st.deliverables.slice(0, 2).map((d, di) => (
-                        <span
-                          key={di}
-                          className="rounded bg-stone-100/90 px-1.5 py-0.2 text-[9.5px] text-stone-600"
-                        >
-                          {d}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </li>
+                <span
+                  key={st.id}
+                  className="inline-flex items-center gap-1 rounded-md bg-stone-50 border border-line/70 px-2 py-0.5 text-[10.5px] text-stone-700"
+                >
+                  <span className="font-mono text-[9.5px] text-stone-400">0{i + 1}</span>
+                  <span>{cleanStepLabel(st.title)}</span>
+                </span>
               ))}
-            </ol>
-          </details>
+            </div>
+          </div>
 
           {/* Action Button */}
           <div className="pt-2 border-t border-line/60">

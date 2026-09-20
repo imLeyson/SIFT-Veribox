@@ -5,12 +5,10 @@ import type { NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
+import { cleanStepLabel } from "@/types/routes";
 import {
-  Check,
+  Sparkles,
   ArrowRight,
-  Play,
-  PackageCheck,
-  CheckCircle2,
   Plus,
   Trash2,
   StickyNote,
@@ -49,7 +47,6 @@ export function StepNode({ selected }: NodeProps) {
   const activeStepId = useSiftStore((s) => s.activeStepId);
   const platformPlans = useSiftStore((s) => s.platformPlans);
   const stepNotes = useSiftStore((s) => s.stepNotes);
-  const completedCriteria = useSiftStore((s) => s.completedCriteria);
   const addStepNote = useSiftStore((s) => s.addStepNote);
   const removeStepNote = useSiftStore((s) => s.removeStepNote);
   const activeRequest = useSiftStore((s) => s.activeRequest);
@@ -66,7 +63,6 @@ export function StepNode({ selected }: NodeProps) {
   );
   const hasNextStep = activeIdx < route.steps.length - 1;
   const currentNotes = stepNotes[currentStep.id] ?? [];
-  const currentChecked = completedCriteria[currentStep.id] ?? [];
 
   const handleAddNote = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,13 +75,13 @@ export function StepNode({ selected }: NodeProps) {
     <div className="w-[390px]">
       <NodeShell
         stage="05"
-        kicker={`实操推进 · 步骤 0${activeIdx + 1}/${route.steps.length}`}
-        title={route.title}
+        kicker={`灵感切入 · 视点 0${activeIdx + 1}/${route.steps.length}`}
+        title={route.themeName || route.title}
         selected={selected}
       >
         <div className="space-y-3.5 text-xs">
-          {/* Step Timeline Indicator */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {/* Step Timeline Indicator - All tabs fit evenly, 100% visible, no cut-off */}
+          <div className="flex items-center gap-1.5 w-full">
             {route.steps.map((st, i) => {
               const isCurrent = st.id === currentStep.id;
               const isCompleted = i < activeIdx;
@@ -96,103 +92,85 @@ export function StepNode({ selected }: NodeProps) {
                   onClick={() => {
                     if (i !== activeIdx) siftActions.activateStep(st.id);
                   }}
-                  className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors shrink-0 ${
+                  className={`flex-1 min-w-0 flex items-center justify-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors ${
                     isCurrent
-                      ? "bg-ink text-white font-semibold"
+                      ? "bg-ink text-white font-semibold shadow-xs"
                       : isCompleted
-                        ? "bg-stone-100 text-stone-700 hover:text-ink"
-                        : "text-stone-400 hover:text-stone-700"
+                        ? "bg-stone-100 text-stone-700 hover:text-ink hover:bg-stone-200"
+                        : "bg-stone-50 text-stone-400 hover:text-stone-700 hover:bg-stone-100"
                   }`}
                 >
-                  <span className="text-[10px] font-mono">
-                    {isCompleted ? "✓" : i + 1}.
+                  <span className="text-[10px] font-mono shrink-0">
+                    {isCompleted ? "✓" : `0${i + 1}`}
                   </span>
-                  <span>{st.title.slice(0, 8)}</span>
+                  <span className="truncate">{cleanStepLabel(st.title)}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* Current Step Focus Box */}
-          <div className="rounded-xl border border-line/80 bg-white/90 p-3 shadow-xs space-y-2.5">
+          {/* Current Step Focus Box - Pure Visual Inspiration */}
+          <div className="rounded-xl border border-line/80 bg-white/95 p-3.5 shadow-xs space-y-2.5">
             <div>
-              <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider block mb-0.5">
-                Step 0{activeIdx + 1} · {currentStep.title}
-              </span>
-              <p className="text-xs sm:text-sm font-semibold text-ink leading-snug">
+              <div className="flex items-center justify-between text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-1">
+                <span>视点 0{activeIdx + 1} · {cleanStepLabel(currentStep.title)}</span>
+                <span className="font-mono text-[9px] text-stone-400">VISUAL FOCUS</span>
+              </div>
+              <p className="text-xs sm:text-[13px] font-semibold text-ink leading-snug">
                 {currentStep.question}
               </p>
             </div>
 
-            {/* Deliverables */}
-            {currentStep.deliverables && currentStep.deliverables.length > 0 && (
-              <div className="pt-2 border-t border-line/40">
-                <span className="text-[10px] font-semibold text-stone-500 block mb-1">
-                  交付清单
-                </span>
-                <div className="flex flex-wrap gap-1">
-                  {currentStep.deliverables.map((item, idx) => (
-                    <span
-                      key={idx}
-                      className="rounded bg-stone-100 px-2 py-0.5 text-[10.5px] text-stone-700"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Acceptance Checklist */}
-            {currentStep.acceptanceCriteria && currentStep.acceptanceCriteria.length > 0 && (
-              <div className="pt-2 border-t border-line/40 space-y-1">
-                <div className="flex items-center justify-between text-[10px] text-stone-500 pb-0.5">
-                  <span className="font-semibold">验收标准</span>
-                  <span className="font-mono">
-                    {currentChecked.length}/{currentStep.acceptanceCriteria.length}
-                  </span>
-                </div>
-
-                <div className="space-y-0.5">
-                  {currentStep.acceptanceCriteria.map((crit, cIdx) => {
-                    const isChecked = currentChecked.includes(crit);
-                    return (
-                      <label
-                        key={cIdx}
-                        className={`flex items-start gap-1.5 rounded p-1 text-[11px] transition-colors cursor-pointer select-none ${
-                          isChecked
-                            ? "text-stone-400 line-through"
-                            : "text-stone-800 hover:bg-mist/40"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() =>
-                            siftActions.toggleAcceptanceCriterion(
-                              currentStep.id,
-                              crit,
-                            )
-                          }
-                          className="mt-0.5 h-3 w-3 rounded border-line text-ink focus:ring-accent cursor-pointer"
-                        />
-                        <span className="leading-snug">
-                          {crit}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
+            {currentStep.purpose && (
+              <div className="pt-2 border-t border-line/40 text-[11px] text-stone-600 leading-relaxed">
+                <span className="font-medium text-stone-700">视觉意图：</span>
+                {currentStep.purpose}
               </div>
             )}
           </div>
 
-          {/* Designer Step Notes (手记) */}
+          {/* Action Buttons */}
+          <div className="pt-1 flex flex-col gap-1.5">
+            {!hasPlanForCurrent ? (
+              <button
+                type="button"
+                className="btn-primary w-full text-xs flex items-center justify-center gap-1.5 py-2.5 shadow-xs"
+                disabled={Boolean(activeRequest)}
+                onClick={() =>
+                  void siftActions.generatePlatformPlan(currentStep.id)
+                }
+              >
+                <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                <span className="font-medium">推荐搜索方案 (07) →</span>
+              </button>
+            ) : (
+              hasNextStep && (
+                <button
+                  type="button"
+                  className="btn-primary w-full text-xs flex items-center justify-center gap-1.5 py-2.5 shadow-xs"
+                  disabled={Boolean(activeRequest)}
+                  onClick={() => void siftActions.nextStep()}
+                >
+                  <span>下一个切入视点：{cleanStepLabel(route.steps[activeIdx + 1]?.title)}</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              )
+            )}
+            <button
+              type="button"
+              className="btn-ghost w-full !py-1 text-[11px] text-muted hover:text-red-700"
+              onClick={() => siftActions.reselectRoute()}
+            >
+              重选设计主题
+            </button>
+          </div>
+
+          {/* Designer Step Notes (灵感速记与参考链接) */}
           <div className="rounded-xl border border-line/60 bg-cream/40 p-2.5 space-y-2">
             <div className="flex items-center justify-between text-xs font-semibold text-ink">
               <span className="flex items-center gap-1 text-[11px]">
                 <StickyNote className="h-3 w-3 text-amber-600" />
-                工位灵感手记
+                灵感速记与参考链接
               </span>
               <span className="text-[10px] text-muted">
                 {currentNotes.length}
@@ -211,7 +189,7 @@ export function StepNode({ selected }: NodeProps) {
                     </span>
                     <button
                       type="button"
-                      title="删除此手记"
+                      title="删除此记录"
                       className="text-muted hover:text-red-600 opacity-50 hover:opacity-100 transition-opacity shrink-0 mt-0.5"
                       onClick={() => removeStepNote(currentStep.id, nIdx)}
                     >
@@ -239,42 +217,6 @@ export function StepNode({ selected }: NodeProps) {
                 <span>添加</span>
               </button>
             </form>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="pt-2 border-t border-line/60 flex flex-col gap-1.5">
-            {!hasPlanForCurrent ? (
-              <button
-                type="button"
-                className="btn-primary w-full text-xs flex items-center justify-center gap-1.5 py-2 shadow-xs"
-                disabled={Boolean(activeRequest)}
-                onClick={() =>
-                  void siftActions.generatePlatformPlan(currentStep.id)
-                }
-              >
-                <Play className="h-3 w-3 fill-current" />
-                <span>推荐搜索方案 →</span>
-              </button>
-            ) : (
-              hasNextStep && (
-                <button
-                  type="button"
-                  className="btn-primary w-full text-xs flex items-center justify-center gap-1.5 py-2 shadow-xs"
-                  disabled={Boolean(activeRequest)}
-                  onClick={() => void siftActions.nextStep()}
-                >
-                  <span>下一步：{route.steps[activeIdx + 1]?.title}</span>
-                  <ArrowRight className="h-3 w-3" />
-                </button>
-              )
-            )}
-            <button
-              type="button"
-              className="btn-ghost w-full !py-1 text-[11px] text-muted hover:text-red-700"
-              onClick={() => siftActions.reselectRoute()}
-            >
-              重选设计主题
-            </button>
           </div>
         </div>
       </NodeShell>

@@ -3,6 +3,7 @@ import { runRoutesGeneration } from "./routes";
 import { normalizeLiveRoutesPayload } from "./routes-live";
 import { EXAMPLES } from "./examples";
 import type { DesignState } from "@/types/convergence";
+import { cleanStepLabel } from "@/types/routes";
 
 vi.mock("./llm", () => ({
   llmConfigured: () => false,
@@ -214,5 +215,14 @@ describe("routes agent generation", () => {
     expect(normalized.routes[0].recommendedReason).toBeTruthy();
     expect(normalized.routes[1].recommendedReason).toBeNull();
     expect(normalized.routes[2].recommendedReason).toBeNull();
+  });
+
+  it("extracts concise 2-4 char visual labels for tabs and capsules", () => {
+    expect(cleanStepLabel("白模比例与纸样筛选")).toBe("比例");
+    expect(cleanStepLabel("纸样白度与微肌理")).toBe("纸样白度");
+    expect(cleanStepLabel("中西文字阶与排版动线")).toBe("中西文字阶");
+    expect(cleanStepLabel("侧光浅压凹与光影微雕")).toBe("侧光浅压凹");
+    expect(cleanStepLabel("01. 网格骨架与字阶设定")).toBe("网格骨架");
+    expect(cleanStepLabel("Step 2: 视距焦点与黑白反差")).toBe("视距焦点");
   });
 });

@@ -46,9 +46,13 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
 - feasibility: "high" | "medium" | "challenging"（落地可行性与打样难度）。
 - timeframe: 探索打样周期（如"0.5–1 天"、"1–2 天"）。
 - recommendedReason: 仅在推荐主题填写自然中肯的设计解题理由（直接陈述为什么该方案最能达成设计意图并平衡落地，严禁使用“针对前期对于...的纠结”等模板套话！），其余两个探索主题严格填 null。
-- steps: 3–5 个工位实操步骤（如：Step 1 白模比例与纸样筛选 -> Step 2 核心字阶与视距盲测 -> Step 3 侧光打样与耐脏测试）。
-  * deliverables: 2–3 个工位实操交付物（如"1:1 纸样白模（3款触感纸）"、"中西文字阶排版样张"、"1.5米视距盲测稿"）。
-  * acceptanceCriteria: 2–3 条可操作核验的准则（如"核心品名在 1 秒内清晰识别"、"留白面积保持 50% 以上"、"45度侧光下压凹阴影边缘清晰"）。
+- steps: 恰好 3 个前期灵感切入视点（Visual Inspiration Angles，如：视点 1 纸样白度与微肌理 -> 视点 2 中西文字阶与排版动线 -> 视点 3 侧光浅压凹与光影微雕）。
+  * 核心定位：SIFT 只做【前期视觉灵感探索与审美收敛】，不做后期落地生产工程！严禁输出任何纸张克重（如280g）、模塑温度、实物白模打样、耐脏测试、耐磨测试或儿童亲和力报告等伪落地伪生产清单！
+  * title: 4–8 字纯视觉切入视点（如"纸样白度与微肌理"、"双栏网格与字阶动线"、"侧光浅压凹与光影"）。
+  * question: 该视点探索的审美与视觉表现关键问题（如"何种纸浆配比能呈现最温润的暖白本色与微颗粒触感？"）。
+  * purpose: 纯视觉层面的审美意图（如"确立第一眼的材质基准与白度微调，保持纯净呼吸感"）。
+  * deliverables: 2–3 组视觉灵感对照草案（如"特种原浆纸样微颗粒对照板"、"正面留白与字阶层级草案"）。严禁写实物白模打样、耐脏测试报告！
+  * acceptanceCriteria: 2–3 条纯视觉审美标准（如"自然光下呈现温润漫反射无刺眼杂光"、"留白比例充盈，呼吸感充足"）。严禁写克重、模具、耐脏！
 
 必须且只能返回纯 JSON，格式严格如下：
 {
@@ -70,11 +74,11 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
       "steps": [
         {
           "id": "step_1_1",
-          "title": "白模比例与纸样筛选",
-          "question": "何种克重与肌理的特种纸在自然光下最显清冽质朴？",
-          "purpose": "确立第一眼的触觉基准与白度微调",
-          "deliverables": ["3 组特种纸原浆样卡小样", "1:1 实物白模打样"],
-          "acceptanceCriteria": ["纸张克重不低于 280g 保证挺度", "自然光下无刺眼塑料反光"]
+          "title": "纸样白度与微肌理",
+          "question": "何种纸浆配比在自然光下最显温润暖白与微颗粒触感？",
+          "purpose": "确立第一眼的材质基准与白度微调，保持呼吸感",
+          "deliverables": ["特种原浆纸微颗粒对照板", "正面留白与肌理样张"],
+          "acceptanceCriteria": ["自然光下呈现温润漫反射无刺眼杂光", "留白比例充盈，呼吸感充足"]
         }
       ]
     }
@@ -203,8 +207,8 @@ export function normalizeLiveRoutesPayload(
         rawDeliverables.length > 0
           ? rawDeliverables.slice(0, 4)
           : [
-              `1:1 ${stitle}纸样白模（3种克重）`,
-              `${stitle}字阶排版层级样张`,
+              `${stitle}情绪板与样卡`,
+              `${stitle}视觉层级对照稿`,
             ];
 
       const rawCriteria = Array.isArray(s.acceptanceCriteria)
@@ -236,11 +240,11 @@ export function normalizeLiveRoutesPayload(
         const idx = steps.length + 1;
         steps.push({
           id: `step_${i + 1}_${idx}`,
-          title: `实物打样与视距盲测 0${idx}`,
-          question: "在真实 1.5 米货架视距与室内光线下，视觉层级是否分明？",
-          purpose: "完成实操打样验证与防翻车核验",
-          deliverables: ["1:1 实物打样白模", "正面视距对比盲测稿"],
-          acceptanceCriteria: ["各视线角度下信息识别流畅", "45度侧光下光影细节清晰无毛边"],
+          title: `视距焦点与留白节奏 0${idx}`,
+          question: "在真实 1.5 米视距下，大面积留白与视觉焦点是否舒适分明？",
+          purpose: "打磨视觉呼吸感与第一焦点穿透力",
+          deliverables: ["1.5米视距黑白对比稿", "版面留白节奏分析图"],
+          acceptanceCriteria: ["远视下主体轮廓清晰分明", "留白充盈不压抑"],
         });
       }
     } else if (steps.length > 5) {
@@ -294,27 +298,27 @@ export function normalizeLiveRoutesPayload(
       steps: [
         {
           id: `step_${i + 1}_1`,
-          title: "白模比例与纸样筛选",
-          question: "何种克重与肌理的特种纸在自然光下最显清冽质朴？",
-          purpose: "确立第一眼的触觉基准与白度微调",
-          deliverables: ["3 组特种纸原浆样卡小样", "1:1 实物白模打样"],
-          acceptanceCriteria: ["纸张克重不低于 280g 保证挺度", "自然光下无刺眼塑料反光"],
+          title: "纸样白度与微肌理",
+          question: "何种纸浆配比在自然光下最显温润暖白与微颗粒触感？",
+          purpose: "确立第一眼的材质基准与白度微调，保持呼吸感",
+          deliverables: ["特种原浆纸微颗粒对照板", "正面留白与肌理样张"],
+          acceptanceCriteria: ["自然光下呈现温润漫反射无刺眼杂光", "留白比例充盈，呼吸感充足"],
         },
         {
           id: `step_${i + 1}_2`,
-          title: "中西文字阶与网格排版",
-          question: "品名、风味标尺与信息区块如何在正面形成清晰骨架？",
-          purpose: "打磨严谨有力的版式骨架",
+          title: "中西文字阶与排版动线",
+          question: "品名、说明与信息区块如何在正面形成清晰骨架？",
+          purpose: "打磨严谨有力的版式骨架与视觉第一焦点",
           deliverables: ["双栏网格排版规范稿", "核心信息层级样张 3 款"],
-          acceptanceCriteria: ["品名在 1 秒内被视觉锁定", "中西文字阶对比达到 2.5:1 以上"],
+          acceptanceCriteria: ["品名在 1 秒内被视觉锁定", "中西文字阶对比分明"],
         },
         {
           id: `step_${i + 1}_3`,
-          title: "实物打样与侧光压凹测试",
-          question: "在侧光照射下，局部微压凹是否形成干净利落的阴影？",
-          purpose: "验证微工艺的落地性与细节表现",
-          deliverables: ["局部深压凹工艺效果稿", "侧光阴影对比样张"],
-          acceptanceCriteria: ["45度侧光下压凹轮廓清晰无毛边", "背面无明显穿透凸痕"],
+          title: "侧光浅压凹与光影微雕",
+          question: "在 45 度侧光照射下，局部微压凹是否形成干净利落的阴影？",
+          purpose: "验证微工艺的视觉层次与光影细节表现",
+          deliverables: ["局部深压凹光影效果稿", "侧光阴影对比样张"],
+          acceptanceCriteria: ["45度侧光下压凹轮廓清晰无毛边", "阴影微弱而具雕塑感"],
         },
       ],
     });
