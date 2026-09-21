@@ -143,5 +143,35 @@ describe("SIFT System 1 Jev Decision Engine", () => {
     const fontCal = calibratePlatformQuery("fontsinuse", "bilingual label hierarchy swiss grid");
     expect(["bilingual", "packaging", "label", "swiss"]).toContain(fontCal.calibratedQuery);
     expect(fontCal.hitConfidence).toBeGreaterThanOrEqual(95);
+
+    // 7. Domain anchor calibration: Pet visual identity keeps pet subject across platforms
+    const petBehance = calibratePlatformQuery("behance", "blind deboss visual identity", {
+      themeName: "温润陪伴 · 治愈微触感",
+      stepTitle: "暖调色彩与温润材质触感",
+      meaning: "宠物品牌整体视觉",
+    });
+    expect(petBehance.calibratedQuery).toBe("pet brand identity");
+
+    const petXhs = calibratePlatformQuery("xiaohongshu", "特种纸 压凹", {
+      themeName: "温润陪伴 · 治愈微触感",
+      stepTitle: "宠物视觉 质感探索",
+    });
+    expect(petXhs.calibratedQuery).toBe("宠物品牌 视觉");
+
+    const petPinterest = calibratePlatformQuery("pinterest", "minimal visual proposal", {
+      themeName: "温润陪伴 · 治愈微触感",
+      stepTitle: "宠物视觉 探索",
+    });
+    expect(petPinterest.calibratedQuery).toMatch(/^pet /);
+  });
+
+  it("classifies '宠物视觉提案' as branding domain rather than bare packaging", async () => {
+    const petResult = await evaluateBriefIntent("宠物视觉提案，希望呈现干净温暖有治愈感的陪伴调性");
+    expect(petResult.domain).toBe("branding");
+    expect(petResult.clarityScore).toBeGreaterThanOrEqual(60);
+
+    const petSync = evaluateBriefIntentSync("宠物视觉提案");
+    expect(petSync.domain).toBe("branding");
+    expect(petSync.domainLabel).toBe("品牌识别与视觉系统");
   });
 });

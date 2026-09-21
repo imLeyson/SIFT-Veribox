@@ -217,6 +217,41 @@ describe("routes agent generation", () => {
     expect(normalized.routes[2].recommendedReason).toBeNull();
   });
 
+  it("generates pet-anchored fallback routes and steps for pet visual briefs", () => {
+    const petNormalized = normalizeLiveRoutesPayload(
+      { routes: [] },
+      {
+        sessionId: "s_pet",
+        requestId: "req_pet",
+        baseRevision: 1,
+        rawBrief: "宠物视觉提案",
+        state: {
+          ...confirmedState,
+          brief: { goal: "宠物视觉提案", audience: "年轻养宠群体", deliverable: "品牌视觉全案" },
+        },
+      },
+    );
+
+    expect(petNormalized.routes).toHaveLength(3);
+    // Theme names should be pet-adaptive, not hardcoded tea/paper mill
+    expect(petNormalized.routes[0].themeName).toBe("温润陪伴 · 治愈微触感");
+    expect(petNormalized.routes[1].themeName).toBe("理性守护 · 科学信息网格");
+    expect(petNormalized.routes[2].themeName).toBe("几何萌态 · 超级动物符号");
+
+    // Titles & snapshots must refer to warm healing / pet identity
+    expect(petNormalized.routes[0].title).toContain("温润治愈质感");
+    expect(petNormalized.routes[0].visualSnapshot).toContain("陪伴温度");
+    expect(petNormalized.routes[0].visualSnapshot).not.toContain("罐身大面积纯白原浆棉纸");
+
+    // Steps must explore pet visual questions
+    expect(petNormalized.routes[0].steps[0].title).toBe("暖调色彩与温润材质触感");
+    expect(petNormalized.routes[0].steps[0].question).toContain("陪伴温度");
+    expect(petNormalized.routes[0].steps[0].question).not.toContain("纸浆配比");
+
+    // Recommended reason anchors the pet subject
+    expect(petNormalized.routes[0].recommendedReason).toContain("宠物视觉提案");
+  });
+
   it("extracts concise 2-4 char visual labels for tabs and capsules", () => {
     expect(cleanStepLabel("白模比例与纸样筛选")).toBe("比例");
     expect(cleanStepLabel("纸样白度与微肌理")).toBe("纸样白度");

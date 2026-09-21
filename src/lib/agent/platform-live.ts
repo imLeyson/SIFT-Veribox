@@ -43,20 +43,24 @@ const SYSTEM = `你是 SIFT 搜索计划与专业设计关键词 Agent。
    - Google / 品牌官网搜索（角色：跨品类调研与行业规范，官方设计规范、行业深度分析与报告）
 
 强针对性核心规则（拒绝平庸泛词，生成设计师真正可搜的精准检索式）：
+0. 【最高准则 · 检索词品类主体绝对锁死（严禁无主体孤立检索）】：
+   - 检索词必须结合当前设计任务的核心品类主体（如“宠物”、“咖啡”、“SaaS”、“美妆”等）与视觉手法！
+   - 严禁生成脱离主体的孤立工艺词！例如：当前任务是“宠物视觉提案”，步骤是探索微触感/压凹，关键词必须是“pet brand identity deboss”或“宠物品牌 压凹”，绝对不能孤立生成脱离宠物的“blind deboss”或“特种纸 压凹”（否则会在垂直平台搜出无关的名片或包装）！
+   - 组合公式：【核心品类主体 / 行业】 + 【视觉手法 / 工艺 / 版式】（例如："pet brand identity"、"pet visual identity minimal"、"pet branding tactile"、"宠物品牌 视觉"）。
 1. 深度针对当前选定主题与画面快照：
-   - 必须结合 selectedRoute.themeName（如「素纸微白 · 原生触觉」）、selectedRoute.focusDimension 与 selectedRoute.visualSnapshot；
-   - 严禁出现“tea packaging”、“minimal design”、“茶包装”等大而无当的泛化大词！
+   - 必须结合 selectedRoute.themeName（如「温润陪伴 · 治愈微触感」）、selectedRoute.focusDimension 与 selectedRoute.visualSnapshot；
+   - 严禁出现“tea packaging”、“minimal design”、“茶包装”等脱离当前品类的大而无当泛化大词！
 2. 深度针对当前激活步骤的工位实操疑问：
-   - 当前步骤探索材质/打样时：必须选用 The Dieline / BP&O / 小红书 / 站酷，关键词聚焦特种纸、克重、压凹深度、阴影、纸样；
-   - 当前步骤探索字体/网格时：必须选用 Fonts In Use / Typewolf / Behance，关键词聚焦中西文字体家族、字阶对比、双栏网格、标签封签；
-   - 当前步骤探索视觉锤/图形时：必须选用 Brand New / Are.na / Behance，关键词聚焦极简符号、负空间剪影、图形隐喻；
+   - 当前步骤探索材质/打样时：必须选用 The Dieline / BP&O / 小红书 / 站酷，关键词聚焦品类材质肌理、压凹深度、阴影、样张；
+   - 当前步骤探索字体/网格时：必须选用 Fonts In Use / Typewolf / Behance，关键词聚焦品类中西文字体家族、字阶对比、双栏网格、标签封签；
+   - 当前步骤探索视觉锤/图形时：必须选用 Brand New / Are.na / Behance，关键词聚焦品类极简符号、负空间剪影、图形隐喻；
    - 当前步骤探索 SaaS/界面时：必须选用 Mobbin / Godly / Dribbble，关键词聚焦 8px 栅格、状态色彩、数据卡片、深色模式。
 3. 融合参考图视觉关键词：
    - 若 state.visualKeywords 存在，必须将其中的色彩基调、排版层级、材质肌理融入关键词中。
 4. 垂直搜索引擎专有语法结构（严禁多词长句，否则垂直平台将返回 0 结果）：
    - 专业垂直设计平台（如 Mobbin、Godly、Fonts In Use、BP&O）使用的是结构化 Tag / 分类检索，非 Google 语义模糊搜索；
-   - 英文关键词：严格限制在 1–2 个核心实体词（如：deboss / dashboard / grid layout / dark mode）；
-   - 中文关键词：严格限制在 2 个核心设计分词（如：特种纸 压凹 / SaaS 后台 / 数据看板 / 双栏排版）；
+   - 英文关键词：严格限制在 1–2 个核心实体词（如：pet identity / deboss / dashboard / grid layout）；
+   - 中文关键词：严格限制在 2 个核心设计分词（如：宠物 品牌视觉 / 特种纸 压凹 / SaaS 后台 / 双栏排版）；
    - 严禁将长定语、修饰词（如 350g、防蹭脏处理、侧光）放入 keyword，这些必须写在 meaning（检索意图解析）中！
 5. 高级去样机语法（Anti-Mockup Syntax）：
    - 针对 Behance/The Dieline/Pinterest/POTW：必须在 advancedQuery 中附带 -mockup -template -freepik；
@@ -71,39 +75,39 @@ const SYSTEM = `你是 SIFT 搜索计划与专业设计关键词 Agent。
 {
   "primarySources": [
     {
-      "platform": "BP&O",
-      "roleTag": "品牌识别与微工艺档案",
-      "reason": "针对本步骤特种纸原浆肌理与侧光深压凹，BP&O 记录了全球最权威的无墨微工艺落地档案",
+      "platform": "Behance",
+      "roleTag": "完整全案与系统推演",
+      "reason": "针对当前品类视觉系统与质感探索，Behance 收录了成套品牌识别与打样全案",
       "keywords": [
         {
-          "keyword": "blind deboss",
-          "meaning": "350g 原浆棉纸无墨深压凹打样与侧光阴影细节",
+          "keyword": "pet brand identity",
+          "meaning": "宠物品牌整体视觉识别全案与物料延展",
           "language": "en",
-          "searchType": "detail",
-          "advancedQuery": "blind deboss -mockup -template"
+          "searchType": "benchmark",
+          "advancedQuery": "pet brand identity -mockup -template"
         },
         {
-          "keyword": "特种纸 压凹",
-          "meaning": "国内特种纸打样实拍案例与防蹭脏处理",
+          "keyword": "宠物品牌 视觉",
+          "meaning": "国内高品质宠物视觉系统与实物落地案例",
           "language": "zh",
           "searchType": "detail",
-          "advancedQuery": "特种纸 压凹 实拍 -广告 -推广"
+          "advancedQuery": "宠物品牌 视觉 实物打样 -素材"
         }
       ]
     }
   ],
   "alternativeSources": [
     {
-      "platform": "The Dieline",
-      "roleTag": "全球包装与造型标杆",
-      "reason": "全球包装案例标杆，提供成套罐装结构与陈列实物参考",
+      "platform": "BP&O",
+      "roleTag": "品牌识别与微工艺档案",
+      "reason": "权威品牌识别与微工艺落地档案，记录顶级高质感物料细节",
       "keywords": [
         {
-          "keyword": "paper canister",
-          "meaning": "极简触感纸罐实物落地案",
+          "keyword": "pet",
+          "meaning": "BP&O 精选宠物品牌视觉识别与微触感工艺案",
           "language": "en",
-          "searchType": "benchmark",
-          "advancedQuery": "paper canister -mockup"
+          "searchType": "detail",
+          "advancedQuery": "pet"
         }
       ]
     }
@@ -263,8 +267,14 @@ export function normalizeLivePlatformPayload(
       usedRoles.add(reg.roleTag);
       const zhKw = `${input.currentStep.title} ${reg.roleTag}`;
       const enKw = `minimal ${reg.name.toLowerCase()} design benchmark`;
-      const calZh = calibratePlatformQuery(reg.id, zhKw, { stepTitle: input.currentStep.title });
-      const calEn = calibratePlatformQuery(reg.id, enKw, { stepTitle: input.currentStep.title });
+      const calZh = calibratePlatformQuery(reg.id, zhKw, {
+        stepTitle: input.currentStep.title,
+        themeName: input.selectedRoute.themeName,
+      });
+      const calEn = calibratePlatformQuery(reg.id, enKw, {
+        stepTitle: input.currentStep.title,
+        themeName: input.selectedRoute.themeName,
+      });
       const kws: PlatformKeyword[] = [
         {
           keyword: zhKw,
@@ -329,8 +339,14 @@ export function normalizeLivePlatformPayload(
       usedPlatforms.add(reg.name);
       const zhKw = `${input.currentStep.title} 备选`;
       const enKw = "creative design benchmark";
-      const calZh = calibratePlatformQuery(reg.id, zhKw, { stepTitle: input.currentStep.title });
-      const calEn = calibratePlatformQuery(reg.id, enKw, { stepTitle: input.currentStep.title });
+      const calZh = calibratePlatformQuery(reg.id, zhKw, {
+        stepTitle: input.currentStep.title,
+        themeName: input.selectedRoute.themeName,
+      });
+      const calEn = calibratePlatformQuery(reg.id, enKw, {
+        stepTitle: input.currentStep.title,
+        themeName: input.selectedRoute.themeName,
+      });
       const kws: PlatformKeyword[] = [
         {
           keyword: zhKw,
@@ -402,7 +418,13 @@ export function normalizeLivePlatformPayload(
 }
 
 export function livePlatformPlan(input: PlatformPlanInput): Promise<unknown> {
-  return completeJson(SYSTEM, JSON.stringify(input), "none").then((payload) =>
+  let promptSystem = SYSTEM;
+  const themeName = input.selectedRoute?.themeName || "";
+  const routeTitle = input.selectedRoute?.title || "";
+  const stepTitle = input.currentStep?.title || "";
+  const stepQuestion = input.currentStep?.question || "";
+  promptSystem += `\n\n【⚠️ 检索主体锁死提醒】：\n当前选定设计主题为：“${themeName}”（${routeTitle}），步骤为：“${stepTitle}”（${stepQuestion}）。\n所有关键词必须严格复合当前品类主体与设计手法（如 [品类主体] + [手法/词组]），严禁孤立生成脱离当前品类主体的泛词！`;
+  return completeJson(promptSystem, JSON.stringify(input), "none").then((payload) =>
     normalizeLivePlatformPayload(payload, input),
   );
 }

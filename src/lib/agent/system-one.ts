@@ -73,9 +73,9 @@ export const DOMAIN_META = {
     desc: "Web/SaaS 工作台、高密度数据、深色极客美学与微交互",
   },
   branding: {
-    label: "品牌识别与视觉锤",
+    label: "品牌识别与视觉系统",
     icon: "🎯",
-    desc: "单一极简符号、负空间剪影、调性识别与全案延展",
+    desc: "品牌视觉提案、超级符号、调性识别、色系规范与全案延展",
   },
   general: {
     label: "综合视觉探索",
@@ -233,7 +233,30 @@ function evaluateNativeSystemOne(
             if (pat.test(stateStr)) optScore += 3;
           }
         } else if (opt === "branding") {
-          const brandPatterns = [/品牌/, /视觉锤/, /标志/, /logo/, /全案/, /调性/, /identity/, /symbol/, /超级符号/];
+          const brandPatterns = [
+            /品牌/,
+            /视觉锤/,
+            /标志/,
+            /logo/,
+            /全案/,
+            /调性/,
+            /identity/,
+            /symbol/,
+            /超级符号/,
+            /视觉/,
+            /提案/,
+            /vi/,
+            /生活方式/,
+            /宠物/,
+            /猫/,
+            /狗/,
+            /pet/,
+            /cat/,
+            /dog/,
+            /潮玩/,
+            /文创/,
+            /ip/,
+          ];
           for (const pat of brandPatterns) {
             if (pat.test(stateStr)) optScore += 3;
           }
@@ -342,7 +365,33 @@ export function evaluateBriefIntentSync(
     if (p.test(text)) digitalScore += 3;
   }
 
-  const brandPatterns = [/品牌/, /视觉锤/, /标志/, /logo/, /超级符号/, /全案/, /调性/, /识别/, /符号化/, /identity/, /symbol/, /branding/];
+  const brandPatterns = [
+    /品牌/,
+    /视觉锤/,
+    /标志/,
+    /logo/,
+    /超级符号/,
+    /全案/,
+    /调性/,
+    /识别/,
+    /符号化/,
+    /identity/,
+    /symbol/,
+    /branding/,
+    /视觉/,
+    /提案/,
+    /vi/,
+    /生活方式/,
+    /宠物/,
+    /猫/,
+    /狗/,
+    /pet/,
+    /cat/,
+    /dog/,
+    /潮玩/,
+    /文创/,
+    /ip/,
+  ];
   for (const p of brandPatterns) {
     if (p.test(text)) brandScore += 3;
   }
@@ -725,7 +774,11 @@ export function calibratePlatformQuery(
 
     case "fontsinuse": {
       engineRule = "Fonts In Use 索引格式/行业标签 (如 packaging, bilingual, label, editorial) 或字体分类";
-      if (/packaging|包装|盒|罐|瓶/.test(combined)) {
+      if (/pet|宠物|猫|狗|cat|dog/.test(combined)) {
+        calibratedQuery = "pet";
+      } else if (/coffee|咖啡/.test(combined)) {
+        calibratedQuery = "coffee";
+      } else if (/packaging|包装|盒|罐|瓶/.test(combined)) {
         calibratedQuery = "packaging";
       } else if (/bilingual|双语|中西文|双栏/.test(combined)) {
         calibratedQuery = "bilingual";
@@ -751,7 +804,13 @@ export function calibratePlatformQuery(
 
     case "bpando": {
       engineRule = "BP&O 专注特种纸、深压凹与微工艺，需使用单核工艺词 (如 blind deboss, cotton paper, foil)";
-      if (/deboss|压凹|无墨|凹印/.test(combined)) {
+      if (/pet|宠物|猫|狗|cat|dog/.test(combined)) {
+        calibratedQuery = "pet";
+      } else if (/coffee|咖啡/.test(combined)) {
+        calibratedQuery = "coffee";
+      } else if (/tea|茶/.test(combined)) {
+        calibratedQuery = "tea";
+      } else if (/deboss|压凹|无墨|凹印/.test(combined)) {
         calibratedQuery = "blind deboss";
       } else if (/cotton|棉纸|原浆|特种纸|肌理/.test(combined)) {
         calibratedQuery = "cotton paper";
@@ -773,7 +832,11 @@ export function calibratePlatformQuery(
 
     case "dieline": {
       engineRule = "The Dieline 需使用品类或结构核心短语 (如 minimal packaging, canister, sustainable)";
-      if (/canister|罐|圆筒|茶罐/.test(combined)) {
+      if (/pet|宠物|猫|狗|cat|dog/.test(combined)) {
+        calibratedQuery = "pet packaging";
+      } else if (/coffee|咖啡/.test(combined)) {
+        calibratedQuery = "coffee packaging";
+      } else if (/canister|罐|圆筒|茶罐/.test(combined)) {
         calibratedQuery = "canister packaging";
       } else if (/bottle|瓶|玻璃|滴管/.test(combined)) {
         calibratedQuery = "bottle packaging";
@@ -796,7 +859,9 @@ export function calibratePlatformQuery(
 
     case "packagingoftheworld": {
       engineRule = "POTW 需使用基础包装类型词 (如 paper box, tea, minimal, deboss)";
-      if (/tea|茶/.test(combined)) calibratedQuery = "tea";
+      if (/pet|宠物|猫|狗|cat|dog/.test(combined)) calibratedQuery = "pet";
+      else if (/coffee|咖啡/.test(combined)) calibratedQuery = "coffee";
+      else if (/tea|茶/.test(combined)) calibratedQuery = "tea";
       else if (/bottle|瓶/.test(combined)) calibratedQuery = "bottle";
       else if (/box|盒/.test(combined)) calibratedQuery = "paper box";
       else if (/deboss|压凹/.test(combined)) calibratedQuery = "emboss";
@@ -808,7 +873,11 @@ export function calibratePlatformQuery(
 
     case "zcool": {
       engineRule = "站酷检索依赖 2 个高权重中文设计词组，长自然语言句会导致分词失真";
-      if (/saas|b2b|后台|控制台|工作台|看板|组件/.test(combined)) {
+      if (/pet|宠物|猫|狗|cat|dog/.test(combined)) {
+        calibratedQuery = /包装/.test(combined) ? "宠物 包装设计" : "宠物 品牌设计";
+      } else if (/coffee|咖啡/.test(combined)) {
+        calibratedQuery = /包装/.test(combined) ? "咖啡 包装设计" : "咖啡 品牌设计";
+      } else if (/saas|b2b|后台|控制台|工作台|看板|组件/.test(combined)) {
         calibratedQuery = /看板|数据/.test(combined) ? "数据看板" : "SaaS 后台";
       } else if (/压凹|特种纸|纸样|白模/.test(combined)) {
         calibratedQuery = "特种纸 压凹";
@@ -831,7 +900,11 @@ export function calibratePlatformQuery(
 
     case "xiaohongshu": {
       engineRule = "小红书需使用真实消费晒单词组，避免设计行业生僻长词";
-      if (/茶/.test(combined)) {
+      if (/pet|宠物|猫|狗|cat|dog/.test(combined)) {
+        calibratedQuery = /包装|实拍/.test(combined) ? "宠物包装 实拍" : "宠物品牌 视觉";
+      } else if (/coffee|咖啡/.test(combined)) {
+        calibratedQuery = "咖啡品牌 实拍";
+      } else if (/茶/.test(combined)) {
         calibratedQuery = "茶包装 实拍";
       } else if (/护肤|美妆/.test(combined)) {
         calibratedQuery = "护肤品包装 质感";
@@ -854,7 +927,11 @@ export function calibratePlatformQuery(
 
     case "behance": {
       engineRule = "Behance 需使用 2-3 词成套系统词组，并配合去样机语法 (-mockup)";
-      if (/saas|b2b|后台|界面/.test(combined)) {
+      if (/pet|宠物|猫|狗|cat|dog/.test(combined)) {
+        calibratedQuery = /包装|packaging/.test(combined) ? "pet packaging design" : "pet brand identity";
+      } else if (/coffee|咖啡/.test(combined)) {
+        calibratedQuery = /包装|packaging/.test(combined) ? "coffee packaging design" : "coffee brand identity";
+      } else if (/saas|b2b|后台|界面/.test(combined)) {
         calibratedQuery = "saas dashboard system";
       } else if (/压凹|特种纸|触感/.test(combined)) {
         calibratedQuery = "tactile paper packaging";
@@ -926,7 +1003,13 @@ export function calibratePlatformQuery(
     case "pinterest": {
       engineRule = "Pinterest 适合 2-3 词视觉意象词，并附带去样机语法 (-mockup)";
       const cleanTokens = rawQuery.replace(/[\"\'\(\)\{\}\[\]]/g, "").trim().split(/\s+/).filter(Boolean);
-      calibratedQuery = cleanTokens.slice(0, 3).join(" ") || "minimalist design";
+      let pQuery = cleanTokens.slice(0, 3).join(" ") || "minimalist design";
+      if (/pet|宠物|猫|狗|cat|dog/.test(combined) && !/pet|cat|dog|宠物|猫|狗/i.test(pQuery)) {
+        pQuery = `pet ${pQuery}`;
+      } else if (/coffee|咖啡/.test(combined) && !/coffee|咖啡/i.test(pQuery)) {
+        pQuery = `coffee ${pQuery}`;
+      }
+      calibratedQuery = pQuery;
       advancedQuery = `${calibratedQuery} -mockup -template`;
       hitConfidence = 95;
       jevJudgement = `⚡️ Jev 裁决：适配 Pinterest 情绪板检索 [${calibratedQuery}]，附带去样机语法`;
@@ -935,7 +1018,9 @@ export function calibratePlatformQuery(
 
     case "instagram": {
       engineRule = "Instagram 仅支持单一无空格无标点的英文字符 Hashtag";
-      if (/saas|interface|ui|界面/.test(combined)) calibratedQuery = "uidesign";
+      if (/pet|宠物|猫|狗|cat|dog/.test(combined)) calibratedQuery = "petbranding";
+      else if (/coffee|咖啡/.test(combined)) calibratedQuery = "coffeebranding";
+      else if (/saas|interface|ui|界面/.test(combined)) calibratedQuery = "uidesign";
       else if (/typography|字体|排版/.test(combined)) calibratedQuery = "editorialdesign";
       else if (/branding|品牌/.test(combined)) calibratedQuery = "brandidentity";
       else calibratedQuery = "packagingdesign";
