@@ -6,7 +6,7 @@ import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { EXAMPLES } from "@/lib/agent/examples";
 import { compressImageFile } from "@/lib/image-utils";
-import { ImagePlus, Plus, X, Eye, Zap } from "lucide-react";
+import { ImagePlus, Plus, X, Eye, Zap, Sparkles } from "lucide-react";
 import { evaluateBriefIntentSync } from "@/lib/agent/system-one";
 
 export function BriefInputNode({ selected }: NodeProps) {
@@ -90,7 +90,7 @@ export function BriefInputNode({ selected }: NodeProps) {
             </span>
           ) : !state && briefDiagnostics ? (
             <span className="text-[10px] font-mono text-stone-400">
-              System 1 · {briefDiagnostics.latencyMs}ms
+              实时解析 · {briefDiagnostics.latencyMs}ms
             </span>
           ) : undefined
         }
@@ -167,25 +167,26 @@ export function BriefInputNode({ selected }: NodeProps) {
               className="w-full resize-y rounded-xl border border-line bg-cream/70 px-3 py-2 text-xs sm:text-sm leading-relaxed outline-none focus:border-accent"
             />
 
-            {/* Live System 1 Brief Diagnostics Radar */}
+            {/* Live Brief Diagnostics Radar */}
             {rawBrief.trim().length >= 4 && briefDiagnostics && (
               <div className="mt-2.5 rounded-xl border border-line/80 bg-white/70 p-2.5 space-y-2">
                 <div className="flex items-center justify-between text-[11px]">
                   <div className="flex items-center gap-1.5 font-medium text-ink">
                     <span>{briefDiagnostics.domainLabel}</span>
                     <span className="text-stone-400 font-mono text-[10px]">
-                      · 置信度 {Math.round(briefDiagnostics.confidence * 100)}%
+                      · 匹配度 {Math.round(briefDiagnostics.confidence * 100)}%
                     </span>
                   </div>
-                  <span className="font-mono text-[9.5px] text-stone-400">
-                    System 1 · {briefDiagnostics.latencyMs}ms
+                  <span className="font-mono text-[9.5px] text-stone-400 flex items-center gap-1">
+                    <Sparkles className="h-2.5 w-2.5 text-amber-500" />
+                    <span>实时解析 · {briefDiagnostics.latencyMs}ms</span>
                   </span>
                 </div>
 
                 {/* Visual Clarity Progress Bar */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[10.5px]">
-                    <span className="text-stone-500">指向清晰度</span>
+                    <span className="text-stone-500">诉求清晰度</span>
                     <span className="font-mono font-medium text-ink">
                       {briefDiagnostics.clarityScore} / 100
                     </span>
@@ -200,9 +201,12 @@ export function BriefInputNode({ selected }: NodeProps) {
 
                 {/* Contextual Clean Suggestion */}
                 {briefDiagnostics.suggestion && (
-                  <p className="text-[10.5px] text-stone-500 leading-relaxed pt-0.5 border-t border-line/40">
-                    {briefDiagnostics.suggestion.replace(/^[💡✨⚡️]\s*/, "")}
-                  </p>
+                  <div className="flex items-start gap-1.5 pt-1 border-t border-line/40 text-[10.5px] text-stone-500 leading-relaxed">
+                    <Sparkles className="h-3 w-3 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <span>
+                      {briefDiagnostics.suggestion.replace(/^(?:💡|✨|⚡️)\s*/u, "")}
+                    </span>
+                  </div>
                 )}
               </div>
             )}

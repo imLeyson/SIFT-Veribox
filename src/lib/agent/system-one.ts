@@ -293,20 +293,20 @@ function evaluateNativeSystemOne(
 export function generateBriefSuggestion(brief: string, clarity: number): string {
   const b = brief.toLowerCase();
   if (b.length < 15) {
-    return "💡 简报较为简短，建议补充具体品类、使用场景或核心视觉意图";
+    return "💡 简报较为简短，建议补充设计品类、使用场景或核心视觉调性";
   }
   const hasAvoidance = /(避免|不要|拒绝|排除|别用|无插画|不能|不加)/.test(b);
   if (!hasAvoidance) {
-    return "💡 建议添加负向排除（如‘避免大插画/拒绝红金配’），能显著收敛设计边界";
+    return "💡 建议补充明确的视觉禁忌（如‘避免大插画/拒绝红金配’），有助于精准锁定风格";
   }
   const hasCraft = /(特种纸|压凹|克重|8px|字阶|无墨|白模|深色|冷白|网格|烫金|磨砂|玻璃|亚克力|棉卡)/.test(b);
   if (!hasCraft) {
-    return "💡 建议明确核心材质或工艺抓手（如‘特种纸/深压凹/双栏网格’）";
+    return "💡 建议明确核心材质或工艺手法（如‘特种纸/深压凹/双栏网格’）";
   }
   if (clarity >= 80) {
-    return "✨ 视觉约束与材质意图明确，已满足高精度定向收敛条件";
+    return "✨ 视觉意图与材质要求明确，已具备高精度对齐条件";
   }
-  return "⚡️ 基础信息完整，可直接开始收敛或补充参考图";
+  return "⚡️ 核心信息完整，可直接开始视觉对齐或上传参考图";
 }
 
 /**
