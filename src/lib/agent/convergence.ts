@@ -42,11 +42,11 @@ function answeredUncertainty(history: HistoryEntry[], uncertaintyId: string) {
     if (entry.event.type !== "answer") return false;
     const answers = entry.event.answers;
     return Boolean(
-      entry.questions?.some(
-        (question) =>
-          question.uncertaintyId === uncertaintyId &&
-          answers.some((answer) => answer.kind !== "uncertain"),
-      ),
+      entry.questions?.some((question) => {
+        if (question.uncertaintyId !== uncertaintyId) return false;
+        const answer = answers.find((a) => a.questionId === question.id);
+        return answer ? answer.kind !== "uncertain" : false;
+      }),
     );
   });
 }
@@ -167,18 +167,29 @@ export async function runConvergenceTurn(
       if (!target || target.status !== "open" || target.impact === "minor")
         throw new Error("问题必须对应一个值得回答的未决判断");
       strongestImpact = Math.min(strongestImpact, priorities[target.impact]);
-      if (answeredUncertainty(history, question.uncertaintyId))
-        throw new Error("模型重复询问已处理的判断，请重试");
-      if (questionHistory(history).some((old) => old.id === question.id))
-        throw new Error("模型重复了已问过的问题，请重试");
-      if (
-        recent.some((entry) =>
-          (entry.questions ?? []).some(
-            (old) => questionKey(old) === questionKey(question),
-          ),
-        )
-      )
+      const isAnswerTurn = event.type === "answer";
+      const isRepeatedUncertainty = answeredUncertainty(history, question.uncertaintyId);
+      const isDuplicateId = questionHistory(history).some((old) => old.id === question.id);
+      const isRecentDuplicate = recent.some((entry) =>
+        (entry.questions ?? []).some(
+          (old) => questionKey(old) === questionKey(question),
+        ),
+      );
+
+      if (isRepeatedUncertainty || isDuplicateId || isRecentDuplicate) {
+        if (isAnswerTurn) {
+          result.next = { type: "checkpoint", reason: "ready" };
+          result.state.status = "checkpoint";
+          break;
+        }
+        if (isRepeatedUncertainty) {
+          throw new Error("模型重复询问已处理的判断，请重试");
+        }
+        if (isDuplicateId) {
+          throw new Error("模型重复了已问过的问题，请重试");
+        }
         throw new Error("模型重复了上一轮问题，请重试");
+      }
       if (
         question.constraintRefs.some(
           (ref) => !result.state.constraints.some((item) => item.text === ref),

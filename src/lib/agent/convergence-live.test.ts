@@ -193,6 +193,78 @@ describe("live contract guards", () => {
     expect(result.state.constraints.some((c) => c.text === "只用现成纸盒")).toBe(false);
     expect(result.state.constraints.some((c) => c.text === "改为使用金属定制盒")).toBe(true);
   });
+
+  it("handles answer turns with mixed uncertain answers without throwing repeated uncertainty error", async () => {
+    const startInput = initial();
+    const startPayload = mockConvergence(startInput);
+    if (startPayload.next.type !== "ask") throw new Error("Expected ask");
+
+    // Three questions: two answered with option, one answered with uncertain
+    const q1 = startPayload.next.questions[0];
+    const q2 = startPayload.next.questions[1];
+    const q3 = {
+      id: "q_start_3",
+      uncertaintyId: "uncertainty_craft",
+      prompt: "材质工艺偏向哪种表达路径？",
+      constraintRefs: [],
+      options: [
+        { id: "a", label: "原生纤维斜纹" },
+        { id: "b", label: "精密喷砂阳极氧化" },
+      ],
+    };
+    startPayload.state.uncertainties.push({
+      id: "uncertainty_craft",
+      topic: "材质工艺偏向",
+      decisionAffected: "材质表达路径",
+      impact: "material",
+      status: "open",
+    });
+
+    const pendingQuestions = [q1, q2, q3];
+    const answerInput: ConvergenceInput = {
+      ...startInput,
+      requestId: "r2",
+      state: startPayload.state,
+      pendingQuestions,
+      event: {
+        type: "answer",
+        answers: [
+          { questionId: q1.id, kind: "option", optionId: q1.options[0].id },
+          { questionId: q2.id, kind: "option", optionId: q2.options[0].id },
+          { questionId: q3.id, kind: "uncertain" },
+        ],
+      },
+    };
+
+    // Live model outputs generic or repeated IDs in next round
+    const modelPayload = mockConvergence(answerInput);
+    modelPayload.next = {
+      type: "ask",
+      questions: [
+        {
+          id: "q_r2_1",
+          uncertaintyId: q1.uncertaintyId, // Colliding ID with previously answered Q1
+          prompt: "次级界面的留白比例？",
+          constraintRefs: [],
+          options: [{ id: "a", label: "60%" }, { id: "b", label: "40%" }],
+        },
+        {
+          id: "q_r2_2",
+          uncertaintyId: "uncertainty_craft", // Follow-up on uncertain Q3
+          prompt: "具体材质试样优先验证哪种触感？",
+          constraintRefs: [],
+          options: [{ id: "a", label: "粗砺哑光" }, { id: "b", label: "细腻平滑" }],
+        },
+      ],
+    };
+    vi.mocked(completeJson).mockResolvedValue(modelPayload);
+
+    // Should succeed cleanly without throwing "模型重复询问已处理的判断，请重试"
+    const result = await runConvergenceTurn(answerInput);
+    expect(result.state).toBeTruthy();
+    expect(["questioning", "checkpoint"]).toContain(result.state.status);
+    expect(["ask", "checkpoint"]).toContain(result.next.type);
+  });
 });
 
 

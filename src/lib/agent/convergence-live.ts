@@ -142,17 +142,26 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
   const previousById = new Map(
     (previous?.uncertainties ?? []).map((item) => [item.id, item]),
   );
-  const answeredIds = new Set(
-    input.event.type === "answer"
-      ? input.event.answers
-          .filter((answer) => answer.kind !== "uncertain")
-          .map((answer) =>
-            input.pendingQuestions?.find((question) => question.id === answer.questionId)
-              ?.uncertaintyId,
-          )
-          .filter((id): id is string => Boolean(id))
-      : [],
-  );
+  const answeredIds = new Set<string>();
+  for (const entry of input.history) {
+    if (entry.event.type === "answer") {
+      const answers = entry.event.answers;
+      for (const q of entry.questions ?? []) {
+        const a = answers.find((ans) => ans.questionId === q.id);
+        if (a && a.kind !== "uncertain") {
+          answeredIds.add(q.uncertaintyId);
+        }
+      }
+    }
+  }
+  if (input.event.type === "answer") {
+    for (const a of input.event.answers) {
+      if (a.kind !== "uncertain") {
+        const q = input.pendingQuestions?.find((question) => question.id === a.questionId);
+        if (q) answeredIds.add(q.uncertaintyId);
+      }
+    }
+  }
   const nextRecord = record(payload.next);
   const rawQuestions = Array.isArray(nextRecord.questions)
     ? nextRecord.questions
@@ -285,34 +294,108 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
     }
   }
 
-  const normalizedQuestions = questions.map((item, index) => {
-    const old = input.pendingQuestions?.[index];
+  const askHistory = input.history.flatMap((entry) => entry.questions ?? []);
+  if (input.pendingQuestions) {
+    askHistory.push(...input.pendingQuestions);
+  }
+
+  const normalizedQuestions: {
+    id: string;
+    uncertaintyId: string;
+    prompt: string;
+    constraintRefs: string[];
+    options: { id: string; label: string }[];
+  }[] = [];
+  const usedUncertaintyIds = new Set<string>();
+
+  for (let index = 0; index < questions.length; index++) {
+    const item = questions[index];
+    const prompt = typeof item.prompt === "string" && item.prompt.trim()
+      ? item.prompt.trim()
+      : "";
+    if (!prompt) continue;
+
+    // Check if this exact question was already asked in history
+    const promptKey = prompt.replace(/[\s？?，,。]/g, "");
+    const isDuplicatePrompt = askHistory.some(
+      (old) => old.prompt.replace(/[\s？?，,。]/g, "") === promptKey,
+    );
+    if (isDuplicatePrompt) continue;
+
+    const rawUid =
+      typeof item.uncertaintyId === "string" && item.uncertaintyId.trim()
+        ? item.uncertaintyId.trim()
+        : null;
+
+    let targetUid = rawUid;
+
+    // If targetUid is missing, or was already answered, or already used in this round:
+    if (!targetUid || answeredIds.has(targetUid) || usedUncertaintyIds.has(targetUid)) {
+      // Find an open, un-answered uncertainty in state.uncertainties
+      const available = uncertainties.find(
+        (u) =>
+          u.status === "open" &&
+          u.impact !== "minor" &&
+          !answeredIds.has(u.id) &&
+          !usedUncertaintyIds.has(u.id),
+      );
+      if (available) {
+        targetUid = available.id;
+      } else {
+        // Create a new open uncertainty for this question
+        const newUid = `uncertainty_${input.requestId}_${index + 1}`;
+        targetUid = newUid;
+        uncertainties.push({
+          id: newUid,
+          topic: prompt.slice(0, 40),
+          decisionAffected: prompt.slice(0, 40),
+          impact: "material",
+          status: "open",
+        });
+      }
+    }
+
+    usedUncertaintyIds.add(targetUid);
+
     const options = Array.isArray(item.options)
       ? item.options
           .map(record)
           .filter((option) => typeof option.id === "string" && typeof option.label === "string")
           .map((option) => ({ id: option.id as string, label: option.label as string }))
-      : old?.options ?? [];
-    return {
-      id: nonEmpty(item.id, old?.id ?? `q_${input.requestId}_${index + 1}`),
-      uncertaintyId: nonEmpty(item.uncertaintyId, old?.uncertaintyId ?? uncertainties[index]?.id ?? `uncertainty_${index + 1}`),
-      prompt: nonEmpty(item.prompt, old?.prompt ?? "这项判断会怎样改变设计方向？"),
+      : [];
+
+    const rawId = typeof item.id === "string" ? item.id.trim() : "";
+    const questionId =
+      rawId && !askHistory.some((old) => old.id === rawId)
+        ? rawId
+        : `q_${input.requestId}_${index + 1}`;
+
+    normalizedQuestions.push({
+      id: questionId,
+      uncertaintyId: targetUid,
+      prompt,
       constraintRefs: Array.isArray(item.constraintRefs)
         ? item.constraintRefs.filter(
             (ref): ref is string => typeof ref === "string" && Boolean(ref.trim()),
           )
-        : old?.constraintRefs ?? [],
-      options,
-    };
-  });
+        : [],
+      options:
+        options.length >= 2
+          ? options
+          : [
+              { id: "a", label: "偏向激进前沿表达" },
+              { id: "b", label: "偏向稳健功能克制" },
+            ],
+    });
+  }
 
   const canAsk = normalizedQuestions.length >= 2 && normalizedQuestions.length <= 3;
   const rawNextType = nextRecord.type;
   const hasOpenUncertainties = uncertainties.some(
-    (u) => u.impact !== "minor" && u.status === "open",
+    (u) => u.impact !== "minor" && u.status === "open" && !answeredIds.has(u.id),
   );
   const next = canAsk && rawNextType === "ask"
-    ? { type: "ask" as const, questions: normalizedQuestions }
+    ? { type: "ask" as const, questions: normalizedQuestions.slice(0, 3) }
     : {
         type: "checkpoint" as const,
         reason:
