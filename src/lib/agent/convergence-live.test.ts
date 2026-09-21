@@ -95,4 +95,104 @@ describe("live contract guards", () => {
     expect(vi.mocked(completeJson).mock.calls[0]?.[3]).toEqual(["data:image/jpeg;base64,abc"]);
     expect(result.state.visualKeywords).toEqual(["冷茶青", "60%留白", "特种棉纸"]);
   });
+
+  it("auto-preserves unreconsidered constraints when model omits them during answer turns", async () => {
+    const startInput = initial();
+    const startPayload = mockConvergence(startInput);
+    startPayload.state.constraints = [
+      { text: "只用现成纸盒", basis: "user", sourceIds: ["brief"] },
+    ];
+    if (startPayload.next.type !== "ask") throw new Error("Expected ask");
+
+    const answerInput: ConvergenceInput = {
+      ...startInput,
+      requestId: "r2",
+      state: startPayload.state,
+      pendingQuestions: startPayload.next.questions,
+      event: {
+        type: "answer",
+        answers: [
+          {
+            questionId: startPayload.next.questions[0].id,
+            kind: "option",
+            optionId: startPayload.next.questions[0].options[0].id,
+          },
+          {
+            questionId: startPayload.next.questions[1].id,
+            kind: "option",
+            optionId: startPayload.next.questions[1].options[0].id,
+          },
+        ],
+      },
+    };
+
+    // Live model returns empty constraints array (omitting previous constraint)
+    const modelPayload = mockConvergence(answerInput);
+    modelPayload.state.constraints = [];
+    vi.mocked(completeJson).mockResolvedValue(modelPayload);
+
+    // normalizeLivePayload should auto-preserve "只用现成纸盒"
+    const normalized = normalizeLivePayload(modelPayload, answerInput) as typeof modelPayload;
+    expect(normalized.state.constraints.some((c) => c.text === "只用现成纸盒")).toBe(true);
+
+    // runConvergenceTurn should pass without throwing "模型丢失了已有约束，请重试"
+    const result = await runConvergenceTurn(answerInput);
+    expect(result.state.constraints.some((c) => c.text === "只用现成纸盒")).toBe(true);
+  });
+
+  it("allows dropping or replacing a constraint when the question explicitly reconsiders it", async () => {
+    const startInput = initial();
+    const startPayload = mockConvergence(startInput);
+    startPayload.state.constraints = [
+      { text: "只用现成纸盒", basis: "user", sourceIds: ["brief"] },
+    ];
+    if (startPayload.next.type !== "ask") throw new Error("Expected ask");
+
+    // Mark the first question as explicitly reconsidering "只用现成纸盒"
+    const questions = [
+      {
+        ...startPayload.next.questions[0],
+        constraintRefs: ["只用现成纸盒"],
+      },
+      startPayload.next.questions[1],
+    ];
+
+    const answerInput: ConvergenceInput = {
+      ...startInput,
+      requestId: "r2",
+      state: startPayload.state,
+      pendingQuestions: questions,
+      event: {
+        type: "answer",
+        answers: [
+          {
+            questionId: questions[0].id,
+            kind: "option",
+            optionId: questions[0].options[0].id,
+          },
+          {
+            questionId: questions[1].id,
+            kind: "option",
+            optionId: questions[1].options[0].id,
+          },
+        ],
+      },
+    };
+
+    const modelPayload = mockConvergence(answerInput);
+    modelPayload.state.constraints = [
+      { text: "改为使用金属定制盒", basis: "user", sourceIds: ["r2"] },
+    ];
+    vi.mocked(completeJson).mockResolvedValue(modelPayload);
+
+    const normalized = normalizeLivePayload(modelPayload, answerInput) as typeof modelPayload;
+    expect(normalized.state.constraints.some((c) => c.text === "只用现成纸盒")).toBe(false);
+    expect(normalized.state.constraints.some((c) => c.text === "改为使用金属定制盒")).toBe(true);
+
+    const result = await runConvergenceTurn(answerInput);
+    expect(result.state.constraints.some((c) => c.text === "只用现成纸盒")).toBe(false);
+    expect(result.state.constraints.some((c) => c.text === "改为使用金属定制盒")).toBe(true);
+  });
 });
+
+

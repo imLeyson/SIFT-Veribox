@@ -236,6 +236,48 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
     avoid: normalizeJudgments(direction.avoid, previousDirection.avoid),
     criteria: normalizeJudgments(direction.criteria, previousDirection.criteria),
   };
+
+  const reconsideredConstraintTexts = new Set<string>();
+  if (input.event.type === "answer") {
+    for (const answer of input.event.answers) {
+      if (answer.kind === "uncertain") continue;
+      const question = input.pendingQuestions?.find(
+        (item) => item.id === answer.questionId,
+      );
+      for (const ref of question?.constraintRefs ?? []) {
+        reconsideredConstraintTexts.add(ref);
+      }
+    }
+  }
+
+  const rawConstraints = Array.isArray(state.constraints) ? state.constraints : [];
+  const normalizedModelConstraints = rawConstraints.map((item, index) =>
+    judgment(
+      item,
+      previous?.constraints?.[index] ? record(previous.constraints[index]) : null,
+      preferAssumption,
+      allowedSources,
+      input.requestId,
+    ),
+  );
+
+  const normalizedConstraints: typeof normalizedModelConstraints = [];
+  const seenConstraintTexts = new Set<string>();
+
+  for (const old of previous?.constraints ?? []) {
+    if (!reconsideredConstraintTexts.has(old.text)) {
+      normalizedConstraints.push(old);
+      seenConstraintTexts.add(old.text);
+    }
+  }
+
+  for (const item of normalizedModelConstraints) {
+    if (!seenConstraintTexts.has(item.text)) {
+      normalizedConstraints.push(item);
+      seenConstraintTexts.add(item.text);
+    }
+  }
+
   const normalizedQuestions = questions.map((item, index) => {
     const old = input.pendingQuestions?.[index];
     const options = Array.isArray(item.options)
@@ -313,7 +355,7 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
         audience: nullableText(brief.audience, nullableText(previousBrief.audience, null)),
         deliverable: nullableText(brief.deliverable, nullableText(previousBrief.deliverable, null)),
       },
-      constraints: normalizeJudgments(state.constraints, previous?.constraints),
+      constraints: normalizedConstraints,
       direction: normalizedDirection,
       currentHypothesis: nullableText(state.currentHypothesis, previous?.currentHypothesis ?? null),
       validationAction:
