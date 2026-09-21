@@ -1,32 +1,33 @@
-# SIFT：设计方向收敛与视觉探索 Agent
-## 产品需求文档 (PRD v2.0) 与完整用户流程规范
+# SIFT：视觉策略与方向收敛智能体
+## 产品需求文档 (PRD v3.0) 与完整用户流程规范
 
-**文档版本**：v2.0 (全闭环生产版)  
-**产品代号**：SIFT (Design Convergence & Inspiration Exploration Agent)  
+**文档版本**：v3.0 (视觉策略收敛与全领域自适应生产版)  
+**产品代号**：SIFT (Visual Strategy & Direction Convergence Agent)  
+**最新更新**：2026-09-21  
 **文档状态**：正式发布 / 研发与设计基准  
-**对应工程**：`veribox-mvp` (Next.js 15 App Router + React Flow + Zustand + DeepSeek Flash / Mock)  
+**对应工程**：`veribox-mvp` (Next.js 16 App Router + React Flow + Zustand + DeepSeek Flash / Mock)  
 **文档归属**：AI 在设计工作流中的重构实践  
 
 ---
 
 ## 目录
 1. [执行摘要与问题洞察](#1-执行摘要与问题洞察)
-2. [产品定位与人机分工原则](#2-产品定位与人机分工原则)
+2. [产品定位、核心边界与人机分工](#2-产品定位核心边界与人机分工)
 3. [目标用户与典型场景](#3-目标用户与典型场景)
 4. [系统全景架构与技术方案](#4-系统全景架构与技术方案)
 5. [完整端到端用户流程 (User Flow)](#5-完整端到端用户流程-user-flow)
    - 5.1 [全景业务流程图](#51-全景业务流程图)
-   - 5.2 [四方人机协同泳道图](#52-四方人机协同泳道图)
-   - 5.3 [核心状态机流转与决策机制](#53-核心状态机流转与决策机制)
-   - 5.4 [阶段性操作流与异常分支拆解](#54-阶段性操作流与异常分支拆解)
+   - 5.2 [四方人机协同时序泳道图](#52-四方人机协同时序泳道图)
+   - 5.3 [核心状态机流转与平滑收敛决策机制](#53-核心状态机流转与平滑收敛决策机制)
+   - 5.4 [画布底部导航 (Bottom Dock) 交互流](#54-画布底部导航-bottom-dock-交互流)
 6. [功能模块详细需求规范](#6-功能模块详细需求规范)
-   - 6.1 [模块一：Brief 输入与双轨启动](#61-模块一brief-输入与双轨启动)
-   - 6.2 [模块二：单题动态问答与不确定性探测](#62-模块二单题动态问答与不确定性探测)
-   - 6.3 [模块三：方向状态卡与人工检查点 (Human Checkpoint)](#63-模块三方向状态卡与人工检查点-human-checkpoint)
-   - 6.4 [模块四：3 套差异化探索路线生成与抉择](#64-模块四3-套差异化探索路线生成与抉择)
-   - 6.5 [模块五：时序步骤推进与验收清单](#65-模块五时序步骤推进与验收清单)
-   - 6.6 [模块六：多平台搜索编排与去噪关键词资产](#66-模块六多平台搜索编排与去噪关键词资产)
-   - 6.7 [模块七：设计提案简报导出 (Dossier)](#67-模块七设计提案简报导出-dossier)
+   - 6.1 [模块一 (Node 00)：Brief 输入、推荐句式与多模态逆向工程](#61-模块一node-00brief-输入推荐句式与多模态逆向工程)
+   - 6.2 [模块二 (Node 01/02)：分水岭视觉抉择与 Design State 状态卡](#62-模块二node-0102分水岭视觉抉择与-design-state-状态卡)
+   - 6.3 [模块三 (Node 03)：全领域自适应设计主题与血统溯源](#63-模块三node-03全领域自适应设计主题与血统溯源)
+   - 6.4 [模块四 (Node 05)：深入探索视点轴与实操验收清单](#64-模块四node-05深入探索视点轴与实操验收清单)
+   - 6.5 [模块五 (Node 07)：领域化跨平台检索规划与去噪词库](#65-模块五node-07领域化跨平台检索规划与去噪词库)
+   - 6.6 [模块六 (Canvas Dock)：画布底部导航栏与非侵入式控制](#66-模块六canvas-dock画布底部导航栏与非侵入式控制)
+   - 6.7 [模块七 (Dossier)：视觉策略提案简报沉淀与导出](#67-模块七dossier视觉策略提案简报沉淀与导出)
 7. [数据模型与接口契约](#7-数据模型与接口契约)
 8. [非功能性需求与系统质量边界](#8-非功能性需求与系统质量边界)
 9. [产品演进路线图 (Roadmap)](#9-产品演进路线图-roadmap)
@@ -36,51 +37,59 @@
 ## 1. 执行摘要与问题洞察
 
 ### 1.1 背景来源
-本产品规划与架构设计直接源自对一线设计工作流的深度研讨（《AI在设计工作中的应用探讨》）。设计团队与指导专家一致指出：
-> **“在设计前期，找图本身并不占优势——互联网上不用花钱就能搜到海量素材。真正的痛点在于：如何重新编排设计师的动作，理清搜索次序，把模糊的需求收敛为清晰的设计判断。”**
+本产品规划与架构设计直接源自对一线设计工作流的深度调研。设计团队与指导专家一致指出：
+> **“在设计前期，找图本身并不占优势——互联网上不用花钱就能搜到海量素材。真正的痛点在于：如何重新编排设计师的动作，理清搜索次序，把模糊的需求收敛为清晰、有画面感的设计判断，避免前期漫无目的地试错。”**
 
-### 1.2 传统设计前期流程痛点拆解
-通过对传统设计调研流程的真实动作追踪，发现以下四大断层：
-1. **任务理解与边界模糊**：拿到 Brief 后，设计师大脑中有初步设想，但不知道项目的最大不确定性是什么，常常混淆目标与技术约束。
-2. **搜索时序混乱（动作无序）**：在 Pinterest、Behance、小红书等平台检索时，不知道“先搜什么、后搜什么”（先搜品类、风格、调性、竞品还是工艺？），缺乏结构化时序。
+### 1.2 传统设计前期流程四大断层
+1. **意图与边界模糊**：拿到一段模糊简短的 Brief 或几张零散参考图后，设计师大脑中虽有初步感受，但无法明确项目的最大不确定性是什么，常常混淆核心视觉诉求与物理技术约束。
+2. **AI 工具的定位误导（“生图幻觉”）**：市场上大量工具试图用 Midjourney / Stable Diffusion 一键生成效果图，但设计前期不需要、也不能依赖空洞且无法落地的“概念渲染图”。设计师需要的是清晰的**视觉策略、设计主张与检索方向**。
 3. **平台与词汇生态屏障（信息噪音）**：
-   - 中英文平台生态脱节：本土灵感看中文社媒，先锋视觉依赖海外平台，反复中英机翻导致专业词汇失真；
-   - 样机贴图噪音：普通搜索词搜出大量无参考价值的商业样机（Mockup）和模版贴图，淹没真实工艺细节。
-4. **决策不收敛与灵感散落**：无目的翻图导致信息过载，收藏夹堆积数以百计零散图片，却难以向团队和客户汇报明确的设计路线与推进依据。
+   - 搜图过程缺乏结构化时序：先搜材质、流派、调性，还是先搜布局结构？
+   - 商业样机贴图泛滥：在 Behance、Pinterest 等平台检索时，搜出大量千篇一律的贴图样机（Mockup），掩盖了真实材质工艺与排版细节。
+4. **决策不收敛与灵感散落**：无目的漫游翻图导致灵感碎片化，收藏夹堆积数以百计零散图片，却难以向团队和客户汇报明确的设计路线、推进依据与血统溯源。
 
 ---
 
-## 2. 产品定位与人机分工原则
+## 2. 产品定位、核心边界与人机分工
 
 ### 2.1 产品定位
-**SIFT 是专为设计师打造的前期方向收敛与视觉探索编排 Agent (Design Convergence & Exploration Agent)。**
-它不是自动生图工具，也不是替代设计师决策的“黑盒脑洞器”，而是**设计师的结构化思维脚手架**。
+**SIFT 是一款面向专业设计师的视觉策略与方向收敛智能体 (Visual Strategy & Direction Convergence Agent)。**
 
-### 2.2 核心价值主张
-> **“Agent 负责发散可能、梳理次序与降低认知负载；设计师负责关键判断、主观审美与最终抉择。”**
+它的目标是：**当你拿到一段模糊的 Brief 或几张参考图时，通过几轮关键的视觉分水岭提问，快速收敛出清晰、有画面感的设计主题与检索方向，避免前期漫无目的地试错。**
 
-### 2.3 设计哲学与演进准则
-- **准则一：先做小跑通，再嫁接做大**。MVP 优先实现闭环的文字理解、方向收敛与跨平台搜索编排，后续逐步嫁接图像反推、槽位造句与团队协同。
-- **准则二：人在哪抉择，AI 在哪赋能**。必须设立绝对的人工检查点（Human Checkpoint），未经设计师批准，系统绝不擅自越级推导。
-- **准则三：假设与事实严格隔离**。模型所作的推论必须打上待确认假设标记（`basis: "assumption"`），用户确认的决策标记为事实（`basis: "user"`），绝不隐瞒模型意图。
-- **准则四：拒绝死循环与编造偏好**。用户表示“暂不确定”时，系统最多换一种对照方式再问一次；若仍无法决断，直接标记暂缓（`deferred`），严禁强迫用户或捏造答案。
+### 2.2 核心边界（坚决不做的范围）
+- **坚决不做自动生图 / 渲染交付工具**：SIFT 不输出最终效果图、渲染图、生产施工图或 3D 打印切片。前期策略探索绝不越俎代庖替代落地交付。
+- **坚决不做项目管理看板或打样合规仪表盘**：保持纯粹的设计工具心智，杜绝形式主义项目管理指标。
+- **绝不替设计师做最终美学抉择**：AI 负责发散可能性、建立分水岭对比并理清搜索次序；设计师始终掌握关键判断与最终拍板权。
+
+### 2.3 人机分工与设计哲学
+| 角色 | 核心职责 | 输出物 |
+| :--- | :--- | :--- |
+| **SIFT Agent** | 结构化拆解需求、逆向工程参考图偏好、提炼视觉分水岭问题、推导画面感假设、编排跨平台去噪检索策略 | 结构化提问、Design State、3 套差异化主题领地、时序步骤、去噪搜索方案 |
+| **设计师 (Human)** | 明确商业意图、权衡分水岭选项、提供主观审美偏好、拍板探索路线、执行真实世界调研 | 选项抉择、路线决策、验收清单确认、灵感手记记录 |
+
+- **准则一：全领域自适应（Discipline-Adaptive）**：摒弃单一平面排版偏见，自动识别产品/材质、包装、UI/界面、品牌/VI 等不同载体，提炼该领域专属的工艺、造型与材质策略。
+- **准则二：假设与事实严格隔离**：模型推论打上 `basis: "assumption"`（待确认），用户确认内容打上 `basis: "user"`（事实）。
+- **准则三：拒绝死循环与强制提问**：用户选择“暂不确定”时精准保留未决状态；当视觉主张已充分收敛时，系统优雅推进至检查点，严禁死锁阻断。
+- **准则四：克制专业的视觉语言**：界面采用中性石灰色调、严谨网格与微交互，剔除所有营销式警示框。
 
 ---
 
 ## 3. 目标用户与典型场景
 
 ### 3.1 目标用户画像
-1. **主设 / 资深设计师 (Design Lead / Senior Designer)**：需要快速拆解复杂、矛盾的商业需求，为团队制定清晰的调研路径和探索提案。
-2. **独立设计师 / 自由职业者**：独立对接甲方，面对模糊或频繁变动的需方诉求，需要低成本、快速验证方向并生成结构化 Brief 汇报。
-3. **设计专业师生 / 前沿探索者**：探索 AI 与传统设计方法论（如双钻模型、现代瑞士平面设计）的深度结合。
+1. **工业/产品/CMF 设计师**：面对环保材料、新型工艺、实体伴侣器物等前沿需求，需要从模糊概念中理清材质触感、加工方式与形态隐喻。
+2. **包装与品牌设计师**：面对“要高端但预算有限”、“要极简但有辨识度”等冲突型 Brief，需要确立视觉层级、材质工艺与包装开箱仪式感。
+3. **UI / 数字界面设计师**：需要确立数字工作台或界面的信息架构密度、暗色机能调性或微交互质感。
+4. **设计总监 / 独立设计顾问**：需要快速向客户汇报一套具备严密推导逻辑与血统追溯的视觉策略提案（Dossier）。
 
 ### 3.2 典型使用场景
 
-| 场景分类 | 典型用户输入示例 | 核心痛点与需求 | SIFT 响应策略 |
+| 场景分类 | 典型用户输入示例 | 核心痛点 | SIFT 响应策略 |
 | :--- | :--- | :--- | :--- |
-| **场景 A：约束冲突型任务** | “我们要做一款极简冷泡茶包装，预算极其有限，但投资人要求必须有极高奢华感与艺术收藏价值。” | 预算与高端工艺存在直接冲突，不知道如何取舍。 | 优先定位约束冲突，抛出关键对比问题，引导设计师确定优先坚持项与妥协项。 |
-| **场景 B：模糊探索型任务** | “想做一个面向 Z 世代的社区咖啡馆品牌视觉，调性要酷一点，没有更多信息。” | 需求极度宽泛，缺少风格锚点与细分受众。 | 启动动态追问或一键快速收敛，生成 3 套截然不同切入点的探索路线（如工业冷感 vs 潮玩社群 vs 治愈温润）。 |
-| **场景 C：时序搜索与出海调研** | “已确定要做瑞士极简版式的科技企业年报，需要去 Behance 和海外设计站找成套排版案例。” | 普通搜索全是千篇一律的样机模板，缺少专业设计词汇与时序。 | 针对步骤动态生成双语关键词资产，自动注入 `-mockup` 高级去噪语法，一键直达专业检索。 |
+| **实体产品与可持续材质** | “我想做一个宠物毛发的可持续设计产品，具有情感设计，加工成可用新材料。” | 概念先锋但缺少工程感知，传统 AI 容易漂移到平面 Logo。 | 锁定工业与 CMF 领域，提问聚焦微纤维机理与天然粘结剂，生成【原生纤维·触感转化】、【情感器物·陪伴隐喻】等实体主题，平台直达 Dezeen 材料报道与 Behance CMF。 |
+| **约束冲突型包装设计** | “我想做一个冷泡茶包装设计，希望整体克制日常，避免大插画与传统红金罐，探索特种纸微触感。” | 预算有限与高端质感冲突，不知如何在正面排版与特种工艺间取舍。 | 抛出视觉层级分水岭选择，收敛出【纯净特种纸微触感】路线，规划 Pinterest 纸张工艺与小红书实拍质感检索。 |
+| **先锋界面与机能美学** | “领克 03+ 下一代性能车座舱内饰数字化界面方案，强化赛道机能与德式理性。” | 需求要素繁多，容易陷入千篇一律的仪表盘模板。 | 锁定横向拉伸视觉带与非对称环抱式布局，输出具象色号与界面负空间比例，规划先锋数字平台检索。 |
 
 ---
 
@@ -88,51 +97,43 @@
 
 ```mermaid
 flowchart TD
-    subgraph UI_Layer ["表现层：无限流动画布 (Infinite Canvas / React Flow)"]
+    subgraph Client_Layer ["表现层：无限画布与响应式交互系统"]
         direction TB
-        Node00["00 Brief 节点\n(Prompt 输入 & 预设案例)"]
-        Node01["01 动态问答卡\n(单题/选项/不确定探测)"]
-        Node02["02 方向状态卡\n(Design State 意图/优先/避免/准则)"]
-        Node03["03-04 探索路线卡 x3\n(差异化切入点/推荐标识)"]
-        Node05["05 步骤推进轴\n(时序推进/验收清单勾选/手记)"]
-        Node07["06-08 平台搜索方案卡\n(中英对照/去样机语法/一键直达)"]
-        ModalDossier["09 提案简报模态弹窗\n(Markdown 导出/复制)"]
+        Node00["00 Brief 输入节点\n(推荐句式 / 多模态参考图 / 实时诊断)"]
+        Node01["01 动态问答卡\n(2-3个分水岭问题 / 对立选项 / 暂不确定)"]
+        Node02["01 方向状态卡 (Design State)\n(意图 / 优先 / 避免 / 准则 / 假设 / 视觉关键词)"]
+        Node03["03 设计主题领地 x3\n(全领域自适应 / 血统溯源 / 推荐标识)"]
+        Node05["05 视点推进轴\n(母题切片 / 时序验证 / 验收清单 / 灵感手记)"]
+        Node07["07 跨平台检索规划\n(CMF/去噪语法 / 双语词库 / 一键直达)"]
+        BottomDock["画布底部导航 Dock (Bottom-Center)\n(自适应折叠 / 节点直达 / 全局鸟瞰)"]
+        ModalDossier["策略提案简报模态窗 (Dossier)\n(全案导出 / Markdown / 本地保存)"]
     end
 
-    subgraph State_Layer ["状态管理与离线持久化 (Zustand)"]
+    subgraph State_Layer ["状态管理与离线持久化 (Zustand + Storage)"]
         Store["convergence-store (sift-convergence-v1)"]
-        HistoryManager["版本历史追踪与回滚 (Revisions)"]
-        ConcurrencyLock["迟到响应拦截 (SessionId + BaseRevision)"]
+        HistoryManager["多轮版本追踪 (Revisions & Lineage)"]
+        GracefulEngine["平滑收敛与去重引擎 (Checkpoint Fallback)"]
     end
 
-    subgraph Orchestrator_Layer ["服务编排与 API 服务层 (Next.js 15 App Router)"]
+    subgraph Server_Layer ["服务端编排层 (Next.js 16 App Router API)"]
         direction TB
-        APIBrief["POST /api/brief\n(会话初始化 / fast_start 一键收敛)"]
-        APIClarify["POST /api/clarify\n(答案提交 / 补充修正重估)"]
-        APIRoutes["POST /api/routes\n(3条探索路线差异化生成)"]
-        APIPlan["POST /api/platform-plan\n(步骤平台方案与关键词编排)"]
+        APIBrief["POST /api/brief\n(会话创建 / fast_start 一键收敛)"]
+        APIClarify["POST /api/clarify\n(问答流转 / 状态增量重估 / 自动检查点)"]
+        APIRoutes["POST /api/routes\n(自适应 3 套主题生成 / 血统注入)"]
+        APIPlan["POST /api/platform-plan\n(步骤平台方案编排 / 去噪语法构建)"]
     end
 
-    subgraph Engine_Layer ["双轨推理与平台注册引擎"]
+    subgraph Engine_Layer ["双轨推理与多模态注册引擎"]
         direction TB
-        LLMLive["DeepSeek Flash (Live Mode)\nJSON 结构化推理 + 容错修复"]
-        LLMMock["内置确定性 Mock 引擎\n(零 API Key 离线可复现演示)"]
-        PlatformRegistry["6大设计平台注册表\n(Pinterest / Behance / 小红书 / IG / Dribbble / Google)"]
+        LLMLive["DeepSeek Flash (Live Mode)\nJSON 强约束契约 + 多模态逆向工程 + 防死锁熔断"]
+        LLMMock["内置确定性 Mock 引擎\n(零 Token 离线可复现，覆盖全品类场景)"]
+        PlatformRegistry["设计平台注册表\n(Behance CMF / Dezeen / Pinterest / 小红书 / Dribbble / Google)"]
     end
 
-    Node00 --> Store
-    Node01 --> Store
-    Node02 --> Store
-    Node03 --> Store
-    Node05 --> Store
-    Node07 --> Store
-    Store --> ModalDossier
-
-    Store <--> Orchestrator_Layer
-    APIBrief --> LLMLive & LLMMock
-    APIClarify --> LLMLive & LLMMock
-    APIRoutes --> LLMLive & LLMMock
-    APIPlan --> LLMLive & LLMMock
+    Node00 & Node01 & Node02 & Node03 & Node05 & Node07 <--> Store
+    BottomDock <--> Store
+    Store <--> Server_Layer
+    APIBrief & APIClarify & APIRoutes & APIPlan --> LLMLive & LLMMock
     APIPlan --> PlatformRegistry
 ```
 
@@ -144,303 +145,458 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start([用户进入 SIFT 空间]) --> Step0[00 输入或选择原始 Brief]
+    Start([用户进入 SIFT 空间]) --> Node00View[00 Brief 输入卡片展示]
     
-    Step0 --> ChoiceStart{启动方式选择}
-    ChoiceStart -- "点击「开始收敛」" --> QLoop[进入单题动态问答环节]
-    ChoiceStart -- "点击「一键收敛」" --> FastConv[模型单次推导 + 假设隔离标注]
-    
-    subgraph Convergence_Loop ["阶段一：方向收敛循环"]
-        QLoop --> RenderQ[展示关键问题: 最多40字, 2-3个高对比选项]
-        RenderQ --> UserAns{用户操作}
-        UserAns -- 选择选项 / 自定义文本 --> SubmitAns[POST /api/clarify 提交]
-        UserAns -- 选择「暂不确定」 --> RetryCheck{首次不确定?}
-        RetryCheck -- 是 --> SwapScenario[换一个对照场景重新询问]
-        RetryCheck -- 否 --> DeferTopic[标记该主题为 deferred, 不编造偏好]
-        UserAns -- 点击「以此方向继续」 --> FastInterrupt[本地截断, 保留未决项]
+    subgraph Phase0_Input ["阶段 00：简报输入与意图确立"]
+        Node00View --> UserAction{选择启动模式}
+        UserAction -- "键入结构化句式 / 粘贴参考图" --> StandardStart[点击「开始方向收敛」]
+        UserAction -- "使用推荐句式模板" --> TemplateStart[点击「套用模板」编辑后提交]
+        UserAction -- "时间紧迫 / 已有明确构想" --> FastStart[点击「跳过提问 · 直接规划路线」]
+    end
+
+    subgraph Phase1_Convergence ["阶段 01：动态问答与方向收敛"]
+        StandardStart --> POSTBrief[POST /api/brief]
+        POSTBrief --> GenQ[展示 2–3 个具象视觉分水岭问题]
+        GenQ --> UserChoice{设计师抉择}
+        UserChoice -- "勾选对立选项 / 录入自定义文本" --> AnsSubmit[POST /api/clarify 提交答案]
+        UserChoice -- "对某项判断未明" --> AnsUncertain[勾选「暂不确定」提交]
+        UserChoice -- "提前满意" --> AnsConverge[点击「跳过问答，按已有判断收敛」]
         
-        SubmitAns --> EvalState[更新 Design State 状态卡]
-        SwapScenario --> RenderQ
-        DeferTopic --> CheckUncertainty{还有关键不确定项?}
-        EvalState --> CheckUncertainty
-        CheckUncertainty -- 有 --> RenderQ
-        CheckUncertainty -- 无 / 达到阈值 --> Checkpoint
-        FastInterrupt --> Checkpoint
-        FastConv --> Checkpoint
+        AnsSubmit & AnsUncertain --> EvalState[更新 Design State 卡片]
+        EvalState --> CheckReady{是否达到收敛标准?}
+        CheckReady -- 仍有高价值未决分水岭 --> GenQ
+        CheckReady -- 关键决策已闭环 / 无新问题 --> AutoCheckpoint[优雅进入 01 人工检查点]
+        AnsConverge --> AutoCheckpoint
+        FastStart --> AutoCheckpoint
     end
 
-    subgraph Human_Gate ["人工检查点 (Human Checkpoint)"]
-        Checkpoint[进入人工检查点: 冻结当前状态卡]
-        Checkpoint --> ReviewState[审核 6 核心要素: 意图/优先/避免/准则/假设/未决]
-        ReviewState --> HumanDecision{设计师决策}
-        HumanDecision -- 发现偏差, 提交修正意见 --> ReviseState[提交补充描述, 重新评估]
-        ReviseState --> QLoop
-        HumanDecision -- 认可当前方向, 点击「确认方向」 --> LockDirection[状态冻结: status = confirmed]
+    subgraph Phase2_Checkpoint ["阶段 02：人工检查点 (Human-in-the-Loop)"]
+        AutoCheckpoint --> ReviewState[审阅 6 大视觉要素：意图/坚持/禁忌/准则/假设/关键词]
+        ReviewState --> DecisionGate{设计师决策}
+        DecisionGate -- "发现偏差，修改文字" --> SubmitCorrect[提交修正意见，重估状态]
+        SubmitCorrect --> EvalState
+        DecisionGate -- "认可当前方向" --> ConfirmDirection[点击「确认视觉取向」，状态锁定]
     end
 
-    subgraph Exploration_Routes ["阶段二：路线抉择与时序推进"]
-        LockDirection --> Gen3Routes[触发 POST /api/routes\n生成 3 条不同方法论的探索路线]
-        Gen3Routes --> ShowRoutes[横向平铺展示 3 套路线卡片\n标注推荐路线及理由]
-        ShowRoutes --> PickRoute[设计师选中 1 条探索路线]
-        PickRoute --> UnselectedDim[未选路线降权收起, 选定路线高亮展开]
-        UnselectedDim --> ActivateStep[默认激活 Step 1 步骤轴]
+    subgraph Phase3_Themes ["阶段 03：设计主题抉择与血统追溯"]
+        ConfirmDirection --> GenThemes[POST /api/routes\n生成 3 套自适应设计主题]
+        GenThemes --> RenderThemes[平铺展示 3 套主题卡片\n回显「这条主题从哪里来」追溯信息]
+        RenderThemes --> PickTheme[设计师选中其中 1 套最契合主题]
+        PickTheme --> ActivateSteps[选定主题高亮展开，自动激活 Step 1 步骤轴]
     end
 
-    subgraph Step_Search_Loop ["阶段三：步骤推进与跨平台搜索"]
-        ActivateStep --> GenPlan[触发 POST /api/platform-plan\n生成当前步骤专属的平台搜索方案]
-        GenPlan --> ShowPlan[展示 3 大主平台 + 备选来源\n呈现中英关键词、意图标签、去样机语法]
-        ShowPlan --> SearchActions{设计师搜索行为}
-        SearchActions -- "点击「一键搜索」" --> OpenSingle[新标签页拉起预填语法搜索页]
-        SearchActions -- "点击「打开全部3个主力平台」" --> OpenTriple[并行拉起 3 大平台完成多维调研]
-        SearchActions -- "点击复制关键词" --> CopyClip[复制至剪贴板, 粘贴至本地设计工具]
-        SearchActions -- "平台不适用" --> ReplaceSource[从备选库中一键替换]
-        SearchActions -- "完成阶段探索" --> CheckStep[勾选验收清单准则 / 记录探索手记]
-        
-        CheckStep --> HasNextStep{还有后续步骤?}
-        HasNextStep -- 切换至下一步 --> StepNext[点击 Step 2 / Step 3]
-        StepNext --> GenPlan
-        HasNextStep -- 步骤全部执行完毕 --> ReadyDossier[调研完成]
+    subgraph Phase4_Steps_Search ["阶段 04：时序步骤推进与跨平台检索"]
+        ActivateSteps --> FetchPlan[POST /api/platform-plan\n编排当前步骤专属平台检索方案]
+        FetchPlan --> RenderPlan[展示主力平台中英关键词、去样机语法与意图标签]
+        RenderPlan --> SearchActs{调研操作}
+        SearchActs -- "点击单平台搜索" --> OpenWebSingle[新标签页打开预填检索词页面]
+        SearchActs -- "点击打开全部主力平台" --> OpenWebTriple[并行打开 3 大平台完成多维调研]
+        SearchActs -- "点击复制关键词" --> CopyWords[写入剪贴板，粘贴至外部设计软件]
+        SearchActs -- "完成阶段探索" --> MarkDone[勾选步骤验收准则，记录探索手记]
+        MarkDone --> NextStepCheck{还有后续步骤?}
+        NextStepCheck -- 切换至下一步 --> SwitchStep[点击 Step 2 / Step 3 视点]
+        SwitchStep --> FetchPlan
+        NextStepCheck -- 调研收敛完毕 --> CompleteExplore[流程闭环]
     end
 
-    subgraph Export_Phase ["阶段四：提案简报成果导出"]
-        ReadyDossier --> ClickExport[点击导航栏「导出提案简报」]
-        ClickExport --> ShowModal[弹出完整 Dossier 模态窗口]
-        ShowModal --> FinalExport{导出形式}
-        FinalExport -- 点击复制全部 --> CopyAll[一键复制 Markdown 格式至剪贴板]
-        FinalExport -- 点击保存文件 --> SaveMD[下载 .md 方案文件至本地]
-        CopyAll --> Done([交付团队 / 汇报客户 / 指导深化设计])
-        SaveMD --> Done
+    subgraph Phase5_Dossier ["阶段 05：策略提案简报导出"]
+        CompleteExplore --> OpenDossier[点击「导出提案」]
+        OpenDossier --> ViewModal[弹出完整 Dossier 模态窗口]
+        ViewModal --> ExportAct{导出操作}
+        ExportAct -- 一键复制全部 --> ClipMD[复制结构化 Markdown 提案至剪贴板]
+        ExportAct -- 下载方案文件 --> DownloadMD[下载 .md 文件保存至本地工程]
     end
 ```
 
 ---
 
-### 5.2 四方人机协同泳道图
+### 5.2 四方人机协同时序泳道图
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor U as 设计师 (Designer)
-    participant C as 前端画布 (Infinite Canvas)
+    participant C as 前端画布系统 (Infinite Canvas)
+    participant D as 底部导航 (Bottom Dock)
     participant O as 编排层 (Next.js API)
-    participant L as 推理与平台引擎 (LLM / Registry)
+    participant L as 推理与注册引擎 (LLM / Registry)
 
-    Note over U, L: 阶段 01: 任务输入与收敛启动
-    U->>C: 输入原始 Brief (或选择行业示例)
-    alt 标准收敛路径
-        U->>C: 点击「开始收敛」
-        C->>O: POST /api/brief { event: "start", rawBrief }
-        O->>L: 提取约束，识别最大不确定性
-        L-->>O: 返回初始 DesignState + 单个关键问题
-        O-->>C: 200 OK (渲染 AskNode 与 StateNode)
-    else 一键收敛路径 (Fast Start)
-        U->>C: 点击「一键收敛」
-        C->>O: POST /api/brief { event: "fast_start", rawBrief }
-        O->>L: 一次性推导完整方向 (未明项标为 assumption)
-        L-->>O: 返回完整 DesignState + next: checkpoint
-        O-->>C: 200 OK (直接进入 Human Checkpoint)
-    end
+    Note over U, L: 阶段 00：简报输入与意图锁定
+    U->>C: 输入结构化 Brief (品类+调性+禁忌+细节)，可选粘贴参考图
+    C->>C: 实时雷达诊断 (领域/匹配度/清晰度评分 0-100)
+    U->>C: 点击「开始方向收敛」
+    C->>O: POST /api/brief { event: "start", rawBrief, images }
+    O->>L: 提取约束，多模态逆向工程提炼视觉偏好
+    L-->>O: 返回初始 DesignState + 2–3 个分水岭问题
+    O-->>C: 200 OK
+    C->>D: 触发 Dock 自动展开并高亮「01 收敛」
 
-    Note over U, L: 阶段 02: 动态问答与不确定性探查 (标准流)
-    loop 仅针对关键问题探测
-        C->>U: 呈现单题 (≤40字) + 2-3个高对比选项 / 自定义输入
-        alt 设计师做出选择
-            U->>C: 选定选项 或 录入自定义文本
-            C->>O: POST /api/clarify { event: "answer", answer }
-            O->>L: 结合历史，增量更新 DesignState
-            L-->>O: 返回更新后 State + 下一问题或 Checkpoint
-            O-->>C: 200 OK (局部平滑更新画布)
-        else 设计师选择暂不确定
-            U->>C: 点击「暂不确定」
-            Note over C, O: 首次：换对照场景再问一次；二次：标记 deferred 结束该项
-        else 设计师中途主动收敛
-            U->>C: 点击「以此方向继续」
-            C->>C: 本地截断，保留未决项，不消耗模型调用
-        end
-    end
+    Note over U, L: 阶段 01：分水岭提问与方向收敛
+    C->>U: 展示问题卡片 (≤35字, 对立流派格式选项)
+    U->>C: 选择选项 (含部分“暂不确定”)，点击「确认视觉取向」
+    C->>O: POST /api/clarify { event: "answer", answers, state, history }
+    O->>L: 增量吸收偏好，更新假设与视觉关键词
+    Note over O, L: 防死锁机制：若已充分收敛或无新问题，自动优雅推进
+    L-->>O: 返回更新后 DesignState + next: checkpoint
+    O-->>C: 200 OK (渲染 01 人工检查点)
 
-    Note over U, L: 阶段 03: 人工检查点与方向确认 (Human-in-the-Loop)
-    C->>U: 进入人工检查点，高亮呈现方向状态卡 (意图/避免/准则等)
-    alt 提出修改补充
-        U->>C: 输入修正意见并提交
-        C->>O: POST /api/clarify { event: "correct", text }
-        O->>L: 增量重估方向
-        L-->>O: 返回修订后状态
-        O-->>C: 重新渲染状态
-    else 确认方向
-        U->>C: 点击「确认方向」(关键人为抉择)
-        C->>C: 冻结方向卡 (status = confirmed)
-    end
-
-    Note over U, L: 阶段 04: 探索路线生成与抉择
+    Note over U, L: 阶段 02：人工检查点与方向确认
+    U->>C: 审阅 6 大核心要素，点击「确认视觉取向」
+    C->>C: 锁定方向卡片 (status = confirmed)
     C->>O: POST /api/routes { confirmedState }
-    O->>L: 强制生成 3 套差异化切入点路线
-    L-->>O: 返回 3 套路线 (含1条推荐)
-    O-->>C: 渲染 3 张 RouteNode 卡片
-    U->>C: 审阅差异化方案，选中其中 1 条最契合路线
-    C->>C: 选定路线高亮展开，未选路线降权收起
+    O->>L: 生成 3 套差异化主题 (工业/材料/包装自适应)
+    L-->>O: 返回 3 套主题 (含推荐理由与溯源血统)
+    O-->>C: 渲染 3 张 RouteNode 卡片，回显溯源框
 
-    Note over U, L: 阶段 05: 时序步骤推进与跨平台搜索编排
-    C->>C: 激活选定路线 Step 1 步骤轴
-    C->>O: POST /api/platform-plan { routeId, stepId }
-    O->>L: 编排该步骤对应的 3 大主力平台方案
-    O->>L: 查阅 PlatformRegistry 注入 URL 模板与去噪语法
-    L-->>O: 返回中英关键词对照与专业去噪语法
+    Note over U, L: 阶段 03：主题选择与时序步骤推进
+    U->>C: 点击选中 1 套最契合主题
+    C->>C: 选定主题高亮展开，激活 Step 1 步骤轴
+    C->>O: POST /api/platform-plan { routeId, stepId: "s1" }
+    O->>L: 针对当前视点与设计品类编排搜索方案
+    O->>L: 查询 PlatformRegistry 注入去样机语法 (-mockup)
+    L-->>O: 返回中英关键词对照与平台搜索 URL
     O-->>C: 渲染 PlatformPlanNode 卡片
-    
-    U->>C: 点击「打开全部3个主力平台」或复制关键词
-    C-->>U: 新标签页并行拉起各平台搜索；关键词写入剪贴板
-    U->>C: 调研完毕，勾选步骤验收清单，填写灵感手记
-    U->>C: 切换至 Step 2 / Step 3 (重复拉取方案)
 
-    Note over U, L: 阶段 06: 提案简报沉淀与导出
-    U->>C: 点击顶部导航「导出提案简报」
-    C->>C: 聚合 Brief、状态、路线、步骤、验收率、手记与词库
-    C->>U: 弹出 Dossier 模态窗口，支持一键复制 / 下载 Markdown
+    Note over U, L: 阶段 04：检索执行与方案归档
+    U->>C: 点击「打开全部3个主力平台」在新标签页查阅案例
+    U->>C: 勾选设计验收准则，记录探索手记，切换 Step 2/3
+    U->>D: 点击「导出提案」拉起 Dossier 模态窗口
+    C->>U: 一键复制 Markdown 视觉策略全案简报
 ```
 
 ---
 
-### 5.3 核心状态机流转与决策机制
+### 5.3 核心状态机流转与平滑收敛决策机制
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Draft : 进入工作台
+    [*] --> Stage00_BriefDraft : 进入工作区
 
-    state Draft {
-        [*] --> Empty : 空白待输入
-        Empty --> Populated : 键入自然语言或点击预设案例
+    state Stage00_BriefDraft {
+        [*] --> EmptyInput : 初始空白
+        EmptyInput --> Populated : 键入自然语言或点击预设案例
+        Populated --> Diagnosing : 字符 ≥ 4 触发实时诊断雷达
     }
 
-    Draft --> Questioning : 点击「开始收敛」(start)
-    Draft --> HumanCheckpoint : 点击「一键收敛」(fast_start，未明项标为 assumption)
+    Stage00_BriefDraft --> Stage01_Questioning : 点击「开始方向收敛」(event: start)
+    Stage00_BriefDraft --> Stage01_Checkpoint : 点击「直接规划路线」(event: fast_start)
 
-    state Questioning {
-        [*] --> ActiveQuestion : 展示单题 (≤40字, 2-3个对比选项)
-        ActiveQuestion --> AnswerSubmitted : 提交答案 (选项/自定义文本)
-        ActiveQuestion --> UncertainFirst : 首次选择「暂不确定」
-        UncertainFirst --> ActiveQuestion : 换对照场景再问一次
-        UncertainFirst --> Deferred : 第二次仍不确定 (标记 deferred，不编造)
-        ActiveQuestion --> FastConvergence : 追问中点击「以此方向继续」
+    state Stage01_Questioning {
+        [*] --> ActiveQuestions : 展示 2-3 个分水岭问题
+        ActiveQuestions --> AnswersSubmitted : 提交答案 (选项/自定义文本/暂不确定)
         
-        AnswerSubmitted --> StateEvaluating : 模型增量更新 DesignState
-        StateEvaluating --> ActiveQuestion : 仍有核心未决项 (Uncertainties > 0)
-        StateEvaluating --> ReadyToCheck : 未决项清除或达到决策阈值
+        AnswersSubmitted --> Evaluating : 模型增量重估 DesignState
+        Evaluating --> ActiveQuestions : 仍有关键未决判断 (需进一步分水岭探查)
+        Evaluating --> GracefulFallback : 判断已收敛 / 无新高价值问题 / 重复追问
     }
 
-    FastConvergence --> HumanCheckpoint : 本地截断，保留当前状态与未决项
-    Deferred --> ReadyToCheck : 无其余关键问题
-    ReadyToCheck --> HumanCheckpoint : 进入检查点
+    GracefulFallback --> Stage01_Checkpoint : 优雅平滑推进，杜绝 502 错误阻断
+    Stage01_Questioning --> Stage01_Checkpoint : 用户主动点击「跳过问答，按已有判断收敛」
 
-    state HumanCheckpoint {
-        [*] --> InReview : 审核方向卡 (意图/优先/避免/准则/假设/未决)
-        InReview --> Correcting : 提出自然语言修正意见
-        Correcting --> StateEvaluating : 增量重估
-        InReview --> DirectionConfirmed : 人工点击「确认方向」(关键分水岭)
+    state Stage01_Checkpoint {
+        [*] --> ReviewingState : 人工审阅 6 大核心视觉要素
+        ReviewingState --> Correcting : 提交文本修正意见
+        Correcting --> Evaluating : 增量修正
+        ReviewingState --> Confirmed : 点击「确认视觉取向」(status = confirmed)
     }
 
-    DirectionConfirmed --> RoutesGenerating : 触发生成 3 套差异化探索路线
-    
-    state RoutesGenerating {
-        [*] --> EvaluatingRoutes : 展示 3 套路线对比 (切入点/优劣势/推荐)
-        EvaluatingRoutes --> RouteSelected : 设计师单选其中 1 条路线
+    Confirmed --> Stage03_RoutesGenerating : 触发 POST /api/routes
+
+    state Stage03_RoutesGenerating {
+        [*] --> RoutesReady : 展示 3 套差异化主题及溯源血统
+        RoutesReady --> RouteSelected : 设计师单选其中 1 套路线
     }
 
-    RouteSelected --> StepExecuting : 激活 Step 1 步骤轴
+    RouteSelected --> Stage05_StepExploring : 自动激活 Step 1 步骤轴
 
-    state StepExecuting {
-        [*] --> PlanFetching : 生成当前步骤 3 大平台搜索方案
-        PlanFetching --> InspectingPlan : 审阅中英词库、去噪语法、打开搜索
-        InspectingPlan --> PlatformReplacing : 平台不匹配，从备选库替换
-        InspectingPlan --> StepAdvancing : 勾选验收项、填写手记、切换至下一步
-        StepAdvancing --> PlanFetching : 针对新步骤生成搜索方案
+    state Stage05_StepExploring {
+        [*] --> Step1_Active : 拉取 Step 1 检索方案
+        Step1_Active --> Step2_Active : 切换至 Step 2
+        Step2_Active --> Step3_Active : 切换至 Step 3
+        Step1_Active --> ChecklistDone : 勾选验收准则 / 记录手记
     }
 
-    StepExecuting --> DossierExport : 调研沉淀完毕，打开简报
-    DossierExport --> [*] : 导出 Markdown 方案简报
+    ChecklistDone --> Stage07_DossierReady : 调研与策略收敛完成
+    Stage07_DossierReady --> [*] : 导出 Markdown 简报并交付
+```
+
+---
+
+### 5.4 画布底部导航 (Bottom Dock) 交互流
+
+```mermaid
+flowchart LR
+    subgraph Dock_Lifecycle ["Dock 智能生命周期"]
+        direction TB
+        InitState["Stage 00 初始态:\n仅 Node 00 存在\n展示极简胶囊按钮\n[ 🧭 流程导航 ∧ ]"]
+        ActiveState["收敛启动后 / 多节点存在:\n自动平滑展开完整 Dock\n[ 00 Brief › 01 收敛 › 03 主题 › 05 视点 › 07 搜索 | 全屏鸟瞰 | 导出提案 | ∨ ]"]
+        UserCollapsed["用户主动折叠:\n点击右侧 [ ∨ ] 按钮\n收敛为微缩胶囊，释放全屏视野"]
+    end
+
+    InitState -- "用户点击开始收敛" --> ActiveState
+    ActiveState -- "用户点击 [ ∨ ]" --> UserCollapsed
+    UserCollapsed -- "用户点击 [ 🧭 流程导航 ∧ ]" --> ActiveState
+    InitState -- "用户点击微缩胶囊" --> ActiveState
 ```
 
 ---
 
 ## 6. 功能模块详细需求规范
 
-### 6.1 模块一：Brief 输入与双轨启动
+### 6.1 模块一 (Node 00)：Brief 输入、推荐句式与多模态逆向工程
 - **节点标识**：`00 Brief 输入节点 (BriefInputNode)`
-- **主要能力**：
-  - 非结构化自然语言输入（中英文均可，20–2000字）；
-  - 6 个跨行业典型案例预设（冷泡茶、护肤品、SaaS、咖啡馆、艺术装帧、约束冲突穿戴）；
-  - 双轨启动：**标准收敛（识别不确定性，抛出关键问题）** 与 **一键收敛（单次推导，假设标记隔离，直达检查点）**。
+- **视觉层级与克制表达**：
+  - 彻底移除高饱和度黄色营销警示框，采用中性微字阶辅助说明：`聚焦前期视觉策略与检索方向收敛 · 非生图交付工具`。
+  - 顶部明确 Stage 标识：`00 简报输入 · 视觉策略收敛`。
+- **推荐句式规范与一键套用**：
+  - 内嵌轻量浅灰推荐条：`推荐结构：我想做一个【品类】，希望【调性】，避免【禁忌】…` 搭配右侧 `[套用模板]` 按钮。
+  - 点击一键注入四段式标准句式：`我想做一个【设计品类】，希望整体呈现【核心视觉调性与受众感受】，避免【明确的视觉禁忌与常见套路】，重点探索【材质工艺、排版结构或细节】。`
+- **多模态参考图逆向工程**：
+  - 支持本地选择文件、拖拽上传，或全局截图直接粘贴（⌘V）。
+  - 文案严谨声明：`意向参考图 (可选，用于提炼材质与排版偏好，非垫图渲染)`。
+  - 模型接收到图片后，执行色彩、网格负空间、材质肌理的逆向工程提取，并在提问中显式引用参考图中的视觉现象。
+- **实时简报诊断雷达**：
+  - 字符长度 ≥ 4 字符时触发前端纯静态轻量解析（延迟 <5ms），展示品类领域标签（如“包装 / 容器造型”、“实体产品 / 可持续材质”）、匹配度百分比、诉求清晰度评分（0–100），并动态给出极简提示。
 
-### 6.2 模块二：单题动态问答与不确定性探测
-- **节点标识**：`01 动态问答卡 (AskNode / QuestionBlock)`
-- **主要能力**：
-  - 每轮仅问 1 个核心问题（≤40字）；
-  - 提供 2–3 个存在本质差异的对比选项 + 自由文本输入 + 暂不确定；
-  - 优先级次序：先化解约束冲突，再定表达重点，最后澄清受众感知；
-  - 抗死循环机制：暂不确定仅换问一次，仍不确定则标记为 `deferred`；
-  - 追问中断收敛：支持一键「以此方向继续」，本地快速封存并推进。
+---
 
-### 6.3 模块三：方向状态卡与人工检查点 (Human Checkpoint)
-- **节点标识**：`02 方向状态卡 (StateNode)`
-- **主要能力**：
-  - 6 核心板块：任务基准、硬性约束、核心意图、优先坚持、坚决避免、判断准则与未决项；
-  - 严格溯源：区分 `user`（用户确认）与 `assumption`（模型推断）；
-  - 人工检查点（Human Gate）：未经设计师主动确认，系统严禁自动推进路线生成；支持自然语言补充修正重估。
+### 6.2 模块二 (Node 01/02)：分水岭视觉抉择与 Design State 状态卡
+- **节点标识**：`01 动态问答节点 (AskNode)` 与 `01 方向状态卡 (DirectionNode)`
+- **批次分水岭提问机制**：
+  - 每轮必须提出 2–3 个高对比度问题，按 blocking > material > minor 排序。
+  - 题干极精炼（≤35 字），选项 2–3 个（每项 ≤32 字），严格采用「流派/手法：具象取舍」对立格式（例如：“单色微字阶：仅保留单行品名与技术标尺，其余留白” vs “风味图示化：以局部几何色块突出茶品辨识度”）。
+  - 支持每题单选、自定义输入或选择“暂不确定”。
+- **“暂不确定”精准处理**：
+  - 严格将用户答案与对应题目的 `questionId` 映射匹配。选“暂不确定”的题目保持未决状态，不强制推导虚假偏好，更不将其他题目的锁定状态误施加于该题。
+- **平滑收敛降级机制 (Graceful Checkpoint Fallback)**：
+  - 当模型检测到方向已经收敛、或后续轮次中无更多高价值新问题时，系统自动将当前累积的全部偏好持久化并推进至人工检查点，严禁抛出中断性系统异常。
+- **Design State 核心 6 大要素**：
+  1. `brief`: 目标、受众、交付媒介。
+  2. `constraints`: 约束列表（明确标注 `user` 事实或 `assumption` 待确认假设，附带 `sourceIds` 追溯）。
+  3. `direction`: 核心视觉主张 `intent`、坚持偏好 `priorities`、审美雷区 `avoid`、评价准则 `criteria`。
+  4. `currentHypothesis`: ≤120 字、具象且富有画面感的当前设计假设。
+  5. `visualKeywords`: 4–6 个具象专业的设计参数（如具象色号 `#3C4045`、网格负空间 `65%`、材质肌理 `再生碳纤维与微绒触感`、设计思潮 `德式理性功能主义`）。
+  6. `validationAction`: 10–20 分钟内设计师可直接在电脑或工位上实操的轻量对照动作。
+- **人工检查点确认**：提供“提出修正意见”与“确认视觉取向”，状态确认后（`status = "confirmed"`）不可随意回退，作为下阶段路线生成的绝对地基。
 
-### 6.4 模块四：3 套差异化探索路线生成与抉择
-- **节点标识**：`03-04 探索路线卡 x3 (RouteNode)`
-- **主要能力**：
-  - 强制生成 3 套路线，禁止空泛风格词（如“简约风”已被拦截）；
-  - 必须具备互斥切入起点（`startingPoint`）；
-  - 仅至多 1 条推荐路线并阐明理由；
-  - 包含核心突破问题、核心优势、潜在风险、可行性评估与时序步骤；
-  - 选中路线展开步骤轴，未选路线降权收起。
+---
 
-### 6.5 模块五：时序步骤推进与验收清单
-- **节点标识**：`05 步骤推进轴 (StepNode)`
-- **主要能力**：
-  - 3–5 个时序推进步骤（探索目的、交付物清单）；
-  - 可交互勾选的验收清单（Acceptance Criteria）；
-  - 步骤灵感手记（Notes）录入与持久化。
+### 6.3 模块三 (Node 03)：全领域自适应设计主题与血统溯源
+- **节点标识**：`03 设计主题节点 (RouteNode x 3)`
+- **全领域自适应设计主题 (Discipline-Adaptive Territories)**：
+  - **产品与实体材质类**：自动收敛为材质探索维度（例如：【原生纤维 · 触感转化】、【情感器物 · 陪伴隐喻】、【现代极简 · 日常共生】），深入毛发微纤维机理、天然粘结剂、粗砺哑光触感与功能载体，彻底杜绝强加 2D 平面排版。
+  - **包装与容器类**：收敛为特种纸微触感、容器骨架、风味标尺排版与开箱仪式感。
+  - **数字与界面类**：收敛为高密度数据架构、暗色极客机能、非对称环抱式布局。
+  - **品牌与 VI 类**：收敛为极简几何轮廓、纯字体微标尺、先锋色彩对撞。
+- **“这条主题从哪里来”血统溯源卡片 (Lineage Box)**：
+  - 每套主题下方均渲染专属的溯源框，清晰呈现：
+    - 用户原始 Brief 意图锚点；
+    - 已确认的视觉坚持（Confirmed Priorities，如“触觉感知优先”、“真实物料实验”）；
+    - 明确避开的视觉雷区（Avoided Traps，如“拒绝过度包装噱头”、“杜绝模板化”）。
+- **推荐标识与单选高亮**：
+  - 模型标注 1 条首选推荐路线并给出客观理由；
+  - 设计师点击选中其中 1 条路线后，该路线高亮并展开下游步骤轴，其余路线降权淡化。
 
-### 6.6 模块六：多平台搜索编排与去噪关键词资产
-- **节点标识**：`06-08 平台搜索方案卡 (PlatformPlanNode)`
-- **主要能力**：
-  - 针对步骤动态生成 6 大设计平台（Pinterest, Behance, 小红书, IG, Dribbble, Google）搜索策略；
-  - 中英双语对照与意图分类（`moodboard` / `detail` / `consumer` / `benchmark`）；
-  - 高级去噪语法集成（如 Behance 自动注入 `-mockup` 过滤样机贴图）；
-  - 一键新窗口直达、批量并行拉起 3 主力平台、备选来源无缝替换。
+---
 
-### 6.7 模块七：设计提案简报导出 (Dossier)
-- **节点标识**：`09 提案简报导出 (DossierModal)`
-- **主要能力**：
-  - 聚合 Brief、收敛状态、选定路线、步骤进度、验收勾选、手记与搜索词库；
-  - 一键复制 Markdown 格式至剪贴板，支持下载 `.md` 文件。
+### 6.4 模块四 (Node 05)：深入探索视点轴与实操验收清单
+- **节点标识**：`05 视点推进节点 (StepNode)`
+- **母题切片与连续性回显**：卡片显著回显它所归属的母主题名称与视觉切片定义，确保设计师明确当前步骤在全案中的上下文定位。
+- **递进式 3 步时序轴**：
+  - 针对选定主题，拆解为递进的视觉视点（如 Step 1 材料配比试验 -> Step 2 伴侣器物形态试验 -> Step 3 场景功能共生）。
+- **具象设计验收清单 (Checklist)**：
+  - 针对每个步骤提供 2–3 条客观可评判的视觉验收标准（支持手动复选勾选，实时计算达成百分比）。
+- **实操灵感手记 (Notes)**：
+  - 提供即时文本输入区域，允许设计师随手记下调研灵感，手记内容自动持久化并整合进最终提案简报。
+
+---
+
+### 6.5 模块五 (Node 07)：领域化跨平台检索规划与去噪词库
+- **节点标识**：`07 平台搜索方案节点 (PlatformPlanNode)`
+- **领域化平台权重自适应**：
+  - 实体产品/材质方案：优先规划 **Dezeen 材料报道**、**Behance 工业设计与 CMF**、**Pinterest 特种材料质感**。
+  - 包装方案：优先规划 Behance Packaging、Pinterest Packaging、小红书实拍。
+  - 界面方案：优先规划 Dribbble UI、Mobbin、Behance UI/UX。
+- **高级去噪负向语法注入**：
+  - 自动在检索式中注入 `-mockup -template -vector` 等高级负向排除语法，剔除商业样机贴图与空洞矢量素材。
+- **中英双语专业设计词库**：
+  - 输出英文标准术语（如 `recycled hair fiber product design`、`tactile composite CMF`）搭配中文意图说明。
+- **检索动作直达**：
+  - 提供“一键搜索”（新标签页打开预填语法的搜索页）；
+  - 提供“打开全部3个主力平台”（并行拉起 3 大平台完成多维调研）；
+  - 提供一键复制关键词到剪贴板。
+
+---
+
+### 6.6 模块六 (Canvas Dock)：画布底部导航栏与非侵入式控制
+- **组件标识**：`CanvasNavDock.tsx`
+- **物理摆放位置**：
+  - 彻底移出画布左上角，部署于**画布底部居中（Bottom Dock）**。
+  - 悬浮于画布底网格之上，错开左下角缩放控制区，绝不遮挡上方卡片与工作视窗。
+- **智能渐进收敛与折叠状态机**：
+  - **阶段 00 初始态**：默认以微缩胶囊按钮 `[ 🧭 流程导航 ∧ ]` 极简收敛，保持首屏完全无干扰。
+  - **收敛启动后**：自动平滑展开为流程完整跳转条（`00 Brief › 01 收敛 › 03 主题 › 05 视点 › 07 搜索`）。
+  - **自由折叠**：右侧常驻 `[ ∨ ]` 折叠按钮，设计师可随时一键收起为微缩胶囊，获得 100% 沉浸式画布视野。
+- **精简与去重**：未生成提案时自动隐藏不可用的“导出提案”占位，整体宽度紧凑收敛 25%。
+
+---
+
+### 6.7 模块七 (Dossier)：视觉策略提案简报沉淀与导出
+- **组件标识**：`DossierModal.tsx` 与 `export-dossier.ts`
+- **内容结构聚合**：
+  1. 简报基础信息（原始 Brief、行业领域诊断、多模态参考图分析）；
+  2. 锁定视觉主张（意图、坚持偏好、视觉雷区、评价准则、当前视觉假设、具象视觉关键词、实操验证动作）；
+  3. 选定设计主题（核心理念、切入点、优劣势、血统溯源证明）；
+  4. 深入探索视点（各步骤目标、验收准则达成率、设计师灵感手记）；
+  5. 跨平台去噪检索词库（各平台中英关键词汇总与直达链接）。
+- **方案免责与边界声明**：文末明确标注：`由 SIFT 生成 · 面向设计师的视觉策略与方向收敛智能体 · 快速收敛清晰有画面感的设计主题与检索方向，避免前期漫无目的地试错（不涉及后期落地交付与生图）`。
+- **导出方式**：支持一键复制完整 Markdown 至剪贴板，或下载本地 `.md` 文件。
 
 ---
 
 ## 7. 数据模型与接口契约
 
-系统严格基于以下核心 TypeScript 契约运行：
-- `DesignState`：方向收敛状态机模型，包含版本号、状态、约束与判断数组（含 `basis: "user" | "assumption"` 溯源）。
-- `Uncertainty`：不确定性模型，包含影响等级与 `open | deferred` 状态。
-- `Route` & `RouteStep`：探索路线模型，包含切入点、优劣势、推荐理由与步骤清单。
-- `PlatformPlan` & `PlatformSource` & `PlatformKeyword`：平台搜索编排模型，包含中英对照、意图标签与去噪语法。
+### 7.1 核心数据结构 (Zod Schemas)
+
+```typescript
+// 1. 核心判断条目
+export interface Judgment {
+  text: string;
+  basis: "user" | "assumption";
+  sourceIds: string[];
+}
+
+// 2. 核心方向状态
+export interface DesignState {
+  revision: number;
+  status: "questioning" | "checkpoint" | "confirmed";
+  brief: {
+    goal: string | null;
+    audience: string | null;
+    deliverable: string | null;
+  };
+  constraints: Judgment[];
+  direction: {
+    intent: Judgment | null;
+    priorities: Judgment[];
+    avoid: Judgment[];
+    criteria: Judgment[];
+  };
+  currentHypothesis: string | null;
+  validationAction: {
+    label: string;
+    instruction: string;
+  } | null;
+  uncertainties: {
+    id: string;
+    topic: string;
+    impact: "blocking" | "material" | "minor";
+    decisionAffected: string;
+    status: "open" | "deferred";
+  }[];
+  visualKeywords: string[]; // 4–6 个具象参数
+}
+
+// 3. 探索主题路线
+export interface Route {
+  id: string;
+  title: string;
+  themeName?: string;
+  focusDimension?: string;
+  description: string;
+  tradeoffs: string;
+  recommended?: boolean;
+  provenance?: {
+    briefAnchor?: string;
+    confirmedPriorities?: string[];
+    avoidedTraps?: string[];
+  };
+  steps: {
+    id: string;
+    title: string;
+    question: string;
+    purpose: string;
+    done?: boolean;
+  }[];
+}
+
+// 4. 平台检索方案
+export interface PlatformPlan {
+  id: string;
+  routeId: string;
+  stepId: string;
+  primarySources: {
+    platform: "behance" | "pinterest" | "dezeen" | "xiaohongshu" | "dribbble" | "google";
+    role: string;
+    keywords: string[];
+    searchQuery: string;
+    searchUrl: string;
+  }[];
+  alternativeSources: {
+    platform: string;
+    role: string;
+    keywords: string[];
+    searchQuery: string;
+    searchUrl: string;
+  }[];
+}
+```
+
+### 7.2 API 服务契约规范
+
+| 接口路由 | 方法 | 对应流程 | 输入核心参数 | 输出核心模型 | 核心防错与设计保证 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/api/brief` | `POST` | 阶段 00 初始化 | `rawBrief`, `images`, `sessionId`, `event: "start" \| "fast_start"` | `TurnResult (state, next)` | `fast_start` 保证返回 Checkpoint 并标注假设；支持多模态参考图传递 |
+| `/api/clarify` | `POST` | 阶段 01 问答推进 | `sessionId`, `event: "answer"`, `answers: Answer[]`, `state`, `history` | `TurnResult (state, next)` | 精准题号匹配；防死锁与 ID 碰撞隔离；方向就绪时优雅推进检查点 |
+| `/api/routes` | `POST` | 阶段 03 主题推导 | `confirmedState`, `history`, `rawBrief`, `refreshIndex` | `{ routes: Route[3] }` | 全领域自适应（工业材料/包装/UI/VI）；注入血统追溯信息；标注 1 项推荐 |
+| `/api/platform-plan`| `POST`| 阶段 04 检索规划 | `routeId`, `stepId`, `selectedRoute`, `focusDimension`, `state` | `PlatformPlan` | 动态匹配适合该领域的 3 大平台；自动注入 `-mockup` 去噪语法与双语词库 |
+| `/api/status` | `GET` | 系统探活 | 无 | `{ status: "ok", mode: "live" \| "mock" }` | 监控 LLM API 连通性与运行模式 |
 
 ---
 
 ## 8. 非功能性需求与系统质量边界
 
-1. **双轨架构设计 (Live / Mock Dual-Engine)**：支持接入 DeepSeek Flash 实时大模型结构化推理；同时内置确定性离线 Mock 引擎，零 Key 环境下 100% 跑通全部流程。
-2. **服务端容错与超时预算**：单次调用服务端 45s、客户端 50s 严格预算，内建轻微残缺 JSON 容错修补。
-3. **状态幂等与并发防脏写**：基于 `(sessionId, requestId, baseRevision)` 严格拦截迟到网络响应。
-4. **本地持久化与数据隔离**：Zustand 自动同步至 LocalStorage 键 `sift-convergence-v1`，保障草稿防丢失。
-5. **瑞士极简设计规范**：杜绝花哨动效与大面积高饱和色彩，采用严谨的网格排版与克制微交互。
+1. **防死锁与弹性容错架构 (Zero-Deadlock Fault Tolerance)**：
+   - 杜绝因大模型重复已有判断或泛型 ID 碰撞向用户抛出 502 致命异常。在问答轮次中遇到决策闭环时，系统自动优雅降级为进入人工检查点。
+2. **迟到网络回调与时序防护 (Race Condition Guard)**：
+   - 每次网络交互携带 `(sessionId, requestId, revision)` 标识锁，当用户切换主题或重新发起任务时，自动丢弃旧异步回调，杜绝数据脏写与画布节点跳动。
+3. **数据隐私与全量本地持久化**：
+   - 画布全量数据本地持久化于浏览器 `LocalStorage`（Key: `sift-convergence-v1`），支持跨页面刷新无损恢复画布节点位置、选择项与手记。
+4. **性能预算与交互响应**：
+   - 前端静态诊断与收敛计算延迟 < 10ms；
+   - 服务端大模型复杂推导超时上限严格控制在 45s 以内，具备轻度残缺 JSON 自动修复补全能力。
+5. **专业克制的设计语言与无障碍标准**：
+   - 界面严格遵循中性石灰色板（`stone` / `cream` / `accent`），不滥用饱和色背景与营销弹窗；
+   - 严格遵循 WCAG 2.1 AA 标准，交互元素完全支持键盘 Tab 导航与快捷键操作（如 `⌘↵` 提交简报），支持系统 `prefers-reduced-motion` 动效减弱。
 
 ---
 
 ## 9. 产品演进路线图 (Roadmap)
 
-- **Phase 1（当前已落地）**：文字理解与动作编排、双轨启动、单题问答、方向状态卡与检查点、3 套路线抉择、步骤轴与去样机多平台搜索方案、简报导出。
-- **Phase 2（近程规划）**：灵感素材轻量沉淀、外部图片一键收藏卡、AI 以图反推风格流派与提示词结构（Reverse Prompting）、百张级灵感聚类分析报告。
-- **Phase 3（远期展望）**：语法化槽位造句（将主谓宾语法映射为「风格 + 核心元素 + 视觉调性」拖拽拼装）、多人实时协同画布、团队评审分歧标记。
+```mermaid
+timeline
+    title SIFT 产品演进全景路线图
+    section Phase 1 (已闭环落地)
+        核心定位收敛 : 明确非生图非落地边界 : 推荐句式规范 : 多模态参考图偏好逆向工程 : 实时诊断雷达
+        分水岭决策 : 2-3个对立流派提问 : 暂不确定精准处理 : 优雅检查点防死锁 : 6大要素状态卡
+        全领域自适应 : 工业实体材料自适应 : 包装/UI/VI自适应 : “这条主题从哪里来”血统追溯
+        时序检索与交互 : 领域化平台推荐 : -mockup 去噪语法 : 画布底部居中 Dock : 结构化 Dossier 导出
+    section Phase 2 (近程推进)
+        视觉资产收藏挂接 : 浏览器插件一键抓取素材 : 图片回填挂接至视点步骤节点下方
+        风格与词法逆向反推 : 针对收藏图片反推风格思潮 (如“甜酷废土机能”) : 聚合生成多维灵感分析报告
+    section Phase 3 (远期展望)
+        语法化槽位拼装 : 风格+材质+元素槽位拖拽拼装 : 跨方案概念微预览验证
+        多人协作画布 : 多设计师分歧标记与实时评审 : 团队策略提案版本分支对比
+```
+
+### 9.1 Phase 2：视觉素材收藏挂接与以图反推词法（近程）
+- **素材回填挂接 (Visual Asset Bookmarking)**：在 Behance、Dezeen 或 Pinterest 查阅案例时，支持通过轻量插件或图片拖拽，将灵感图挂接到对应步骤的节点下方。
+- **图像风格逆向反推 (Style Reverse Engineering)**：AI 自动识别收藏图片的流派特征、色彩基调与表面工艺，提炼为可复用的关键词资产。
+
+### 9.2 Phase 3：槽位式概念拼装与多人协作（远期）
+- **语法化槽位拼装（Slot-based Composition）**：将设计维度抽象为「核心母题 + 材质工艺 + 空间骨架 + 视觉调性」槽位，允许设计师拖拽素材模块快速组合多套概念雏形。
+- **多人协同画布 (Multiplayer Strategy Canvas)**：支持设计团队多人同时在线讨论分歧、标记决策依据，直接向业务方进行动态策略推演汇报。
+
+---
+
+*文档编写完成 · 经严格工程实现核验 · 作为 SIFT 智能体全生命周期的产品设计与技术基准*
