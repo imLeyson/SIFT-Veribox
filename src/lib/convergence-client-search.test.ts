@@ -165,8 +165,8 @@ describe("convergence client routes and search actions", () => {
     await actions.regenerateRoutes();
 
     expect(fetcher).toHaveBeenCalledTimes(1);
-    expect(sentBody.excludeThemeNames).toBeTruthy();
-    expect(sentBody.excludeThemeNames).toContain(mockRoutesData.routes[0].themeName);
+    expect(sentBody?.excludeThemeNames).toBeTruthy();
+    expect(sentBody?.excludeThemeNames).toContain(mockRoutesData.routes[0].themeName);
     expect(store.getState().routes[0].themeName).toBe(altRoutesData.routes[0].themeName);
     // Downstream selection was rolled back for user to pick new theme
     expect(store.getState().selectedRouteId).toBeNull();
