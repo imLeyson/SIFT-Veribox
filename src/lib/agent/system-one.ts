@@ -325,7 +325,7 @@ export function evaluateBriefIntentSync(
   let typoScore = 0;
   let digitalScore = 0;
   let brandScore = 0;
-  let genScore = 1;
+  const genScore = 1;
 
   const packPatterns = [/包装/, /盒/, /罐/, /瓶/, /袋/, /打样/, /特种纸/, /折页/, /容器/, /白模/, /压凹/, /烫印/, /包材/, /package/, /box/, /bottle/, /canister/];
   for (const p of packPatterns) {
