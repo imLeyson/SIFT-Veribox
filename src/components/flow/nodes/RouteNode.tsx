@@ -148,8 +148,8 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
         selected={selected || isSelected}
       >
         <div className="space-y-3 text-xs">
-          {/* Territory Archetype Badge & Feasibility */}
-            <div className="flex items-center justify-between gap-1.5 text-[10.5px]">
+          {/* Territory archetype and exploration mode */}
+          <div className="flex items-center justify-between gap-1.5 text-[10.5px]">
             <span
               className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium border ${territory.badgeClass}`}
             >
@@ -215,8 +215,8 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
               </div>
             )}
             <div className="flex items-start gap-2">
-                <span className="shrink-0 px-1.5 py-0.5 rounded bg-stone-100 font-medium text-[10px] text-stone-600">
-                  探索张力
+              <span className="shrink-0 px-1.5 py-0.5 rounded bg-stone-100 font-medium text-[10px] text-stone-600">
+                探索张力
               </span>
               <span className="text-stone-600 leading-snug">{coreProblemText}</span>
             </div>
