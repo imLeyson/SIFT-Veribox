@@ -13,7 +13,7 @@ export function getMockPlatformPlan(
   route: Route,
   currentStep: RouteStep,
 ): PlatformPlan {
-  const combinedText = (
+  const stepText = (
     currentStep.title +
     " " +
     currentStep.question +
@@ -24,38 +24,39 @@ export function getMockPlatformPlan(
     " " +
     route.title +
     " " +
-    (route.focusDimension ?? "") +
-    " " +
-    (state.brief.goal ?? "")
+    (route.focusDimension ?? "")
   ).toLowerCase();
 
-  const isDigital =
-    combinedText.includes("界面") ||
-    combinedText.includes("组件") ||
-    combinedText.includes("saas") ||
-    combinedText.includes("后台系统") ||
-    combinedText.includes("交互") ||
-    combinedText.includes("微交互") ||
-    combinedText.includes("动效") ||
-    combinedText.includes("工作台");
+  const combinedText = (stepText + " " + (state.brief.goal ?? "")).toLowerCase();
 
-  const isTypography =
-    combinedText.includes("排版") ||
-    combinedText.includes("字体") ||
-    combinedText.includes("网格") ||
-    combinedText.includes("字阶") ||
-    combinedText.includes("版式") ||
-    combinedText.includes("封签") ||
-    combinedText.includes("标尺");
+  const isDigital =
+    stepText.includes("界面") ||
+    stepText.includes("组件") ||
+    stepText.includes("saas") ||
+    stepText.includes("后台系统") ||
+    stepText.includes("交互") ||
+    stepText.includes("微交互") ||
+    stepText.includes("动效") ||
+    stepText.includes("工作台") ||
+    combinedText.includes("saas");
 
   const isSymbolOrIdentity =
-    combinedText.includes("视觉锤") ||
-    combinedText.includes("符号") ||
-    combinedText.includes("几何") ||
-    combinedText.includes("解构") ||
-    combinedText.includes("轮廓") ||
-    combinedText.includes("静物") ||
-    combinedText.includes("桌面");
+    stepText.includes("视觉锤") ||
+    stepText.includes("符号") ||
+    stepText.includes("几何") ||
+    stepText.includes("解构") ||
+    stepText.includes("轮廓") ||
+    stepText.includes("静物") ||
+    stepText.includes("桌面");
+
+  const isTypography =
+    stepText.includes("排版") ||
+    stepText.includes("字体") ||
+    stepText.includes("网格") ||
+    stepText.includes("字阶") ||
+    stepText.includes("版式") ||
+    stepText.includes("封签") ||
+    stepText.includes("标尺");
 
   const isSkincareOrScience =
     combinedText.includes("护肤") ||

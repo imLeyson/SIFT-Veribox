@@ -154,10 +154,10 @@ export function CanvasNavDock({
         type="button"
         title={
           platformPlans.length > 0
-            ? "跳转到 07 灵感搜索"
+            ? "跳转到 07 灵感检索"
             : selectedRouteId
-              ? "查看视点并生成灵感搜索"
-              : "暂无搜索方案"
+              ? "查看视点并获取精准检索方案"
+              : "暂无检索方案"
         }
         disabled={platformPlans.length === 0 && !selectedRouteId}
         onClick={() => {

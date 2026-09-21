@@ -81,7 +81,7 @@ export function BriefInputNode({ selected }: NodeProps) {
     <>
       <NodeShell
         stage="00"
-        kicker={state ? "简报诊断 · 已锁定" : "输入设计目标与背景"}
+        kicker={state ? "简报诊断 · 已锁定" : "00 简报输入 · 视觉策略与方向收敛"}
         title={state ? "设计简报" : "输入设计目标与背景"}
         badge={
           state && confirmedDiagnostics ? (
@@ -104,7 +104,7 @@ export function BriefInputNode({ selected }: NodeProps) {
             {briefImages.length > 0 && (
               <div className="pt-2 border-t border-line/60">
                 <span className="text-[10px] font-semibold text-stone-500 block mb-1.5">
-                  附带参考图（{briefImages.length} 张，点击大图预览）：
+                  附带参考图（{briefImages.length} 张，提取视觉偏好，点击大图预览）：
                 </span>
                 <div className="flex gap-2 flex-wrap">
                   {briefImages.map((img, idx) => (
@@ -148,14 +148,44 @@ export function BriefInputNode({ selected }: NodeProps) {
               }
             }}
           >
-            <p className="mb-3 text-xs leading-relaxed text-muted">
-              描述设计背景、视觉意图与明确约束。
-            </p>
+            <div className="mb-2.5 space-y-1.5">
+              <p className="text-xs leading-relaxed text-muted">
+                输入设计背景、视觉意图与明确约束。
+              </p>
+              <div className="rounded-xl border border-amber-200/80 bg-amber-50/85 p-2.5 text-xs text-amber-950 space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-amber-900">
+                  <span>面向设计师的视觉策略与方向收敛智能体</span>
+                  <span className="font-mono text-[9px] text-amber-700">CONVERGENCE AGENT</span>
+                </div>
+                <p className="text-[11px] text-amber-900/85 leading-relaxed">
+                  当你拿到一段模糊的 Brief 或几张参考图时，SIFT 通过几轮关键视觉提问，快速收敛出清晰、有画面感的设计主题与检索方向，<strong>避免前期漫无目的地试错（不涉及后期落地交付与生图）</strong>。
+                </p>
+              </div>
+            </div>
             {importedBrief && (
               <p className="mb-2 text-xs text-accent">
                 已载入草案
               </p>
             )}
+
+            <div className="mb-1.5 flex items-center justify-between text-[11px]">
+              <span className="text-stone-500 font-medium truncate pr-2">
+                句式参考：我想做一个【品类】，希望【调性】，避免【禁忌】…
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setRawBrief(
+                    "我想做一个【设计品类】，希望整体呈现【核心视觉调性与受众感受】，避免【明确的视觉禁忌与常见套路】，重点探索【材质工艺、排版结构或细节】。"
+                  );
+                }}
+                className="text-[10.5px] text-accent hover:underline cursor-pointer flex items-center gap-0.5 font-medium flex-shrink-0"
+                title="一键载入结构化设计需求句式模板"
+              >
+                <span>套用句式模板</span>
+              </button>
+            </div>
+
             <textarea
               id="brief"
               value={rawBrief}
@@ -163,7 +193,7 @@ export function BriefInputNode({ selected }: NodeProps) {
               disabled={Boolean(activeRequest)}
               maxLength={10000}
               rows={5}
-              placeholder="例：冷泡茶包装，克制日常感，避免大插画与红金罐，探索特种纸与极简排版…"
+              placeholder="例：我想做一个冷泡茶包装设计，希望整体克制日常，避免大插画与传统红金罐，重点探索特种纸微触感与极简排版…"
               className="w-full resize-y rounded-xl border border-line bg-cream/70 px-3 py-2 text-xs sm:text-sm leading-relaxed outline-none focus:border-accent"
             />
 
@@ -228,7 +258,7 @@ export function BriefInputNode({ selected }: NodeProps) {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-medium text-stone-700 flex items-center gap-1.5">
                   <ImagePlus className="h-3.5 w-3.5 text-accent" />
-                  参考意向图 (可选，最多 3 张)
+                  意向参考图 (可选，用于提炼材质与排版偏好，非垫图渲染)
                 </span>
                 <span className="text-[10px] text-stone-400">
                   支持直接截图粘贴 (⌘V) 或拖拽
@@ -296,9 +326,9 @@ export function BriefInputNode({ selected }: NodeProps) {
                 type="submit"
                 className="btn-primary w-full text-xs flex items-center justify-center gap-1.5 cursor-pointer py-2.5 shadow-sm"
                 disabled={Boolean(activeRequest) || !rawBrief.trim()}
-                title="推荐：通过 1–2 个具象视觉问题，启发并精准对齐设计风格"
+                title="推荐：通过 1–2 个具象视觉问题，启发并精准锁定设计方向与搜索策略"
               >
-                <span>{activeRequest ? "正在分析…" : "开始视觉对齐"}</span>
+                <span>{activeRequest ? "正在推演策略…" : "开始方向收敛"}</span>
                 {!activeRequest && (
                   <span className="rounded bg-amber-400/25 px-1 py-0.5 text-[9px] font-semibold text-amber-200">
                     推荐
@@ -315,19 +345,24 @@ export function BriefInputNode({ selected }: NodeProps) {
                 className="btn-ghost w-full text-xs cursor-pointer py-2.5 border border-line/80 text-stone-600 hover:text-ink hover:bg-stone-50 transition-colors"
                 disabled={Boolean(activeRequest) || !rawBrief.trim()}
                 onClick={() => void siftActions.fastStart()}
-                title="跳过问答：AI 将基于通用假设直接生成设计方向"
+                title="跳过问答：基于当前输入直接收敛方向，生成 3 套探索路线与搜索策略"
               >
-                跳过提问 · 极速生成
+                跳过提问 · 直接规划路线
               </button>
             </div>
             <div className="mt-1.5 flex items-center justify-between px-1 text-[10px] text-stone-400">
-              <span>✦ 推荐：启发式提问锁定风格</span>
-              <span>AI 自主假设 ↗</span>
+              <span>✦ 关键提问锁定视觉策略</span>
+              <span>推导 3 套设计主题与检索方向 ↗</span>
             </div>
             <div className="mt-3.5 border-t border-line/60 pt-2.5">
-              <p className="text-[11px] font-medium text-stone-500 mb-1.5">
-                参考场景：
-              </p>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[11px] font-medium text-stone-500">
+                  预设示例（点击载入完整 Brief 结构）：
+                </p>
+                <span className="text-[10px] text-stone-400">
+                  可在此基础上自由修改
+                </span>
+              </div>
               <div className="flex flex-wrap gap-1.5">
                 {EXAMPLES.map((example) => (
                   <button

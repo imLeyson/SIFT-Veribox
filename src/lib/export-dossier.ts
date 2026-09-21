@@ -27,7 +27,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
   // Header
   lines.push(`# 🎨 SIFT 设计探索与收敛提案简报`);
   lines.push(`> 项目：**${goalTitle}**  `);
-  lines.push(`> 生成时间：${now} · 工具：SIFT AI 探索副驾\n`);
+  lines.push(`> 生成时间：${now} · 智能体：SIFT 视觉策略与方向收敛智能体\n`);
 
   // Section 00: Brief & System 1 Diagnostics
   lines.push(`## 00 原始设计任务 (Brief)`);
@@ -43,7 +43,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
   }
   if (state?.brief.audience || state?.brief.deliverable) {
     lines.push(`- **目标受众**：${state.brief.audience || "未明确"}`);
-    lines.push(`- **核心交付物**：${state.brief.deliverable || "未明确"}\n`);
+    lines.push(`- **设计载体/品类**：${state.brief.deliverable || "未明确"}\n`);
   }
 
   // Section 01: Direction & Convergence
@@ -103,15 +103,15 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     }
     lines.push(`- **切入起点**：${selectedRoute.startingPoint}`);
     if (selectedRoute.timeframe) {
-      lines.push(`- **预计周期**：${selectedRoute.timeframe}`);
+      lines.push(`- **探索周期**：${selectedRoute.timeframe}`);
     }
     if (selectedRoute.feasibility) {
       const labels = {
-        high: "落地可行性高",
-        medium: "落地难度适中",
-        challenging: "挑战型创新工艺",
+        high: "视觉延展度高",
+        medium: "风格探索平衡",
+        challenging: "先锋实验探索",
       };
-      lines.push(`- **工艺可行性**：${labels[selectedRoute.feasibility]}`);
+      lines.push(`- **风格探索度**：${labels[selectedRoute.feasibility]}`);
     }
     if (selectedRoute.alignmentScore) {
       lines.push(`- **System 1 契合度**：${selectedRoute.alignmentScore}% *(由 System 1 校验正交契合度)*`);
@@ -124,8 +124,8 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     lines.push(`- **视觉亮点**：${selectedRoute.pros}`);
     lines.push(`- **防跑偏提示**：${selectedRoute.cons}\n`);
 
-    // Section 03: Steps & Execution
-    lines.push(`## 03 探索步骤推进与验收清单 (Steps & Execution)`);
+    // Section 03: Steps & Research
+    lines.push(`## 03 视点切入与检索编排 (Visual Viewpoints & Research Plan)`);
 
     selectedRoute.steps.forEach((st, idx) => {
       const isCurrent = st.id === activeStepId;
@@ -138,12 +138,12 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       lines.push(`- **探索目的**：${st.purpose}`);
 
       if (st.deliverables && st.deliverables.length > 0) {
-        lines.push(`- **交付物清单**：`);
+        lines.push(`- **视点产物/设计物料**：`);
         st.deliverables.forEach((d) => lines.push(`  - 📦 ${d}`));
       }
 
       if (st.acceptanceCriteria && st.acceptanceCriteria.length > 0) {
-        lines.push(`- **阶段验收核验 (${checked.length}/${totalCrit} 已通过)**：`);
+        lines.push(`- **视点验证要点 (${checked.length}/${totalCrit} 已通过)**：`);
         st.acceptanceCriteria.forEach((crit) => {
           const isDone = checked.includes(crit);
           lines.push(`  - [${isDone ? "x" : " "}] ${crit}`);
@@ -192,7 +192,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     });
   }
 
-  lines.push(`\n---\n*由 SIFT 生成 · 助力设计师完成从 Brief 到落地交付的探索收敛*`);
+  lines.push(`\n---\n*由 SIFT 生成 · 面向设计师的视觉策略与方向收敛智能体 · 快速收敛清晰有画面感的设计主题与检索方向，避免前期漫无目的地试错*`);
 
   return lines.join("\n");
 }

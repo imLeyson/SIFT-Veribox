@@ -14,22 +14,22 @@ export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
     return (
       <NodeShell
         stage="02"
-        kicker="取向对齐"
-        title="视觉取向对齐"
+        kicker="关键视觉提问 · 锁定方向"
+        title="关键视觉抉择"
         selected={selected}
       >
         <QuestionBlock questions={next.questions} />
         <div className="mt-3 border-t border-line/60 pt-2.5">
           <button
             type="button"
-            className="btn-ghost w-full text-xs !py-1.5 text-stone-600 hover:text-ink"
+            className="btn-ghost w-full text-xs !py-1.5 text-stone-600 hover:text-ink cursor-pointer"
             disabled={Boolean(activeRequest)}
             onClick={siftActions.converge}
           >
             跳过提问，按已有判断收敛 →
           </button>
           <p className="mt-1 text-center text-[10px] text-stone-400">
-            未选问题将保留为待定项
+            通过关键视觉提问排除模糊地带，快速收敛出有画面感的设计主题
           </p>
         </div>
       </NodeShell>

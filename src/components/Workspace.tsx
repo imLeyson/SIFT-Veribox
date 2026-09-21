@@ -40,9 +40,14 @@ export function Workspace() {
     <main className="flex h-dvh flex-col overflow-hidden">
       <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-line/70 bg-white/60 px-4 py-3 backdrop-blur-sm sm:px-6">
         <div>
-          <h1 className="text-sm font-semibold tracking-wide text-ink">SIFT</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-sm font-semibold tracking-wide text-ink">SIFT</h1>
+            <span className="hidden md:inline-block rounded-md bg-amber-100/70 border border-amber-300/60 px-1.5 py-0.5 text-[10px] font-medium text-amber-900">
+              视觉策略与方向收敛智能体
+            </span>
+          </div>
           <p className="mt-0.5 text-xs text-muted">
-            视觉策略与设计收敛
+            收敛清晰有画面感的设计主题与检索方向 · 避免前期盲目试错
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -50,7 +55,7 @@ export function Workspace() {
             <button
               className="btn-ghost !bg-accent/10 !text-accent hover:!bg-accent hover:!text-white text-xs flex items-center gap-1 font-medium transition-all"
               onClick={() => setDossierOpen(true)}
-              title="导出设计探索全案与策略提案简报"
+              title="导出视觉策略与收敛提案（用于前期方案对齐，非落地交付）"
             >
               <FileDown className="h-3.5 w-3.5" />
               <span>导出提案</span>

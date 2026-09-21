@@ -96,10 +96,10 @@ export function DossierModal({
                 id="dossier-modal-title"
                 className="text-base font-bold tracking-tight text-ink"
               >
-                设计探索全案与策略提案简报
+                视觉策略与方向收敛提案简报
               </h2>
               <p className="text-xs text-muted">
-                可直接复制至 Notion / 飞书文档 / 语雀，或作为向团队与总监汇报的设计策略依据
+                可直接复制至 Notion / 飞书文档，作为前期视觉方向对齐与精准检索的提案依据
               </p>
             </div>
           </div>
@@ -107,7 +107,7 @@ export function DossierModal({
             type="button"
             onClick={onClose}
             aria-label="关闭"
-            className="rounded-lg p-1.5 text-muted hover:bg-stone-200/50 hover:text-ink transition-colors"
+            className="rounded-lg p-1.5 text-muted hover:bg-stone-200/50 hover:text-ink transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -126,10 +126,10 @@ export function DossierModal({
 
           <div className="rounded-lg bg-white/60 p-2 border border-line/40">
             <span className="text-[10px] text-muted block flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3 text-emerald-600" /> 阶段准则核验
+              <CheckCircle2 className="h-3 w-3 text-emerald-600" /> 视点验证关注
             </span>
             <span className="font-semibold text-ink block mt-0.5">
-              {completedCritCount} / {totalCrit} 项已通过
+              {completedCritCount} / {totalCrit} 项已确认
             </span>
           </div>
 
