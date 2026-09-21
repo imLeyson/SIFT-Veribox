@@ -252,6 +252,40 @@ describe("routes agent generation", () => {
     expect(petNormalized.routes[0].recommendedReason).toContain("宠物视觉提案");
   });
 
+  it("generates sustainable material & product anchored routes and steps for pet hair product brief", () => {
+    const brief = "我想做一个宠物毛发的可持续设计产品，他同时具有情感设计方向，这个产品可以是将宠物毛发回收并加工成一个新的可用材料";
+    const normalized = normalizeLiveRoutesPayload(
+      { routes: [] },
+      {
+        sessionId: "s_sust",
+        requestId: "req_sust",
+        baseRevision: 1,
+        rawBrief: brief,
+        state: {
+          ...confirmedState,
+          brief: { goal: brief, audience: "养宠人群与环保生活方式群体", deliverable: "可持续材料与情感产品设计" },
+        },
+      },
+    );
+
+    expect(normalized.routes).toHaveLength(3);
+    // Theme names should adapt to sustainable material and emotional product, NOT 2D brand identity
+    expect(normalized.routes[0].themeName).toBe("原生纤维 · 触感转化");
+    expect(normalized.routes[1].themeName).toBe("情感器物 · 陪伴隐喻");
+    expect(normalized.routes[2].themeName).toBe("现代极简 · 日常共生");
+
+    // Snapshots must focus on recycled fiber and vessel/object form, not paper mill / 2D logo
+    expect(normalized.routes[0].visualSnapshot).toContain("再生纤维");
+    expect(normalized.routes[0].visualSnapshot).not.toContain("纯白原浆棉纸");
+    expect(normalized.routes[1].visualSnapshot).toContain("有机弧面");
+    expect(normalized.routes[2].visualSnapshot).toContain("机能");
+
+    // Steps must explore fiber density, holding curves, and ambient living
+    expect(normalized.routes[0].steps[0].title).toBe("原生纤维压合密度与微肌理");
+    expect(normalized.routes[0].steps[1].title).toBe("器物造型弧度与握持触感");
+    expect(normalized.routes[0].steps[2].title).toBe("现代生活环境与光影融入");
+  });
+
   it("extracts concise 2-4 char visual labels for tabs and capsules", () => {
     expect(cleanStepLabel("白模比例与纸样筛选")).toBe("比例");
     expect(cleanStepLabel("纸样白度与微肌理")).toBe("纸样白度");

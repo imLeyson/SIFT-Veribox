@@ -66,10 +66,172 @@ export function getMockPlatformPlan(
     combinedText.includes("敏感肌") ||
     combinedText.includes("刻度");
 
+  const isProductOrMaterial =
+    combinedText.includes("可持续") ||
+    combinedText.includes("材料") ||
+    combinedText.includes("产品") ||
+    combinedText.includes("回收") ||
+    combinedText.includes("毛发") ||
+    combinedText.includes("纤维") ||
+    combinedText.includes("器物") ||
+    combinedText.includes("物料") ||
+    combinedText.includes("情感设计") ||
+    stepText.includes("纤维") ||
+    stepText.includes("器物") ||
+    stepText.includes("握持");
+
   let primary: PlatformSource[];
   let alternative: PlatformSource[];
 
-  if (isDigital) {
+  if (isProductOrMaterial) {
+    // 0. Sustainable Material & Emotional Product Design scenario
+    primary = [
+      {
+        id: "src_behance",
+        platform: PLATFORM_REGISTRY.behance.name,
+        roleTag: PLATFORM_REGISTRY.behance.roleTag,
+        reason: "检索全球顶尖工业设计与可持续材料创新全案、实物物料转化与成套产品推演",
+        keywords: [
+          {
+            keyword: "sustainable recycled fiber product design",
+            meaning: "再生纤维在现代产品设计中的成套落地案例与表面质感",
+            language: "en",
+            searchType: "benchmark",
+            advancedQuery: "sustainable recycled fiber product -mockup -template",
+          },
+          {
+            keyword: "pet hair composite material tactile",
+            meaning: "生物基复合材料自然温润触感与微孔漫反射质感研究",
+            language: "en",
+            searchType: "detail",
+          },
+          {
+            keyword: "再生纤维 可持续产品 实物打样",
+            meaning: "国内高品质环保材料创新产品与实物落地案例",
+            language: "zh",
+            searchType: "detail",
+          },
+        ],
+        searchUrl: buildPlatformSearchUrl("behance", "sustainable recycled fiber product design"),
+      },
+      {
+        id: "src_pinterest",
+        platform: PLATFORM_REGISTRY.pinterest.name,
+        roleTag: PLATFORM_REGISTRY.pinterest.roleTag,
+        reason: "发散工业设计 CMF 探索、微孔肌理、自然原色与情感化日常器物情绪板",
+        keywords: [
+          {
+            keyword: "regenerative bio material tactile product",
+            meaning: "再生生物材料自然温润触感与柔和器物形态情绪板",
+            language: "en",
+            searchType: "moodboard",
+            advancedQuery: "regenerative bio material tactile -freepik",
+          },
+          {
+            keyword: "emotional companion design object",
+            meaning: "情感化陪伴日常器物形态与掌心抚慰细节",
+            language: "en",
+            searchType: "moodboard",
+          },
+          {
+            keyword: "生物基材料 表面微肌理 情绪板",
+            meaning: "自然光下微气孔漫反射质感与低饱和温和色盘",
+            language: "zh",
+            searchType: "moodboard",
+          },
+        ],
+        searchUrl: buildPlatformSearchUrl("pinterest", "regenerative bio material tactile product"),
+      },
+      {
+        id: "src_xiaohongshu",
+        platform: PLATFORM_REGISTRY.xiaohongshu.name,
+        roleTag: PLATFORM_REGISTRY.xiaohongshu.roleTag,
+        reason: "洞察国内年轻养宠与环保生活方式人群对纪念器物、再生材料手感与真实摆放的消费心智",
+        keywords: [
+          {
+            keyword: "宠物毛发 纪念器物 实物手感 -推广",
+            meaning: "国内宠物毛发回收与情感纪念产品真实晒单评价",
+            language: "zh",
+            searchType: "consumer",
+            advancedQuery: "宠物毛发 纪念器物 实物手感 实拍 -广告 -推广",
+          },
+          {
+            keyword: "再生材料 环保生活好物 测评",
+            meaning: "用户对再生材料触感与日常使用的真实第一手反馈",
+            language: "zh",
+            searchType: "consumer",
+          },
+        ],
+        searchUrl: buildPlatformSearchUrl("xiaohongshu", "宠物毛发 纪念器物 实物手感"),
+      },
+    ];
+    alternative = [
+      {
+        id: "src_dieline",
+        platform: PLATFORM_REGISTRY.dieline.name,
+        roleTag: PLATFORM_REGISTRY.dieline.roleTag,
+        reason: "全球先锋可持续材料应用与现代器物造型标杆",
+        keywords: [
+          {
+            keyword: "sustainable material object design",
+            meaning: "全球先锋可持续材料与器物造型参考",
+            language: "en",
+            searchType: "benchmark",
+            advancedQuery: "sustainable material object -mockup",
+          },
+          {
+            keyword: "recycled fiber tactile product",
+            meaning: "再生纤维生活方式产品与微工艺细节",
+            language: "en",
+            searchType: "detail",
+          },
+        ],
+        searchUrl: buildPlatformSearchUrl("dieline", "sustainable material object design"),
+      },
+      {
+        id: "src_arena",
+        platform: PLATFORM_REGISTRY.arena.name,
+        roleTag: PLATFORM_REGISTRY.arena.roleTag,
+        reason: "总监级纯净美学、小众生物材料与温润器物意象调研",
+        keywords: [
+          {
+            keyword: "tactile bio composite object research",
+            meaning: "总监级生物复合材料触感与微气孔切片调研",
+            language: "en",
+            searchType: "moodboard",
+          },
+          {
+            keyword: "warm minimalism object design",
+            meaning: "温润极简器物与空间共生视觉研究",
+            language: "en",
+            searchType: "moodboard",
+          },
+        ],
+        searchUrl: buildPlatformSearchUrl("arena", "tactile bio composite object research"),
+      },
+      {
+        id: "src_zcool",
+        platform: PLATFORM_REGISTRY.zcool.name,
+        roleTag: PLATFORM_REGISTRY.zcool.roleTag,
+        reason: "查看国内本土团队在新材料产品打样与情感设计器物上的落地实践",
+        keywords: [
+          {
+            keyword: "可持续产品设计 再生材料 实物打样",
+            meaning: "本土团队环保新材料产品实际打样案",
+            language: "zh",
+            searchType: "detail",
+          },
+          {
+            keyword: "情感设计 陪伴器物 打样实拍",
+            meaning: "国内设计师关于治愈与陪伴器物的实物打样",
+            language: "zh",
+            searchType: "detail",
+          },
+        ],
+        searchUrl: buildPlatformSearchUrl("zcool", "可持续产品设计 再生材料 实物打样"),
+      },
+    ];
+  } else if (isDigital) {
     // 1. Digital / SaaS scenario
     primary = [
       {

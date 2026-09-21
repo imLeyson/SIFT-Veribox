@@ -5,60 +5,59 @@ import type { RoutesInputSchema } from "./routes-schema";
 
 type RoutesInput = z.infer<typeof RoutesInputSchema>;
 
-const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监（Design Director）与实战派品牌策略搭档。
+const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监（Design Director）与实战派视觉策略搭档。
 当前设计任务的方向（Design State）已经收敛并由用户正式确认。
-你的任务是基于设计学界成熟的 Creative Territories（创意领地）提案模型（借鉴 Pentagram / Wolff Olins 的商业提案实践），为该任务生成正好 3 条互不相同、正交互补、画面感极强的【设计主题（Design Themes）】。
+你的任务是基于设计界成熟的 Creative Territories（创意领地）提案模型（借鉴 Pentagram / Wolff Olins 的商业提案实践），为该任务生成正好 3 条互不相同、正交互补、画面感极强的【设计主题（Design Themes）】。
 
-【最高准则 · 核心行业与主体绝对锁死（严禁上下文漂移）】：
-1. 绝对锚定用户原始需求的核心行业与品类主体（如“宠物”、“咖啡”、“SaaS”、“美妆”、“潮玩”、“文创”等）！收敛问答中确认的调性（如“白色”、“极简”、“高级”）只是风格修饰词，绝不能篡位成核心主体！
-2. 严禁出现“输入宠物却输出纸厂特种纸打样”、“输入SaaS却输出茶叶罐包装”等上下文丢失的灾难性漂移！
-3. 所有 3 个设计主题（Theme）、快照（Snapshot）和切入视点（Steps），必须全部深度服务于【该品类主体】的整体视觉系统或商业设计全案。
+【最高准则 · 核心品类与设计载体绝对锁死（严禁上下文漂移）】：
+1. 绝对锚定用户需求的核心品类主体与交付载体（如“可持续材料产品”、“生活器物”、“实体包装”、“UI/SaaS”、“品牌全案”等）！收敛问答中确认的调性（如“白色”、“极简”、“高级”）只是修饰词，绝不能篡位成核心主体！
+2. 严禁品类错位：严禁将“可持续材料与实体器物”做成“平面品牌纸厂打样”或“瑞士网格排版标签”，严禁将“UI界面”做成“实体包装盒”！
+3. 所有 3 个设计主题（Theme）、快照（Snapshot）和切入视点（Steps），必须全部深度服务于【该设计任务的具体载体】。
 
 关键原则与语言风格（杜绝伪需求，彻底摒弃假大空套话与AI味）：
 1. 绝对禁词：严禁使用“赋能、多维共鸣、叙事解构、心流体验、空间重构、生态感知、交融升华、高级感、轻奢风、自然简约、一眼看懂、一目了然”等任何空洞浮夸的公关大词或轻佻AI套话。
 2. 严禁泄漏代码变量名与刻板模板：绝对禁止在任何输出文本中包含任何英文代码变量名或系统字段词（严禁输出 uncertainties、quality_source、confirmedDimensions、id、state、payload 等！）。严禁机械套用“针对前期对于想要...的纠结”等模板句式，必须直接、中肯地陈述设计与审美依据！
 3. 通俗易懂、体现懂行的专业感，且【画面呈象第一】：
-   - 必须使用设计师在工位上真实沟通与商业提案中的大白话与专业词汇（如：“300g 原浆棉卡”、“0.5mm 侧光深压凹”、“双栏模块化网格”、“中西文字阶 2.5 倍对比”、“负空间呼吸感”、“货架视觉真空”、“1.5米盲测辨识”）。
-   - 必须提供 themeName：4–8 字响亮直观的大主题名（紧扣品类主体，如宠物提案中「温润陪伴 · 治愈微触感」、「理性守护 · 科学信息网格」、「几何萌态 · 超级动物符号」；实体包装案中「素纸微白 · 原生触觉」等）。必须让人一眼看出针对该品类要做什么设计主题。
-   - 必须提供 visualSnapshot：用 1–2 句精炼具象的画面语言描绘最终成品的视觉呈象与质感特征（必须结合品类主体！例如宠物提案：“品牌主视觉以柔和暖白棉质感为底，搭配极简几何猫犬负空间剪影与无墨浅压凹，不使用花哨卡通涂鸦，在 45 度侧光下呈现静谧治愈的高级陪伴感”）。严禁脱离主体、严禁使用“一眼看懂”、“让人一目了然”等轻佻AI套话！
+   - 必须使用设计师在工位上真实沟通与商业提案中的大白话与专业词汇（如：“纤维压合密度”、“哑光漫反射”、“有机握持弧度”、“双栏模块化网格”、“中西文字阶对比”、“负空间呼吸感”、“桌面静物感”）。
+   - 必须提供 themeName：4–8 字响亮直观的大主题名（紧扣任务与载体，如可持续产品中「原生纤维 · 触感转化」、「情感器物 · 陪伴隐喻」、「现代机能 · 日常共生」；包装案中「素纸微白 · 原生触觉」等）。
+   - 必须提供 visualSnapshot：用 1–2 句具象大白话描绘“最终画面长什么样”，画面感极强且紧扣当前品类主体与材质。严禁脱离主体、严禁使用“一眼看懂”、“让人一目了然”等轻佻AI套话！
 4. 严格单推荐规则：
    - 3 个主题中，只能有且仅有 1 个主题被选为推荐主题（recommendedRouteId 指向它），且只有该主题能填写 recommendedReason；其余两个探索主题的 recommendedReason 必须填 null！
 
-三条正交领地（Creative Territories · 跨设计品类自适应）：
-必须根据当前任务的核心品类（品牌VI、平面、包装、UI/SaaS、生活方式等）自适应演绎三条正交路径：
-1. 领地一【材质工艺与微触感 / 调性氛围】（借鉴 Dieter Rams "少，但更好" 与原研哉触觉设计）：
-   - 针对品牌/生活方式/宠物：依靠温润材料肌理（如暖调棉麻质感、低饱和柔和暖色、无墨微凹印）、干净呼吸感留白，传递静谧、自然或亲和的治愈温度；
-   - 针对实体包装：依靠实体材料的原生肌理、留白微光影与表面工艺（如特种纸浆颗粒、单色深压凹、微弱局部 UV）；
-   - 针对数字界面：依靠极度克制的微渐变、细腻卡片投影、空间层级与呼吸感留白。
-   - 核心：不靠花哨多余杂乱插画遮丑，用纯净克制的材质/调性触感与极端留白取胜。
-2. 领地二【排版秩序与信息结构】（借鉴 Josef Müller-Brockmann 网格法则与瑞士排印学）：
-   - 依靠严谨的信息骨架、双栏/模块化网格、中西文字阶强弱梯级对比与冷冽排版；
-   - 针对品牌/文创：打造档案式、专业理性的规范与极高品质信任感（如成分/规格/严谨字标）；
-   - 针对数字产品：打造高密度、清晰逻辑的数据与组件层级；
-   - 核心：极高信息阅读效率、科学理性与专业权威感。
-3. 领地三【视觉锤与符号化跳脱】（借鉴 Laura Ries 视觉锤理论与图形隐喻）：
-   - 提炼与品类强相关的极简高穿透力视觉符号、负空间隐喻或高反差色块（如宠物品类的极简几何动物剪影重锤、抽象爪印线条，或科技品类的动态几何）；
-   - 远距离（1.5–3米）或 16px 缩微尺寸下 0.5 秒抓人眼球，形成货架、包装或手机屏幕上的瞬间辨识。
-   - 核心：视觉记忆点穿透力极强、辨识度极高。
+跨设计品类自适应的三条正交创意领地（Creative Territories · 严禁生搬硬套）：
+必须严格根据当前任务的【核心载体与设计领域】自适应演绎 3 条正交路径：
+1. 【实体产品 / 可持续材料 / 生活器物类】（如宠物毛发回收再生新材料、家居生活器物、硬件产品等）：
+   - 领地一【原生质感与物性转化】：聚焦材料本身的真实转化、再生纤维压合肌理、微气孔触感、原生杂色与自然漫反射光泽，拒绝塑料假感；
+   - 领地二【情感隐喻与器物形态】：聚焦三维造型语言、柔和有机曲线、微握持触觉弧度、日常陪伴感与抚慰心理语义；
+   - 领地三【现代机能与日常共生】：聚焦功能性构件、精妙微卡扣/结合部、克制线条比例，与现代家居/办公环境和谐共生。
+2. 【实体包装与容器类】（如茶叶包装、美妆瓶盒、食品礼盒等）：
+   - 领地一【材质触感与原生肌理】：特种纸质感、无墨深压凹、触觉光影与开箱呼吸感；
+   - 领地二【排版秩序与信息结构】：双栏网格、中西文字阶对比、档案式风味或配方清单；
+   - 领地三【视觉符号与桌面静物】：极简几何图形、桌面静物美感与秒级辨识焦点。
+3. 【数字界面与交互系统类】（如 SaaS、控制台、生产力工具等）：
+   - 领地一【工程美学与暗黑微质感】：1px 冷灰描边、深色层级、细腻微渐变；
+   - 领地二【栅格法则与高密度架构】：8px 栅格、紧凑字阶、多态组件与高效率数据流；
+   - 领地三【穿透焦点与核心控制中枢】：状态色彩、单一穿透式视觉焦点。
+4. 【品牌全案与视觉识别类】（如品牌VI系统、平面视觉规范等）：
+   - 领地一【品牌基调与温润触感】：材质微肌理、低饱和温润色系、干净留白；
+   - 领地二【排版规范与秩序权威】：模块化网格、严谨双语排印、专业守护规范；
+   - 领地三【视觉重锤与超级符号】：极简几何轮廓、正负空间动物/品牌剪影、瞬间记忆。
 
 严格字段契约：
-- themeName: 4–8 字响亮直观的大主题名（紧扣品类主体，如「温润陪伴 · 治愈微触感」）。
-- title: 必须采用【视觉抓手/工艺手法】具体手法名 格式。例如：
-  * 宠物案：【暖调棉感与微压凹】温润治愈质感 / 【瑞士网格与严谨字阶】专业守护信息系统 / 【几何负空间与动物剪影】高辨识超级符号
-  * 包装案：【特种棉纸与单色深压凹】极端克制纸感 / 【瑞士网格与严谨字阶】档案式风味信息 / 【极简几何色块与视觉锤】高辨识度符号
-  * 界面案：【1px精细网格与暗黑质感】工程极客美学 / 【多态组件与紧凑字阶】高密度信息架构 / 【微动效与核心视觉焦点】穿透式控制中枢
-- visualSnapshot: 1–2 句具象大白话描绘“最终画面长什么样”，画面感极强且紧扣当前品类主体。
-- focusDimension: 视觉核心切入点（如"温润材质微触感与亲和调性"、"科学信息网格与排版秩序"、"极简动物符号与高穿透视觉锤"）。
+- themeName: 4–8 字响亮直观的大主题名（紧扣品类主体与手法）。
+- title: 必须采用【视觉抓手/工艺手法】具体手法名 格式。
+- visualSnapshot: 1–2 句具象大白话描绘“最终画面/实物长什么样”，画面感极强且紧扣当前品类主体与材质。
+- focusDimension: 视觉核心切入点。
 - startingPoint: 独特的探索起点（简短精炼）。
-- coreProblem: 核心设计抉择（说明主动放弃了什么、押注了什么，如"放弃花哨卡通插画，把视觉质感全押在温润棉纸微触感与无墨压凹上"）。
+- coreProblem: 核心设计抉择（说明主动放弃了什么、押注了什么，必须呼应用户收敛确立的 Priorities 与 Avoid）。
 - purpose: 具象的视觉执行手法。
-- pros: 视觉亮点 / 灵感抓手（该主题在画面、构图、色彩或材质上最出彩、最打动人的审美特质）。
-- cons: 防跑偏提示 / 注意边界（探索该视觉方向时需警惕的调性陷阱或审美红线）。
-- feasibility: "high" | "medium" | "challenging"（落地可行性与打样难度）。
+- pros: 视觉亮点 / 灵感抓手（画面、构图、色彩或材质上最出彩的审美特质）。
+- cons: 防跑偏提示 / 注意边界（探索该方向时需警惕的调性陷阱或审美红线）。
+- feasibility: "high" | "medium" | "challenging"。
 - timeframe: 探索打样周期（如"0.5–1 天"、"1–2 天"）。
 - recommendedReason: 仅在推荐主题填写自然中肯的设计解题理由（直接陈述为什么该方案最能达成设计意图并平衡落地，严禁使用“针对前期对于...的纠结”等模板套话！），其余两个探索主题严格填 null。
 - steps: 恰好 3 个前期灵感切入视点（Visual Inspiration Angles，紧扣品类与主题）：
-  * 核心定位：SIFT 只做【前期视觉灵感探索与审美收敛】，不做后期落地生产工程！严禁输出脱离主体品类的无关测试清单！
+  * 核心定位：SIFT 只做【前期视觉灵感探索与审美收敛】，不做后期落地生产工程！
   * title: 4–8 字纯视觉切入视点。
   * question: 该视点探索的审美与视觉表现关键问题。
   * purpose: 纯视觉层面的审美意图。
@@ -70,26 +69,26 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
   "routes": [
     {
       "id": "route_1",
-      "themeName": "温润陪伴 · 治愈微触感",
-      "title": "【暖调棉感与微压凹】温润治愈质感",
-      "visualSnapshot": "品牌主视觉以柔和暖白棉质感为底，搭配极简细节与微压凹，不使用花哨卡通涂鸦，在 45 度侧光下呈现静谧治愈的陪伴温度",
-      "focusDimension": "温润材质微触感与亲和调性",
-      "startingPoint": "暖调棉感微触感与柔和留白",
-      "coreProblem": "放弃繁复花哨的卡通插画，把视觉质感全押在温润材质触感与无墨微凹印细节上",
-      "purpose": "以大面积柔和暖调与微光影细节构建耐看且具陪伴温度的整体视觉体验",
-      "pros": "温润质感与克制留白形成安静治愈的审美空间，耐看且极具呼吸感",
-      "cons": "留白若无微质感与暖调光影支撑，极易显得单调空洞，需把控好色调温度与光影层次",
+      "themeName": "原生纤维 · 触感转化",
+      "title": "【再生纤维与微气孔】原生温润触感",
+      "visualSnapshot": "回收再生纤维压合成微孔哑光表面，保留天然毛色微杂质与漫反射暖意，触感温润微糙，在侧光下呈现物料本真质感",
+      "focusDimension": "原生材料转化与微触感",
+      "startingPoint": "再生纤维原生肌理与微气孔触感",
+      "coreProblem": "放弃二次精细涂层掩盖，把视觉与触觉质感押在再生纤维本身的微颗粒肌理与自然漫反射上",
+      "purpose": "以回收纤维本身的物性转化与微气孔触感构建真实耐看的产品肌理体验",
+      "pros": "材料原生肌理独特且具辨识度，自然光下呈现温润微光泽，环保与品质感兼具",
+      "cons": "纤维若压合过于致密会失去透性质感，过于松散又显粗糙，需把控好纤维密度与微孔平衡",
       "feasibility": "high",
       "timeframe": "0.5–1 天",
-      "recommendedReason": "暖调棉感与微压凹直接确立亲和耐看的高品质基准，既保留治愈感又规避低质卡通低幼感",
+      "recommendedReason": "从再生纤维本身的物性肌理切入最能彰显可持续材料的真实质感，兼具环保说服力与亲肤温度",
       "steps": [
         {
           "id": "step_1_1",
-          "title": "暖调色彩与温润材质触感",
-          "question": "何种低饱和暖调色彩与微肌理最能传递安静治愈的陪伴温度？",
-          "purpose": "确立第一眼的材质基准与暖调微差，保持纯净呼吸感",
-          "deliverables": ["暖调治愈色系对照板", "温润材质微肌理样张"],
-          "acceptanceCriteria": ["自然光下呈现温润漫反射无刺眼杂光", "留白比例充盈，呼吸感充足"]
+          "title": "纤维压合密度与微肌理",
+          "question": "何种纤维压合密度与表面微气孔在自然光下最显温润触感？",
+          "purpose": "确立第一眼的材质基准与漫反射微光泽，保持物料真实呼吸感",
+          "deliverables": ["纤维微孔漫反射对比样板", "低饱和暖调色谱"],
+          "acceptanceCriteria": ["自然光下呈现温润漫反射无刺眼塑料感", "材质肌理层次分明"]
         }
       ]
     }
@@ -135,7 +134,11 @@ export function normalizeLiveRoutesPayload(
 
   const seenStarting = new Set<string>();
   const rawGoal = (input.state?.brief?.goal || input.rawBrief || "").trim();
-  const isPet = /宠物|猫|狗|pet|cat|dog/i.test(rawGoal);
+  const deliverable = (input.state?.brief?.deliverable || "").trim();
+  const isProductOrMaterial =
+    /产品|材料|可持续|回收|毛发|纤维|器物|物料|装置|硬件|家具|日用/i.test(rawGoal) ||
+    /产品|材料|器物|物料|可持续/i.test(deliverable);
+  const isPetVI = /宠物|猫|狗|pet|cat|dog/i.test(rawGoal) && !isProductOrMaterial;
   const isUI = /ui|ux|saas|界面|后台|dashboard|网页|web/i.test(rawGoal);
   const isCoffee = /咖啡|coffee/i.test(rawGoal);
   const subjectLabel = rawGoal ? rawGoal.slice(0, 10) : "设计案";
@@ -186,7 +189,53 @@ export function normalizeLiveRoutesPayload(
     "符号若提炼不够纯粹容易落入俗套，必须保持几何轮廓的极端克制与张力",
   ];
 
-  if (isPet) {
+  if (isProductOrMaterial) {
+    defaultStarts = [
+      "原生毛发纤维与微颗粒肌理",
+      "温润弧线与手握微触感",
+      "极简机能构件与日常融入",
+    ];
+    defaultDimensions = [
+      "原生材料转化与微触感",
+      "情感陪伴语义与器物形态",
+      "现代机能美学与日常共生",
+    ];
+    defaultThemeNames = [
+      "原生纤维 · 触感转化",
+      "情感器物 · 陪伴隐喻",
+      "现代极简 · 日常共生",
+    ];
+    defaultTitles = [
+      "【再生纤维与微气孔】原生温润触感",
+      "【有机弧度与微握持】治愈陪伴器物",
+      "【机能卡扣与极简线条】现代日常共生",
+    ];
+    defaultSnapshots = [
+      "回收再生纤维压合成微孔哑光表面，保留天然毛色微杂质与漫反射暖意，触感温润微糙，在侧光下呈现物料本真质感。",
+      "柔和流动的有机弧面与微握持凹槽，器型沉静如卵石，置于居家桌面或掌心抚触，通过实体形态传递无声的陪伴温度。",
+      "极简克制的几何线条结合精妙微倒角构件，材料与现代铝合金或原木自然嵌合，呈现兼具实用机能与当代家居审美的优雅器物。",
+    ];
+    defaultCoreProblems = [
+      "放弃二次精细涂层掩盖，把视觉与触觉质感押在再生纤维本身的微颗粒肌理与自然漫反射上",
+      "放弃符号化具象装饰，通过器物本身的握持弧度与有机线条唤起情感陪伴共鸣",
+      "放弃单纯的概念展品定位，以克制利落的机能结构让可持续材料自然融入现代日常生活",
+    ];
+    defaultPurposes = [
+      "以回收纤维本身的物性转化与微气孔触感构建真实耐看的产品肌理体验",
+      "以符合人体抚触习惯的有机器物形态传递情感疗愈与陪伴温度",
+      "以现代极简机能结构与精致收口实现可持续新材料在日常产品中的优雅落地",
+    ];
+    defaultPros = [
+      "材料原生肌理独特且具辨识度，自然光下呈现温润微光泽，环保与品质感兼具",
+      "器物造型温润耐看，兼具桌面静物美感与触觉互动抚慰价值",
+      "结构精妙克制，轻松融入现代居家与办公空间，商业接受度高",
+    ];
+    defaultCons = [
+      "纤维若压合过于致密会失去透性质感，过于松散又显粗糙，需把控好纤维密度与微孔平衡",
+      "造型若过于具象容易流于低俗，需保持抽象雕塑般的线条克制",
+      "结合部公差若处理不当易显工件粗糙，需严控材质交界面的收口细节",
+    ];
+  } else if (isPetVI) {
     defaultStarts = [
       "暖调棉感微触感与柔和留白",
       "理性双栏网格与守护信息层级",
@@ -327,7 +376,35 @@ export function normalizeLiveRoutesPayload(
   }
 
   function getDefaultSteps(routeIdx: number): RouteStep[] {
-    if (isPet) {
+    if (isProductOrMaterial) {
+      return [
+        {
+          id: `step_${routeIdx + 1}_1`,
+          title: "原生纤维压合密度与微肌理",
+          question: "何种纤维压合密度与表面微气孔在自然光下最显温润触感？",
+          purpose: "确立第一眼的材质基准与漫反射微光泽，保持物料真实呼吸感",
+          deliverables: ["纤维微孔漫反射对比样板", "低饱和暖调色谱"],
+          acceptanceCriteria: ["自然光下呈现温润漫反射无刺眼塑料感", "材质肌理层次分明"],
+        },
+        {
+          id: `step_${routeIdx + 1}_2`,
+          title: "器物造型弧度与握持触感",
+          question: "日常陪伴器物的弧线尺度与手握抚慰度如何传递安定温和的心理预期？",
+          purpose: "打磨符合人体工学与触觉心理的器物轮廓曲度",
+          deliverables: ["微握持曲线切削草图", "有机形态弧度对照模型稿"],
+          acceptanceCriteria: ["手掌贴合舒适自然", "轮廓线条洗练无多余碎线"],
+        },
+        {
+          id: `step_${routeIdx + 1}_3`,
+          title: "现代生活环境与光影融入",
+          question: "该可持续材料置于现代原木或极简家居桌面时，如何与周围环境自然共生？",
+          purpose: "验证新材料在真实日常光影与生活场景中的审美和谐度",
+          deliverables: ["居家光影环境渲染板", "桌面材质并置效果图"],
+          acceptanceCriteria: ["与现代空间和谐相融无突兀感", "桌面静物美感优雅耐看"],
+        },
+      ];
+    }
+    if (isPetVI) {
       return [
         {
           id: `step_${routeIdx + 1}_1`,
@@ -596,13 +673,75 @@ export function normalizeLiveRoutesPayload(
 export function liveRoutes(input: RoutesInput): Promise<unknown> {
   let promptSystem = SYSTEM;
   const rawGoal = (input.state?.brief?.goal || input.rawBrief || "").trim();
+  const deliverable = (input.state?.brief?.deliverable || "").trim();
+  const audience = (input.state?.brief?.audience || "").trim();
+  const intent = (input.state?.direction?.intent?.text || "").trim();
+  const priorities = (input.state?.direction?.priorities || [])
+    .map((p) => p.text)
+    .filter(Boolean);
+  const avoidances = (input.state?.direction?.avoid || [])
+    .map((a) => a.text)
+    .filter(Boolean);
+  const criteria = (input.state?.direction?.criteria || [])
+    .map((c) => c.text)
+    .filter(Boolean);
+  const visualKeywords = (input.state?.visualKeywords || []).filter(Boolean);
+  const constraints = (input.state?.constraints || [])
+    .map((c) => c.text)
+    .filter(Boolean);
+
+  const historyAnswers: string[] = [];
+  if (Array.isArray(input.history)) {
+    for (const entry of input.history) {
+      if (entry.event.type === "answer" && entry.questions) {
+        for (const ans of entry.event.answers) {
+          const q = entry.questions.find((question) => question.id === ans.questionId);
+          if (q) {
+            let ansText = "";
+            if (ans.kind === "option") {
+              ansText = q.options.find((o) => o.id === ans.optionId)?.label || ans.optionId;
+            } else if (ans.kind === "custom") {
+              ansText = ans.text;
+            }
+            if (ansText) {
+              historyAnswers.push(`“${q.prompt}” → 用户明确选定：“${ansText}”`);
+            }
+          }
+        }
+      }
+    }
+  }
+
   if (rawGoal) {
     promptSystem += `\n\n【⚠️ 当前任务核心 Brief 锚点（绝对约束，严禁偏离）】：\n用户原始需求主体为：“${rawGoal}”。\n所有 3 个设计主题（Theme）、快照（Snapshot）和切入视点（Steps）必须严格围绕【${rawGoal}】这一核心品类与主体展开！\n严禁将风格修饰词（如“白色”）脱离主体当成单一特种纸或纸厂测试！必须输出针对【${rawGoal}】的整体视觉策略方案！`;
   }
   if (input.excludeThemeNames && input.excludeThemeNames.length > 0) {
     promptSystem += `\n\n【用户更换主题指令】：用户对上一批设计主题（${input.excludeThemeNames.join("、")}）不满意，要求换一批全新的创意领地与设计主题！严禁与上述主题重复或雷同，必须推导截然不同的视觉手法与画面呈象！`;
   }
-  return completeJson(promptSystem, JSON.stringify(input), "none").then((payload) =>
+
+  const userPrompt = `【任务设计背景与已收敛方向状态 (Design State)】：
+- 原始 Brief 核心目标：${rawGoal}
+${deliverable ? `- 交付载体与媒介：${deliverable}` : ""}
+${audience ? `- 目标受众：${audience}` : ""}
+${intent ? `- 核心视觉意图 (Intent)：${intent}` : ""}
+${historyAnswers.length ? `- 问答收敛环节用户的核心取舍：\n${historyAnswers.map((h, i) => `  ${i + 1}. ${h}`).join("\n")}` : ""}
+${priorities.length ? `- 经问答收敛确认【坚决优先达成】的审美维度 (Priorities)：\n${priorities.map((p, i) => `  ${i + 1}. ${p}`).join("\n")}` : ""}
+${avoidances.length ? `- 经问答收敛确认【严厉杜绝避开】的审美雷区 (Avoid)：\n${avoidances.map((a, i) => `  ${i + 1}. ${a}`).join("\n")}` : ""}
+${criteria.length ? `- 视觉评价标准 (Criteria)：\n${criteria.map((c, i) => `  ${i + 1}. ${c}`).join("\n")}` : ""}
+${visualKeywords.length ? `- 已沉淀专业视觉参数 (Visual Keywords)：${visualKeywords.join("、")}` : ""}
+${constraints.length ? `- 已确认设计约束：${constraints.join("；")}` : ""}
+
+【主题生成铁律】：
+1. 3 个设计主题必须严格围绕【${rawGoal}】${deliverable ? `（交付载体：${deliverable}）` : ""}展开，严禁品类漂移！
+2. 必须自适应选择适合【${deliverable || rawGoal}】门类的 3 条创意领地，严禁生搬硬套不相干的 2D 瑞士排版或 Logo 视觉锤！
+3. 3 个主题必须各自从不同侧面积极响应上述已确认的【优先达成维度】，并坚决杜绝上述【严厉杜绝避开的雷区】！
+4. 每一条主题的 visualSnapshot 必须用生动具体的画面大白话描绘出成品在光影与真实场景下的视觉质感。
+5. 必须返回单推荐（recommendedRouteId 对应 1 个主题，其余 2 个主题 recommendedReason 严格填 null）。
+
+完整原始输入 JSON（含上下文 ID 与修订版本）：
+${JSON.stringify(input)}`;
+
+  return completeJson(promptSystem, userPrompt, "none").then((payload) =>
     normalizeLiveRoutesPayload(payload, input),
   );
 }

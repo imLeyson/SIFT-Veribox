@@ -116,6 +116,7 @@ export function createConvergenceActions(
         baseRevision: token.revision,
         rawBrief: s.rawBrief,
         state: s.state,
+        history: s.history,
         excludeThemeNames,
         refreshIndex: options?.refresh ? 1 : 0,
       };

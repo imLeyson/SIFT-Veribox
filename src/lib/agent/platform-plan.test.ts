@@ -148,5 +148,43 @@ describe("platform plan agent generation", () => {
       }
     }
   });
+
+  it("generates sustainable material & product search plan without falling back to tea packaging", async () => {
+    const brief = "我想做一个宠物毛发的可持续设计产品，他同时具有情感设计方向，这个产品可以是将宠物毛发回收并加工成一个新的可用材料";
+    const sustState: DesignState = {
+      ...confirmedState,
+      brief: { goal: brief, audience: "养宠人群", deliverable: "可持续材料与情感产品设计" },
+    };
+    const sustRoutes = getMockRoutes(brief, sustState).routes;
+    const sustRoute = sustRoutes[0];
+    const sustStep = sustRoute.steps[0];
+
+    const res = await runPlatformPlanGeneration({
+      sessionId: "s_sust_plan",
+      requestId: "p_req_sust",
+      state: sustState,
+      selectedRoute: sustRoute,
+      currentStep: sustStep,
+      completedStepIds: [],
+    });
+
+    const plan = res.plan;
+    expect(plan.primarySources).toHaveLength(3);
+    const platforms = plan.primarySources.map((s) => s.platform);
+    expect(platforms).toContain("Behance");
+    expect(platforms).toContain("Pinterest");
+    expect(platforms).toContain("小红书");
+
+    // Must NOT contain tea packaging keywords!
+    const allKeywords = [
+      ...plan.primarySources.flatMap((s) => s.keywords.map((k) => k.keyword)),
+      ...plan.alternativeSources.flatMap((s) => s.keywords.map((k) => k.keyword)),
+    ];
+    for (const kw of allKeywords) {
+      expect(kw).not.toMatch(/tea|茶罐|茶包装/i);
+    }
+    // Must contain sustainable / fiber / tactile keywords
+    expect(allKeywords.some((k) => /sustainable|recycled|fiber|材料|毛发|再生/i.test(k))).toBe(true);
+  });
 });
 

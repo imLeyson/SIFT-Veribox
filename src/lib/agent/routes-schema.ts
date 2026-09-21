@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { DesignStateSchema, parseContract } from "./convergence-schema";
+import {
+  DesignStateSchema,
+  HistoryEntrySchema,
+  parseContract,
+} from "./convergence-schema";
 
 const text = z.string().trim().min(1);
 const shortText = text.max(240);
@@ -135,6 +139,7 @@ export const RoutesInputSchema = z
     baseRevision: z.number().int().nonnegative(),
     rawBrief: text.max(10000),
     state: DesignStateSchema,
+    history: z.array(HistoryEntrySchema).optional(),
     excludeThemeNames: z.array(text).optional(),
     refreshIndex: z.number().int().nonnegative().optional(),
   })

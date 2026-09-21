@@ -32,6 +32,148 @@ export function getMockRoutes(
     (options?.excludeThemeNames && options.excludeThemeNames.length > 0),
   );
 
+  // 0. Sustainable Material & Emotional Product Design scenario
+  if (
+    briefLower.includes("可持续") ||
+    briefLower.includes("材料") ||
+    briefLower.includes("产品") ||
+    briefLower.includes("回收") ||
+    briefLower.includes("毛发") ||
+    briefLower.includes("器物") ||
+    briefLower.includes("纤维") ||
+    briefLower.includes("物料")
+  ) {
+    const routes: Route[] = [
+      {
+        id: "route_prod_fiber",
+        themeName: "原生纤维 · 触感转化",
+        title: "【再生纤维与微气孔】原生温润触感",
+        visualSnapshot: "回收再生纤维压合成微孔哑光表面，保留天然毛色微杂质与漫反射暖意，触感温润微糙，摒弃廉价塑料感，散发物料本真质感。",
+        startingPoint: "再生纤维原生肌理与微气孔触感",
+        focusDimension: "原生材料转化与微触感",
+        coreProblem: "放弃二次精细涂层掩盖，把视觉与触觉质感押在再生纤维本身的微颗粒肌理与自然漫反射上",
+        purpose: "以回收纤维本身的物性转化与微气孔触感构建真实耐看的产品肌理体验",
+        pros: "材料原生肌理独特且具辨识度，自然光下呈现温润微光泽，环保与品质感兼具",
+        cons: "纤维若压合过于致密会失去透性质感，过于松散又显粗糙，需把控好纤维密度与微孔平衡",
+        feasibility: "high",
+        timeframe: "0.5–1 天",
+        recommendedReason: `${unknownNote}，从再生材料本身的纤维物性切入最能彰显可持续设计的真实质感，兼具环保说服力与亲肤温度。`,
+        steps: [
+          {
+            id: "step_prod_f_1",
+            title: "原生纤维压合密度与微肌理",
+            question: "何种纤维压合密度与表面微气孔在自然光下最显温润触感？",
+            purpose: "确立第一眼的材质基准与漫反射微光泽，保持物料真实呼吸感",
+            deliverables: ["纤维微孔漫反射对比样板", "低饱和暖调色谱"],
+            acceptanceCriteria: ["自然光下呈现温润漫反射无刺眼塑料感", "材质肌理层次分明"],
+          },
+          {
+            id: "step_prod_f_2",
+            title: "天然毛色微杂质与漫反射",
+            question: "毛发回收原料的天然杂色如何转化为温和耐看的有机底色？",
+            purpose: "提炼不依赖人工染色剂的物料本真色彩系统",
+            deliverables: ["原料自然色阶分布板", "漫反射光晕打样效果稿"],
+            acceptanceCriteria: ["色彩呈现柔和自然色阶", "无人工强行调色的塑料感"],
+          },
+          {
+            id: "step_prod_f_3",
+            title: "表面微光影与触觉耐看度",
+            question: "在常规室内光照下，材料表面的微起伏能否形成沉静柔和的光影漫射？",
+            purpose: "验证新材料在真实日常光影下的视觉耐看度",
+            deliverables: ["室内漫射光影测试图", "材质微触感对比板"],
+            acceptanceCriteria: ["光影柔和无刺眼杂光", "触觉体验温润亲和"],
+          },
+        ],
+      },
+      {
+        id: "route_prod_vessel",
+        themeName: "情感器物 · 陪伴隐喻",
+        title: "【有机弧度与微握持】治愈陪伴器物",
+        visualSnapshot: "柔和流动的有机弧面与微握持凹槽，器型沉静如卵石，置于居家桌面或掌心抚触，通过实体形态传递无声的陪伴温度。",
+        startingPoint: "有机弧面与手握抚慰度",
+        focusDimension: "情感陪伴语义与器物形态",
+        coreProblem: "放弃符号化具象动物装饰，通过器物本身的握持弧度与有机线条唤起深层情感陪伴共鸣",
+        purpose: "以符合人体抚触习惯的有机器物形态传递情感疗愈与陪伴温度",
+        pros: "器物造型温润耐看，兼具桌面静物美感与触觉互动抚慰价值，情感连接深刻",
+        cons: "造型若过于具象容易流于低幼，需保持如自然卵石般的抽象雕塑线条克制",
+        feasibility: "medium",
+        timeframe: "1–2 天",
+        recommendedReason: null,
+        steps: [
+          {
+            id: "step_prod_v_1",
+            title: "器物造型弧度与握持触感",
+            question: "日常陪伴器物的弧线尺度与手握抚慰度如何传递安定温和的心理预期？",
+            purpose: "打磨符合人体工学与触觉心理的器物轮廓曲度",
+            deliverables: ["微握持曲线切削草图", "有机形态弧度对照模型稿"],
+            acceptanceCriteria: ["手掌贴合舒适自然", "轮廓线条洗练无多余碎线"],
+          },
+          {
+            id: "step_prod_v_2",
+            title: "桌面静物尺度与视线驻留",
+            question: "器物置于居家或工位桌面时，能否形成安静舒缓的视觉停留点？",
+            purpose: "校准器物在生活场景中的雕塑感与视觉分量",
+            deliverables: ["桌面摆放环境合成图 3 款", "器物比例尺度分析稿"],
+            acceptanceCriteria: ["比例舒展不具侵略性", "各角度均具独立美感"],
+          },
+          {
+            id: "step_prod_v_3",
+            title: "情感触觉抚慰心理反馈",
+            question: "指尖抚摸材料与器型曲面时，是否直觉唤起温暖安心的情绪认知？",
+            purpose: "验证情感设计在触觉层面的感知达成度",
+            deliverables: ["触觉感知心理对照表", "曲面微握持打样板"],
+            acceptanceCriteria: ["触觉反馈温和安定", "无冷硬锐利毛边"],
+          },
+        ],
+      },
+      {
+        id: "route_prod_minimal",
+        themeName: "现代极简 · 日常共生",
+        title: "【机能卡扣与极简线条】现代日常共生",
+        visualSnapshot: "极简克制的几何线条结合精妙微倒角构件，材料与现代铝合金或原木自然嵌合，呈现兼具实用机能与当代家居审美的优雅器物。",
+        startingPoint: "现代生活机能与结合部细节",
+        focusDimension: "现代机能美学与日常共生",
+        coreProblem: "放弃单纯的概念展品定位，以克制利落的机能结构让可持续材料自然融入现代日常生活",
+        purpose: "以现代极简机能结构与精致收口实现可持续新材料在日常产品中的优雅落地",
+        pros: "结构精妙克制，轻松融入现代居家与办公空间，商业实用度与审美接受度极高",
+        cons: "结合部公差若处理不当易显工件粗糙，需严控材质交界面的收口精度",
+        feasibility: "medium",
+        timeframe: "1–2 天",
+        recommendedReason: null,
+        steps: [
+          {
+            id: "step_prod_m_1",
+            title: "现代生活环境与光影融入",
+            question: "该可持续材料置于现代原木或极简家居桌面时，如何与周围环境自然共生？",
+            purpose: "验证新材料在真实日常光影与生活场景中的审美和谐度",
+            deliverables: ["居家光影环境渲染板", "桌面材质并置效果图"],
+            acceptanceCriteria: ["与现代空间和谐相融无突兀感", "桌面静物美感优雅耐看"],
+          },
+          {
+            id: "step_prod_m_2",
+            title: "异质材料嵌合与收口线条",
+            question: "再生纤维材料与金属或木质结合部如何以极简倒角完成精致收口？",
+            purpose: "打磨现代高品质产品级的工艺结合细节",
+            deliverables: ["收口倒角剖面设计图 3 款", "结合部公差对照规范"],
+            acceptanceCriteria: ["接缝收口干练无毛刺", "视觉分件比例匀称"],
+          },
+          {
+            id: "step_prod_m_3",
+            title: "实用机能与日常操作动线",
+            question: "日常拿取、开启或放置过程中，器物的手部互动动线是否自然顺畅？",
+            purpose: "检验器物在日常使用中的人机工效与耐看度",
+            deliverables: ["手部操作动线分析稿", "使用场景体验对照图"],
+            acceptanceCriteria: ["操作动线直觉无阻滞", "长期摆放不显视觉疲劳"],
+          },
+        ],
+      },
+    ];
+    return {
+      routes: attachAlignmentScores(routes, "route_prod_fiber"),
+      recommendedRouteId: "route_prod_fiber",
+    };
+  }
+
   // 1. Packaging / Tea scenario
   if (briefLower.includes("茶") || briefLower.includes("罐装") || briefLower.includes("包装")) {
     if (isAlternate) {

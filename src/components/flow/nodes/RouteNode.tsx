@@ -8,6 +8,8 @@ import { cleanStepLabel, type Route } from "@/types/routes";
 import {
   getBriefAnchor,
   getConvergenceAnchor,
+  getPrioritiesAnchor,
+  getAvoidAnchor,
   toInspirationCopy,
 } from "@/lib/exploration-copy";
 import {
@@ -20,6 +22,7 @@ import {
   LayoutGrid,
   Zap,
   RefreshCw,
+  Compass,
 } from "lucide-react";
 
 export type RouteNodeData = {
@@ -41,38 +44,97 @@ function cleanText(str: string | null | undefined): string {
     .trim();
 }
 
-function getTerritoryInfo(index: number, title: string, themeName?: string) {
-  const combined = `${title} ${themeName ?? ""}`.toLowerCase();
+function getTerritoryInfo(index: number, title: string, themeName?: string, focusDimension?: string) {
+  const combined = `${title} ${themeName ?? ""} ${focusDimension ?? ""}`.toLowerCase();
+
+  // 1. Sustainable Material / Product Design
+  if (
+    combined.includes("纤维") ||
+    combined.includes("材料转化") ||
+    combined.includes("原生物料") ||
+    combined.includes("微气孔")
+  ) {
+    return {
+      tag: `领地 0${index + 1} · 原生物料与微触感`,
+      badgeClass: "bg-amber-50 text-amber-800 border-amber-200/80",
+      icon: Layers,
+    };
+  }
+  if (
+    combined.includes("器物") ||
+    combined.includes("弧度") ||
+    combined.includes("握持") ||
+    combined.includes("陪伴") ||
+    combined.includes("情感")
+  ) {
+    return {
+      tag: `领地 0${index + 1} · 情感隐喻与器物形态`,
+      badgeClass: "bg-rose-50 text-rose-800 border-rose-200/80",
+      icon: Sparkles,
+    };
+  }
+  if (
+    combined.includes("机能") ||
+    combined.includes("共生") ||
+    combined.includes("日常") ||
+    combined.includes("卡扣") ||
+    combined.includes("构件")
+  ) {
+    return {
+      tag: `领地 0${index + 1} · 现代机能与日常共生`,
+      badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200/80",
+      icon: Compass,
+    };
+  }
+
+  // 2. Typography & Grid
   if (
     combined.includes("网格") ||
     combined.includes("理性") ||
     combined.includes("排版") ||
     combined.includes("档案") ||
-    index === 1
+    combined.includes("字阶")
   ) {
     return {
-      tag: "领地 02 · 信息网格与秩序",
+      tag: `领地 0${index + 1} · 信息网格与秩序`,
       badgeClass: "bg-blue-50 text-blue-800 border-blue-200/80",
       icon: LayoutGrid,
     };
   }
+
+  // 3. Symbol / Visual Hammer
   if (
     combined.includes("符号") ||
     combined.includes("视觉锤") ||
     combined.includes("几何") ||
-    combined.includes("轮廓") ||
-    index === 2
+    combined.includes("轮廓")
   ) {
     return {
-      tag: "领地 03 · 视觉符号与记忆锤",
+      tag: `领地 0${index + 1} · 视觉符号与记忆锤`,
       badgeClass: "bg-purple-50 text-purple-800 border-purple-200/80",
       icon: Zap,
     };
   }
+
+  // Category index defaults
+  if (index === 0) {
+    return {
+      tag: "领地 01 · 材质工艺与微触感",
+      badgeClass: "bg-amber-50 text-amber-800 border-amber-200/80",
+      icon: Layers,
+    };
+  }
+  if (index === 1) {
+    return {
+      tag: "领地 02 · 结构形态与秩序",
+      badgeClass: "bg-blue-50 text-blue-800 border-blue-200/80",
+      icon: LayoutGrid,
+    };
+  }
   return {
-    tag: "领地 01 · 材质工艺与微触感",
-    badgeClass: "bg-amber-50 text-amber-800 border-amber-200/80",
-    icon: Layers,
+    tag: "领地 03 · 视觉张力与记忆锚点",
+    badgeClass: "bg-purple-50 text-purple-800 border-purple-200/80",
+    icon: Zap,
   };
 }
 
@@ -116,8 +178,10 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
   const consText = toInspirationCopy(cleanText(route.cons));
   const briefAnchor = getBriefAnchor(rawBrief, state?.brief.goal);
   const convergenceAnchor = getConvergenceAnchor(state);
+  const prioritiesSummary = getPrioritiesAnchor(state);
+  const avoidSummary = getAvoidAnchor(state);
 
-  const territory = getTerritoryInfo(index, route.title, route.themeName);
+  const territory = getTerritoryInfo(index, route.title, route.themeName, route.focusDimension);
   const TerritoryIcon = territory.icon;
 
   return (
@@ -168,9 +232,23 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
               <span>这条主题从哪里来</span>
               <span className="font-mono text-[9px] text-indigo-500">BRIEF → DIRECTION → THEME</span>
             </div>
-            <div className="grid gap-1.5 text-[10.5px] text-indigo-950/80">
+            <div className="grid gap-1.5 text-[10.5px] text-indigo-950/85 leading-relaxed">
               <p><span className="font-semibold text-indigo-900">Brief：</span>{briefAnchor}</p>
-              <p><span className="font-semibold text-indigo-900">收敛线索：</span>{convergenceAnchor}</p>
+              {prioritiesSummary.length > 0 && (
+                <p className="flex items-start gap-1">
+                  <span className="font-semibold text-indigo-900 shrink-0">已锁定坚持：</span>
+                  <span>{prioritiesSummary.join("；")}</span>
+                </p>
+              )}
+              {avoidSummary.length > 0 && (
+                <p className="flex items-start gap-1 text-amber-900/90">
+                  <span className="font-semibold text-amber-900 shrink-0">已避开雷区：</span>
+                  <span>{avoidSummary.join("；")}</span>
+                </p>
+              )}
+              {!prioritiesSummary.length && !avoidSummary.length && (
+                <p><span className="font-semibold text-indigo-900">收敛线索：</span>{convergenceAnchor}</p>
+              )}
             </div>
           </div>
 

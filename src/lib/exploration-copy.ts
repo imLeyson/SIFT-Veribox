@@ -24,6 +24,22 @@ export function getConvergenceAnchor(state: DesignState | null): string {
   ) || "方向已生成，保留多种视觉可能";
 }
 
+export function getPrioritiesAnchor(state: DesignState | null, maxItems = 2): string[] {
+  if (!state?.direction.priorities?.length) return [];
+  return state.direction.priorities
+    .map((p) => compactText(p.text, 50))
+    .filter(Boolean)
+    .slice(0, maxItems);
+}
+
+export function getAvoidAnchor(state: DesignState | null, maxItems = 2): string[] {
+  if (!state?.direction.avoid?.length) return [];
+  return state.direction.avoid
+    .map((a) => compactText(a.text, 50))
+    .filter(Boolean)
+    .slice(0, maxItems);
+}
+
 /**
  * Keep generated source descriptions useful for visual research instead of
  * making the early exploration phase sound like a manufacturing review.

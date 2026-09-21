@@ -102,10 +102,14 @@ export function PlatformPlanNode({
               <span>这次搜索要收集什么</span>
               <span className="font-mono text-[9px] text-amber-700">VIEWPOINT → REFERENCES</span>
             </div>
+            <div className="text-[11px] leading-relaxed text-amber-950/85">
+              <span className="font-semibold text-amber-950">对应主题：</span>
+              <span className="font-medium text-amber-900">{route?.themeName || route?.title || "当前主题"}</span>
+            </div>
             <p className="text-[11px] leading-relaxed text-amber-950/80">
               围绕「{toInspirationCopy(step?.question || stepTitle)}」收集视觉证据，只做灵感对照，不进入执行判断。
             </p>
-            <div className="grid gap-1 text-[10px] leading-relaxed text-amber-950/70">
+            <div className="grid gap-1 text-[10px] leading-relaxed text-amber-950/70 pt-1 border-t border-amber-200/60">
               <p><span className="font-semibold text-amber-950">Brief：</span>{briefAnchor}</p>
               <p><span className="font-semibold text-amber-950">收敛线索：</span>{convergenceAnchor}</p>
             </div>

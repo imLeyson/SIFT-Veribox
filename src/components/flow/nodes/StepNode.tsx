@@ -90,14 +90,21 @@ export function StepNode({ selected }: NodeProps) {
         selected={selected}
       >
         <div className="space-y-3.5 text-xs">
-          <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 space-y-2">
-            <div className="flex items-center justify-between text-[10px] font-semibold text-zinc-700">
-              <span>把主题变成一个观察问题</span>
-              <span className="font-mono text-[9px] text-zinc-400">THEME → VIEWPOINT</span>
+          <div className="rounded-xl border border-indigo-200/80 bg-indigo-50/50 p-3 space-y-2">
+            <div className="flex items-center justify-between text-[10px] font-semibold text-indigo-950">
+              <span>当前探索主题与视点拆解</span>
+              <span className="font-mono text-[9px] text-indigo-500">THEME → VIEWPOINT</span>
             </div>
-            <div className="grid gap-1 text-[10.5px] leading-relaxed text-zinc-600">
-              <p><span className="font-semibold text-zinc-800">Brief：</span>{briefAnchor}</p>
-              <p><span className="font-semibold text-zinc-800">已收敛：</span>{convergenceAnchor}</p>
+            <div className="grid gap-1.5 text-[10.5px] leading-relaxed text-indigo-950/85">
+              <p>
+                <span className="font-semibold text-indigo-900">所属主题：</span>
+                <span className="font-medium text-ink">{route.themeName || route.title}</span>
+              </p>
+              {route.visualSnapshot && (
+                <p className="text-[10px] text-stone-600 line-clamp-2 italic bg-white/80 p-1.5 rounded-md border border-indigo-100/80 font-serif">
+                  “{toInspirationCopy(route.visualSnapshot)}”
+                </p>
+              )}
             </div>
           </div>
 
