@@ -42,7 +42,7 @@ export function Workspace() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-sm font-semibold tracking-wide text-ink">SIFT</h1>
-            <span className="hidden md:inline-block rounded-md bg-amber-100/70 border border-amber-300/60 px-1.5 py-0.5 text-[10px] font-medium text-amber-900">
+            <span className="hidden md:inline-block rounded-md bg-stone-100 border border-stone-200 px-1.5 py-0.5 text-[10px] font-medium text-stone-600">
               视觉策略与方向收敛智能体
             </span>
           </div>

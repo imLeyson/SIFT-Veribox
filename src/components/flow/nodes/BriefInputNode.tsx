@@ -149,41 +149,32 @@ export function BriefInputNode({ selected }: NodeProps) {
             }}
           >
             <div className="mb-2.5 space-y-1.5">
-              <p className="text-xs leading-relaxed text-muted">
-                输入设计背景、视觉意图与明确约束。
-              </p>
-              <div className="rounded-xl border border-amber-200/80 bg-amber-50/85 p-2.5 text-xs text-amber-950 space-y-1">
-                <div className="flex items-center justify-between text-[11px] font-semibold text-amber-900">
-                  <span>面向设计师的视觉策略与方向收敛智能体</span>
-                  <span className="font-mono text-[9px] text-amber-700">CONVERGENCE AGENT</span>
-                </div>
-                <p className="text-[11px] text-amber-900/85 leading-relaxed">
-                  当你拿到一段模糊的 Brief 或几张参考图时，SIFT 通过几轮关键视觉提问，快速收敛出清晰、有画面感的设计主题与检索方向，<strong>避免前期漫无目的地试错（不涉及后期落地交付与生图）</strong>。
-                </p>
+              <div className="flex items-center justify-between text-[11px] text-muted">
+                <span className="text-stone-500">
+                  聚焦前期视觉策略与检索方向收敛 · <span className="text-stone-400">非生图交付工具</span>
+                </span>
+                {importedBrief && (
+                  <span className="text-accent font-medium">已载入草案</span>
+                )}
               </div>
-            </div>
-            {importedBrief && (
-              <p className="mb-2 text-xs text-accent">
-                已载入草案
-              </p>
-            )}
 
-            <div className="mb-1.5 flex items-center justify-between text-[11px]">
-              <span className="text-stone-500 font-medium truncate pr-2">
-                句式参考：我想做一个【品类】，希望【调性】，避免【禁忌】…
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setRawBrief(
-                    "我想做一个【设计品类】，希望整体呈现【核心视觉调性与受众感受】，避免【明确的视觉禁忌与常见套路】，重点探索【材质工艺、排版结构或细节】。"
-                  );
-                }}
-                className="text-[10.5px] text-accent hover:underline cursor-pointer flex items-center gap-0.5 font-medium flex-shrink-0"
-                title="一键载入结构化设计需求句式模板"
-              >
-                <span>套用句式模板</span>
-              </button>
+              <div className="flex items-center justify-between rounded-lg bg-stone-50/90 px-2.5 py-1.5 border border-line/70 text-[11px] text-stone-500">
+                <span className="truncate pr-2">
+                  推荐结构：我想做一个【品类】，希望【调性】，避免【禁忌】…
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRawBrief(
+                      "我想做一个【设计品类】，希望整体呈现【核心视觉调性与受众感受】，避免【明确的视觉禁忌与常见套路】，重点探索【材质工艺、排版结构或细节】。"
+                    );
+                  }}
+                  className="text-accent hover:underline cursor-pointer flex items-center gap-0.5 font-medium flex-shrink-0"
+                  title="一键载入结构化设计需求句式模板"
+                >
+                  <span>套用模板</span>
+                </button>
+              </div>
             </div>
 
             <textarea
