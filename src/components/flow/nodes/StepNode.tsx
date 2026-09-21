@@ -13,6 +13,7 @@ import {
   Trash2,
   StickyNote,
   ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 
 function renderNoteContent(text: string) {
@@ -156,13 +157,24 @@ export function StepNode({ selected }: NodeProps) {
                 </button>
               )
             )}
-            <button
-              type="button"
-              className="btn-ghost w-full !py-1 text-[11px] text-muted hover:text-red-700"
-              onClick={() => siftActions.reselectRoute()}
-            >
-              重选设计主题
-            </button>
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <button
+                type="button"
+                className="btn-ghost flex-1 !py-1 text-[11px] text-muted hover:text-ink"
+                onClick={() => siftActions.reselectRoute()}
+              >
+                重选设计主题
+              </button>
+              <button
+                type="button"
+                className="btn-ghost flex-1 !py-1 text-[11px] text-muted hover:text-ink flex items-center justify-center gap-1"
+                onClick={() => void siftActions.regenerateRoutes()}
+                title="重新构思一组全新主题"
+              >
+                <RefreshCw className="h-2.5 w-2.5" />
+                <span>换一批主题</span>
+              </button>
+            </div>
           </div>
 
           {/* Designer Step Notes (灵感速记与参考链接) */}

@@ -135,6 +135,8 @@ export const RoutesInputSchema = z
     baseRevision: z.number().int().nonnegative(),
     rawBrief: text.max(10000),
     state: DesignStateSchema,
+    excludeThemeNames: z.array(text).optional(),
+    refreshIndex: z.number().int().nonnegative().optional(),
   })
   .superRefine((input, ctx) => {
     if (input.state.status !== "confirmed") {

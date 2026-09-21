@@ -10,6 +10,7 @@ import {
   RoutesResultSchema,
   PlatformPlanResultSchema,
 } from "./agent/routes-schema";
+import { copyToClipboard } from "./clipboard";
 import type { Answer, ConvergenceInput, TurnEvent } from "@/types/convergence";
 
 export function createConvergenceActions(
@@ -91,9 +92,18 @@ export function createConvergenceActions(
     }
   }
 
-  async function generateRoutes() {
+  async function generateRoutes(options?: { refresh?: boolean }) {
     const s = store.getState();
     if (!s.state || s.state.status !== "confirmed") return;
+
+    const excludeThemeNames = options?.refresh
+      ? s.routes.map((r) => r.themeName || r.title).filter(Boolean)
+      : undefined;
+
+    if (options?.refresh && s.selectedRouteId) {
+      s.reselectRoute();
+    }
+
     const token = s.beginRequest();
     if (!token) return;
     const ac = new AbortController();
@@ -106,6 +116,8 @@ export function createConvergenceActions(
         baseRevision: token.revision,
         rawBrief: s.rawBrief,
         state: s.state,
+        excludeThemeNames,
+        refreshIndex: options?.refresh ? 1 : 0,
       };
       const response = await fetcher("/api/routes", {
         method: "POST",
@@ -249,6 +261,9 @@ export function createConvergenceActions(
       await generateRoutes();
     },
     generateRoutes,
+    regenerateRoutes: async () => {
+      await generateRoutes({ refresh: true });
+    },
     selectRoute: (routeId: string) => {
       store.getState().selectRoute(routeId);
     },
@@ -279,15 +294,14 @@ export function createConvergenceActions(
     toggleAcceptanceCriterion: (stepId: string, criterion: string) => {
       store.getState().toggleAcceptanceCriterion(stepId, criterion);
     },
-    copyKeyword: async (stepId: string, sourceId: string, keyword: string) => {
-      try {
-        if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(keyword);
-        }
-      } catch {
-        // ignore clipboard error in automated/restricted sandbox
-      }
+    copyKeyword: async (
+      stepId: string,
+      sourceId: string,
+      keyword: string,
+    ): Promise<boolean> => {
+      const success = await copyToClipboard(keyword);
       store.getState().recordSourceAction(stepId, sourceId, "copied", keyword);
+      return success;
     },
     openSearch: (
       url: string,

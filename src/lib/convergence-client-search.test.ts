@@ -128,4 +128,48 @@ describe("convergence client routes and search actions", () => {
     expect(interaction?.copiedKeywords).toContain(kw);
     expect(interaction?.opened).toBe(true);
   });
+
+  it("regenerates routes passing excludeThemeNames and replaces current routes with fresh set", async () => {
+    const store = createSiftStore(memory);
+    store.setState({
+      rawBrief: EXAMPLES[0].brief,
+      state: confirmedState,
+      routes: mockRoutesData.routes,
+      selectedRouteId: mockRoutesData.routes[0].id,
+      activeStepId: mockRoutesData.routes[0].steps[0].id,
+      explorationStage: "route_selected",
+    });
+
+    const altRoutesData = getMockRoutes(EXAMPLES[0].brief, confirmedState, {
+      excludeThemeNames: [mockRoutesData.routes[0].themeName!],
+      refreshIndex: 1,
+    });
+
+    let sentBody: { excludeThemeNames?: string[] } | undefined;
+    const fetcher = vi.fn(async (url, init) => {
+      if (url === "/api/routes") {
+        sentBody = JSON.parse(init.body) as { excludeThemeNames?: string[] };
+        return Response.json({
+          sessionId: store.getState().sessionId,
+          requestId: store.getState().activeRequest?.id ?? "r2",
+          routes: altRoutesData.routes,
+          recommendedRouteId: altRoutesData.recommendedRouteId,
+          mode: "mock",
+          model: null,
+        });
+      }
+      return new Response("Not found", { status: 404 });
+    });
+
+    const actions = createConvergenceActions(store, fetcher);
+    await actions.regenerateRoutes();
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(sentBody.excludeThemeNames).toBeTruthy();
+    expect(sentBody.excludeThemeNames).toContain(mockRoutesData.routes[0].themeName);
+    expect(store.getState().routes[0].themeName).toBe(altRoutesData.routes[0].themeName);
+    // Downstream selection was rolled back for user to pick new theme
+    expect(store.getState().selectedRouteId).toBeNull();
+    expect(store.getState().explorationStage).toBe("routes");
+  });
 });

@@ -24,20 +24,19 @@ export type PlatformPlanNodeData = {
 function getSearchUrl(source: PlatformSource, kwOrRaw?: string): string {
   if (!kwOrRaw) {
     const first = source.keywords[0];
-    const target = first?.calibratedQuery || first?.keyword || "";
+    const target =
+      first?.advancedQuery || first?.calibratedQuery || first?.keyword || "";
     return target ? buildPlatformSearchUrl(source.platform, target) : source.searchUrl;
   }
   const matched = source.keywords.find(
-    (k) => k.keyword === kwOrRaw || k.calibratedQuery === kwOrRaw,
+    (k) =>
+      k.keyword === kwOrRaw ||
+      k.calibratedQuery === kwOrRaw ||
+      k.advancedQuery === kwOrRaw,
   );
-  const target = matched?.calibratedQuery || kwOrRaw;
+  const target =
+    matched?.advancedQuery || matched?.calibratedQuery || kwOrRaw;
   return buildPlatformSearchUrl(source.platform, target);
-}
-
-function getCleanSearchUrl(source: PlatformSource): string | null {
-  const adv = source.keywords.find((k) => k.advancedQuery)?.advancedQuery;
-  if (!adv) return null;
-  return buildPlatformSearchUrl(source.platform, adv);
 }
 
 function sanitizeKeyword(raw: string, calibrated?: string): string {
@@ -68,22 +67,11 @@ export function PlatformPlanNode({
   const stepTitle = step ? step.title : "探索搜索方案";
 
   const handleCopy = async (sourceId: string, kw: string) => {
-    await siftActions.copyKeyword(plan.stepId, sourceId, kw);
-    setCopiedKw(kw);
-    setTimeout(() => setCopiedKw(null), 1800);
-  };
-
-  const handleOpenSearch = (source: PlatformSource, kw?: string) => {
-    const first = source.keywords[0];
-    const query = kw ?? first?.calibratedQuery ?? first?.keyword ?? "";
-    const url = getSearchUrl(source, query);
-    siftActions.openSearch(url, plan.stepId, source.id, query);
-  };
-
-  const handleBatchOpen = () => {
-    plan.primarySources.slice(0, 3).forEach((src) => {
-      handleOpenSearch(src);
-    });
+    const success = await siftActions.copyKeyword(plan.stepId, sourceId, kw);
+    if (success) {
+      setCopiedKw(kw);
+      setTimeout(() => setCopiedKw((prev) => (prev === kw ? null : prev)), 1800);
+    }
   };
 
   return (
@@ -100,18 +88,12 @@ export function PlatformPlanNode({
         selected={selected}
       >
         <div className="space-y-3 text-xs">
-          {/* Subtle utility bar */}
+          {/* Subtle utility bar - clean and unbloated */}
           <div className="flex items-center justify-between text-muted text-[11px] pb-0.5">
             <span>精选 3 处搜索源</span>
-            <button
-              type="button"
-              onClick={handleBatchOpen}
-              className="text-ink hover:text-accent font-medium flex items-center gap-1 transition-colors"
-              title="同时在新标签页打开前 3 个平台的精准搜索"
-            >
-              <span>一键全开</span>
-              <ExternalLink className="h-2.5 w-2.5" />
-            </button>
+            <span className="text-[10px] text-stone-400 font-sans">
+              已默认应用纯净设计检索
+            </span>
           </div>
 
           {/* Primary Sources List */}
@@ -122,7 +104,6 @@ export function PlatformPlanNode({
               const isSkipped = interaction.skipped;
               const clues =
                 source.inspirationClues || getPlatformInspirationClues(source.platform);
-              const cleanUrl = getCleanSearchUrl(source);
               const matchPct =
                 plan.systemOne?.matchPercentages?.[source.id] ??
                 (idx === 0 ? 98 : idx === 1 ? 94 : 90);
@@ -259,9 +240,13 @@ export function PlatformPlanNode({
                     <div className="mt-2 pt-2 border-t border-line/40 flex flex-wrap items-center gap-1.5">
                       {source.keywords.map((k, ki) => {
                         const displayKw = sanitizeKeyword(k.keyword, k.calibratedQuery);
-                        const effectiveCopyKw = k.calibratedQuery || displayKw;
+                        const effectiveCopyKw =
+                          k.advancedQuery || k.calibratedQuery || displayKw;
                         const isCopied =
-                          copiedKw === displayKw || copiedKw === effectiveCopyKw;
+                          copiedKw === displayKw ||
+                          copiedKw === effectiveCopyKw ||
+                          copiedKw === k.calibratedQuery ||
+                          copiedKw === k.keyword;
 
                         return (
                           <div
@@ -272,14 +257,21 @@ export function PlatformPlanNode({
                             <button
                               type="button"
                               onClick={() => handleCopy(source.id, effectiveCopyKw)}
-                              className="font-medium hover:text-accent flex items-center gap-1"
-                              title={`点击复制：${effectiveCopyKw}`}
+                              className="font-medium hover:text-accent flex items-center gap-1 cursor-pointer"
+                              title={
+                                isCopied
+                                  ? `已复制纯净搜索词：${effectiveCopyKw}`
+                                  : `点击复制纯净搜索词：${effectiveCopyKw}`
+                              }
                             >
                               <span>{displayKw}</span>
                               {isCopied ? (
-                                <Check className="h-2.5 w-2.5 text-emerald-600" />
+                                <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium font-sans">
+                                  <Check className="h-2.5 w-2.5" />
+                                  <span>已复制</span>
+                                </span>
                               ) : (
-                                <Copy className="h-2.5 w-2.5 opacity-20 group-hover:opacity-70" />
+                                <Copy className="h-2.5 w-2.5 opacity-30 group-hover:opacity-80" />
                               )}
                             </button>
                             <a
@@ -291,38 +283,17 @@ export function PlatformPlanNode({
                                   plan.stepId,
                                   source.id,
                                   "opened",
-                                  displayKw,
+                                  effectiveCopyKw,
                                 )
                               }
-                              className="text-stone-300 hover:text-ink p-0.5 inline-flex items-center cursor-pointer"
-                              title={`在 ${source.platform} 检索 “${displayKw}”`}
+                              className="text-stone-300 hover:text-ink p-0.5 inline-flex items-center cursor-pointer ml-0.5"
+                              title={`在 ${source.platform} 检索纯净案例（已过滤样机）`}
                             >
                               <Search className="h-2.5 w-2.5" />
                             </a>
                           </div>
                         );
                       })}
-
-                      {/* Anti-Mockup clean search link */}
-                      {cleanUrl && (
-                        <a
-                          href={cleanUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-stone-400 hover:text-ink font-mono underline ml-0.5"
-                          title="在新标签页打开去样机纯净搜索"
-                          onClick={() =>
-                            siftActions.recordSourceAction(
-                              plan.stepId,
-                              source.id,
-                              "opened",
-                              source.keywords[0]?.advancedQuery,
-                            )
-                          }
-                        >
-                          去样机 ↗
-                        </a>
-                      )}
                     </div>
                   )}
                 </div>

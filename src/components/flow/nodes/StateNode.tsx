@@ -4,8 +4,9 @@ import type { NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
+import { copyToClipboard } from "@/lib/clipboard";
 import { hasDirection } from "@/types/convergence";
-import { Check, Sparkles, ArrowRight, ShieldCheck, Ban, Palette } from "lucide-react";
+import { Check, Sparkles, ArrowRight, RefreshCw } from "lucide-react";
 
 export function StateNode({ selected }: NodeProps) {
   const {
@@ -21,12 +22,14 @@ export function StateNode({ selected }: NodeProps) {
   const [editing, setEditing] = useState(false);
   const [copiedKeyword, setCopiedKeyword] = useState<string | null>(null);
 
-  const handleCopyKeyword = (keyword: string) => {
-    void navigator.clipboard.writeText(keyword);
-    setCopiedKeyword(keyword);
-    setTimeout(() => {
-      setCopiedKeyword((prev) => (prev === keyword ? null : prev));
-    }, 1800);
+  const handleCopyKeyword = async (keyword: string) => {
+    const success = await copyToClipboard(keyword);
+    if (success) {
+      setCopiedKeyword(keyword);
+      setTimeout(() => {
+        setCopiedKeyword((prev) => (prev === keyword ? null : prev));
+      }, 1800);
+    }
   };
 
   if (!state) return null;
@@ -255,12 +258,24 @@ export function StateNode({ selected }: NodeProps) {
                 <span>{activeRequest ? "正在构思设计主题…" : "生成设计主题"}</span>
               </button>
             ) : (
-              <div className="flex items-center justify-between text-[11px] text-emerald-800 bg-emerald-50 rounded-lg px-2.5 py-1.5 border border-emerald-200">
-                <span className="flex items-center gap-1 font-medium">
-                  <Check className="h-3.5 w-3.5 text-emerald-600" />
-                  设计主题已就绪，于右侧选择
-                </span>
-                <ArrowRight className="h-3 w-3 text-emerald-600" />
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] text-emerald-800 bg-emerald-50 rounded-lg px-2.5 py-1.5 border border-emerald-200">
+                  <span className="flex items-center gap-1 font-medium">
+                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                    设计主题已就绪，于右侧选择
+                  </span>
+                  <ArrowRight className="h-3 w-3 text-emerald-600" />
+                </div>
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-center gap-1.5 text-[11px] font-medium text-stone-600 hover:text-ink bg-stone-50 hover:bg-stone-100/80 border border-line/70 rounded-lg py-1.5 transition-colors cursor-pointer"
+                  disabled={Boolean(activeRequest)}
+                  onClick={() => void siftActions.regenerateRoutes()}
+                  title="都不满意？重新推导一组互不相同的全新设计主题"
+                >
+                  <RefreshCw className={`h-3 w-3 text-stone-500 ${activeRequest ? "animate-spin" : ""}`} />
+                  <span>{activeRequest ? "正在构思全新主题…" : "换一批设计主题"}</span>
+                </button>
               </div>
             )}
           </div>

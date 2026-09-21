@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useSiftStore } from "@/lib/convergence-store";
 import { generateDossierMarkdown } from "@/lib/export-dossier";
+import { copyToClipboard } from "@/lib/clipboard";
 import {
   X,
   Copy,
@@ -52,14 +53,10 @@ export function DossierModal({
   );
 
   const handleCopy = async () => {
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(markdown);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2200);
-      }
-    } catch {
-      // Fallback
+    const success = await copyToClipboard(markdown);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
     }
   };
 

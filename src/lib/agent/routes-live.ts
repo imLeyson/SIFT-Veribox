@@ -359,7 +359,11 @@ export function normalizeLiveRoutesPayload(
 }
 
 export function liveRoutes(input: RoutesInput): Promise<unknown> {
-  return completeJson(SYSTEM, JSON.stringify(input), "none").then((payload) =>
+  let promptSystem = SYSTEM;
+  if (input.excludeThemeNames && input.excludeThemeNames.length > 0) {
+    promptSystem += `\n\n【用户更换主题指令】：用户对上一批设计主题（${input.excludeThemeNames.join("、")}）不满意，要求换一批全新的创意领地与设计主题！严禁与上述主题重复或雷同，必须推导截然不同的视觉手法与画面呈象！`;
+  }
+  return completeJson(promptSystem, JSON.stringify(input), "none").then((payload) =>
     normalizeLiveRoutesPayload(payload, input),
   );
 }

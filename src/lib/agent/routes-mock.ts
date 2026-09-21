@@ -8,7 +8,14 @@ function attachAlignmentScores(routes: Route[], recommendedId: string | null): R
   }));
 }
 
-export function getMockRoutes(rawBrief: string, state: DesignState): {
+export function getMockRoutes(
+  rawBrief: string,
+  state: DesignState,
+  options?: {
+    excludeThemeNames?: string[];
+    refreshIndex?: number;
+  },
+): {
   routes: Route[];
   recommendedRouteId: string | null;
 } {
@@ -20,8 +27,144 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
     ? `针对未决判断“${unknowns[0]}”`
     : "当前方向已收敛";
 
+  const isAlternate = Boolean(
+    (options?.refreshIndex && options.refreshIndex % 2 === 1) ||
+    (options?.excludeThemeNames && options.excludeThemeNames.length > 0),
+  );
+
   // 1. Packaging / Tea scenario
   if (briefLower.includes("茶") || briefLower.includes("罐装") || briefLower.includes("包装")) {
+    if (isAlternate) {
+      const altRoutes: Route[] = [
+        {
+          id: "route_tea_ink_alt",
+          themeName: "当代东方 · 墨色留白",
+          title: "【微浸润水墨与大开合留白】静谧东方意象",
+          visualSnapshot: "特种手工宣纸覆合硬盒，正面仅一抹淡雅水墨晕染与朱红小印，80% 呼吸感留白，墨韵自然散开，无多余商业装饰。",
+          startingPoint: "手工宣纸肌理与极简水墨意象",
+          focusDimension: "传统材质手工感与当代水墨排版",
+          coreProblem: "跳脱出传统茶包装厚重复杂的土气与老派，以极简艺术展品级的留白与局部淡雅水墨传递东方静心意境",
+          purpose: "以大开合的负空间留白、手工纸纤维肌理与极淡墨色晕染构建静谧高远的茶道视觉体验",
+          pros: "艺术格调极高，手工纸纤维在触觉上温润独特，80% 留白在杂乱货架中形成强烈的视觉静止感",
+          cons: "手工纸大面积留白极易受运输摩擦影响，必须在结构上设置内凹保护槽并把控油墨防擦边界",
+          feasibility: "medium",
+          timeframe: "1–2 天",
+          recommendedReason: `${unknownNote}，以当代东方水墨与手工纸触感切入，既能保有茶文化底蕴，又以极简留白彻底拉开与传统礼盒的档次差距。`,
+          steps: [
+            {
+              id: "step_tea_ink_1",
+              title: "手工宣纸纹理与复合打样",
+              question: "何种手工宣纸覆合在硬盒表面最能保持植物原纤维的微颗粒毛羽感？",
+              purpose: "确立兼具东方手工质感与硬挺挺度的材质基础",
+              deliverables: ["宣纸复合样张 3 组", "纤维漫反射质感样板"],
+              acceptanceCriteria: ["手感温润无塑料感", "折边处无爆裂毛边"],
+            },
+            {
+              id: "step_tea_ink_2",
+              title: "水墨晕染层次与朱印点睛",
+              question: "淡墨晕染与朱红小印的色彩比例如何在视线中形成瞬间聚焦？",
+              purpose: "打磨极简留白中的视觉焦点与东方神韵",
+              deliverables: ["水墨晕染灰度对比稿 3 款", "朱印位置与尺度规范"],
+              acceptanceCriteria: ["墨色过渡柔和无阶梯断层", "朱印成为 0.5 秒第一眼视觉落脚点"],
+            },
+            {
+              id: "step_tea_ink_3",
+              title: "单色小字与东方呼吸感排版",
+              question: "品名及茶产地小字如何在留白中维持疏朗透气的呼吸节奏？",
+              purpose: "构建现代东方版式的字距与负空间秩序",
+              deliverables: ["正面版式网格草稿", "字阶比例对照样张"],
+              acceptanceCriteria: ["信息清晰可辨", "负空间留白维持 75% 以上"],
+            },
+          ],
+        },
+        {
+          id: "route_tea_ceramic_alt",
+          themeName: "自然器物 · 纯粹几何",
+          title: "【天然陶土质感与几何切削】现代器物感",
+          visualSnapshot: "无涂层陶土质感纸张包裹八边形硬盒，单色哑光微小字符，呈现如桌面雕塑般的器物之美。",
+          startingPoint: "天然陶土砂砾触感与利落多边形",
+          focusDimension: "矿物微颗粒纸感与雕塑式器型",
+          coreProblem: "打破传统圆罐或普通方盒的平庸形态，将茶包装升维为摆在办公桌或茶席上的几何静物艺术品",
+          purpose: "通过几何切削面与砂砾矿物触感，创造具备仪式感与把玩价值的现代桌面器物包装",
+          pros: "几何切面光影立体感强烈，置于桌面宛若艺术器皿，极具现代精英办公或品茗仪式感",
+          cons: "多面切削结构对模切与包边精度要求极高，需严格控制折痕线与贴合公差",
+          feasibility: "medium",
+          timeframe: "1–2 天",
+          recommendedReason: null,
+          steps: [
+            {
+              id: "step_tea_cer_1",
+              title: "矿物砂砾感特种纸选型",
+              question: "何种含矿物微粒特种纸能最真实呈现自然陶土的粗粝微磨砂手感？",
+              purpose: "确立质朴器物的触觉基调",
+              deliverables: ["砂砾触感纸卡 3 款", "表面耐磨测试对照板"],
+              acceptanceCriteria: ["触感沉稳有分量感", "自然光下微颗粒清晰可见"],
+            },
+            {
+              id: "step_tea_cer_2",
+              title: "八面几何切削光影比例",
+              question: "切削棱角的倾斜角度如何在顶光下形成明暗交替的立体切面？",
+              purpose: "打造如雕塑般的桌面几何光影韵律",
+              deliverables: ["切面角度模型 2 款", "顶光与侧光阴影模拟图"],
+              acceptanceCriteria: ["切角过渡利落分明", "不同角度光照下立体感显著"],
+            },
+            {
+              id: "step_tea_cer_3",
+              title: "暗哑烫印与微刻字阶",
+              question: "暗哑古铜色烫金如何在粗粝纸面上实现极其锐利的微型字符？",
+              purpose: "打磨器物表面沉敛内秀的工艺细节",
+              deliverables: ["哑金烫印样张", "微型字符耐辨识打样"],
+              acceptanceCriteria: ["烫金无溢胶毛刺", "暗光下微显低调光泽"],
+            },
+          ],
+        },
+        {
+          id: "route_tea_black_alt",
+          themeName: "先锋消光 · 极黑触感",
+          title: "【炭黑触感与折光等高线】神秘深邃韵味",
+          visualSnapshot: "深黑炭质触感特种纸，正面同色系亮光透明折光勾勒茶山等高线，在光线流转下若隐若现，冷峻而先锋。",
+          startingPoint: "极黑炭质触感与同色系折光反差",
+          focusDimension: "全黑消光材质与局部光油反差",
+          coreProblem: "颠覆常规绿色、白色茶包装认知，以绝对先锋的纯黑美学打造极客与年轻群体的深邃神秘感",
+          purpose: "通过极致消光炭黑与局部微透明光油反差，展现黑夜茶山的静谧与现代先锋气质",
+          pros: "在所有明亮彩色包装中形成惊人的黑色磁场，光线转动时的反光细节极具探索趣味",
+          cons: "深色哑光纸张易留指纹与微小划痕，必须选配高抗刮手感涂层",
+          feasibility: "high",
+          timeframe: "0.5–1 天",
+          recommendedReason: null,
+          steps: [
+            {
+              id: "step_tea_blk_1",
+              title: "纯黑炭质触感纸与防刮测试",
+              question: "何种纯黑纸浆在达到至暗黑度的同时具备极高耐磨防指纹性能？",
+              purpose: "确立至黑纯净基底与长效耐久度",
+              deliverables: ["3 款炭黑特种纸对比样卡", "抗指纹耐擦拭对照表"],
+              acceptanceCriteria: ["黑度饱和无偏红偏蓝", "正常触碰不易留明显汗渍印记"],
+            },
+            {
+              id: "step_tea_blk_2",
+              title: "同色系亮光油等高线微反差",
+              question: "茶山等高线局部光油厚度如何设定才能在转角光线下呈现最佳流转折光？",
+              purpose: "打造深邃幽暗中流动若隐若现的触觉暗纹",
+              deliverables: ["不同厚度光油打样 3 款", "动态视线反光模拟稿"],
+              acceptanceCriteria: ["正面平视低调克制", "斜侧光下等高线层次分明清晰"],
+            },
+            {
+              id: "step_tea_blk_3",
+              title: "银白冷冽字标视距校准",
+              question: "纯黑底上的微细银灰文字如何排版才能保证在昏暗环境下清晰瞬读？",
+              purpose: "完成高冷黑白对比与信息穿透力校准",
+              deliverables: ["微细银字排版稿", "昏暗光线视距辨识对照"],
+              acceptanceCriteria: ["0.5 米内文字锐利清晰", "无散光与溢色现象"],
+            },
+          ],
+        },
+      ];
+      return {
+        routes: attachAlignmentScores(altRoutes, "route_tea_ink_alt"),
+        recommendedRouteId: "route_tea_ink_alt",
+      };
+    }
     const routes: Route[] = [
       {
         id: "route_tea_material",
@@ -420,6 +563,138 @@ export function getMockRoutes(rawBrief: string, state: DesignState): {
   }
 
   // 4. Generic / Brand / Visual scenario
+  if (isAlternate) {
+    const altRoutes: Route[] = [
+      {
+        id: "route_gen_paper_alt",
+        themeName: "素雅原质 · 纸感微雕",
+        title: "【特种原质材料与微压凹】极端克制美学",
+        visualSnapshot: "大面积纯净材质肌理留白，正面单色侧光微浅压凹，无多余装饰，依靠自然光影产生如雕塑般的静谧耐看度。",
+        startingPoint: "特种材料原生肌理与无墨微工艺",
+        focusDimension: "实体材料触感与光影微雕",
+        coreProblem: "放弃所有花哨的多彩印刷与繁复图案，将视觉品质完全建立在材料的高级触感与阴影明暗上",
+        purpose: "以极端克制的材料原生美感与微工艺细节，营造经得起反复凝视的沉静高级体验",
+        pros: "在复杂嘈杂的环境中形成独特的‘视觉静默场’，触感极具高级记忆点",
+        cons: "对材料白度、肌理细腻度与压凹深度控制极高，缺乏工艺支撑容易显得空洞",
+        feasibility: "high",
+        timeframe: "0.5–1 天",
+        recommendedReason: `${unknownNote}，从原生纸感与微压凹切入，能用最低沟通成本传递纯粹高级感。`,
+        steps: [
+          {
+            id: "step_gen_p_1",
+            title: "材质肌理与白度漫反射筛选",
+            question: "何种特种材质表面在自然光下呈现最柔和舒适的微颗粒漫反射？",
+            purpose: "确立全案第一眼触觉与视觉基底",
+            deliverables: ["特种材料对照板", "光影反射测试样张"],
+            acceptanceCriteria: ["无刺眼塑料反光", "手感温润自然"],
+          },
+          {
+            id: "step_gen_p_2",
+            title: "极简文字骨架与负空间留白",
+            question: "核心信息在画面中如何排布以保持 70% 以上呼吸感留白？",
+            purpose: "构建从容开阔的版面视觉秩序",
+            deliverables: ["版式网格规范稿", "中西文字阶层级对照"],
+            acceptanceCriteria: ["留白充盈舒展", "信息层级分明秒读"],
+          },
+          {
+            id: "step_gen_p_3",
+            title: "侧光微浅压凹阴影深度校准",
+            question: "在常规侧光照射下，压凹边缘形成的微阴影是否清晰立体？",
+            purpose: "验证微工艺的视觉细节质感",
+            deliverables: ["0.3mm与0.5mm压凹对比稿", "侧光阴影测试图"],
+            acceptanceCriteria: ["轮廓锐利无毛边", "阴影微弱而具雕塑感"],
+          },
+        ],
+      },
+      {
+        id: "route_gen_grid_alt",
+        themeName: "秩序档案 · 理性骨架",
+        title: "【严谨模块网格与中西字阶】档案式专业信息",
+        visualSnapshot: "严谨双栏瑞士网格排版，中西文字阶 2.5 倍对比，冷冽黑白字符清晰罗列关键数据与属性，呈现如权威档案般的可信度。",
+        startingPoint: "模块化网格与严格字阶对照",
+        focusDimension: "双栏网格与微字阶层级",
+        coreProblem: "将繁复信息提炼为严谨理性的视觉骨架，把说明性内容转化为现代档案美感",
+        purpose: "通过极端严谨的信息排版与克制色彩，呈现高度专业且耐看的智性美感",
+        pros: "信息层级一目了然，阅读效率极高，极具专业权威性与现代干练气质",
+        cons: "中西文字标灰度若未调匀，容易流于冰冷生硬的表格感",
+        feasibility: "high",
+        timeframe: "0.5–1 天",
+        recommendedReason: null,
+        steps: [
+          {
+            id: "step_gen_g_1",
+            title: "模块化网格与信息骨架设定",
+            question: "核心内容如何划分为清晰的主次信息区块？",
+            purpose: "确立几何网格与留白率",
+            deliverables: ["双栏网格规范稿", "核心信息层级样张"],
+            acceptanceCriteria: ["核心信息 0.5 秒内识别", "留白比例保持 50% 以上"],
+          },
+          {
+            id: "step_gen_g_2",
+            title: "中西文字阶与灰度平衡",
+            question: "现代无衬线西文与中文如何搭配才显平衡协调？",
+            purpose: "打磨兼具国际现代感与稳重感的字型组合",
+            deliverables: ["中西文字体搭配对照表", "字阶比例规范"],
+            acceptanceCriteria: ["视觉重心齐平", "微型小字清晰可读"],
+          },
+          {
+            id: "step_gen_g_3",
+            title: "信息视线流向与视觉停顿",
+            question: "用户的视线在网格中如何自然从上至下流畅滑动？",
+            purpose: "校准阅读动线与版面韵律",
+            deliverables: ["视线动线热力分析图", "最终排版效果图"],
+            acceptanceCriteria: ["无阅读迷航感", "各模块呼吸感匀称"],
+          },
+        ],
+      },
+      {
+        id: "route_gen_hammer_alt",
+        themeName: "先锋符号 · 瞬间记忆",
+        title: "【极简高反差几何符号】秒级识别视觉锤",
+        visualSnapshot: "提炼极简且穿透力极强的单一几何视觉符号，高反差黑白对比，在 3 米外一眼识别，过目难忘。",
+        startingPoint: "极简几何符号与瞬间视觉穿透",
+        focusDimension: "符号化图形与高对比色彩",
+        coreProblem: "在众多同质化设计中，用最凝练的单一符号击穿用户注意力，构建秒级记忆资产",
+        purpose: "以高反差对比与利落几何形态，打造最具识别度与传播力的现代先锋视觉",
+        pros: "穿透力极强，即便在缩略图或远距离下也能瞬间锁定目光，辨识度极高",
+        cons: "图形若缺乏内涵支撑，容易显得空泛或过于锐利，需兼顾审美深度",
+        feasibility: "medium",
+        timeframe: "1–2 天",
+        recommendedReason: null,
+        steps: [
+          {
+            id: "step_gen_h_1",
+            title: "核心符号形态提炼与几何化",
+            question: "如何用最少线条提炼出辨识度极高的几何符号？",
+            purpose: "打造标志性几何骨架",
+            deliverables: ["符号形态手稿 5 款", "正负形对比测试板"],
+            acceptanceCriteria: ["形态极简有力", "在 16px 下依然清晰可辨"],
+          },
+          {
+            id: "step_gen_h_2",
+            title: "高反差对比度与视距穿透力",
+            question: "在 3 米开外与复杂背景下，符号识别率如何最大化？",
+            purpose: "验证强记忆符号的视觉穿透效果",
+            deliverables: ["视距辨识对照图", "高反差配色方案 3 组"],
+            acceptanceCriteria: ["0.3 秒内瞬间锁定目光", "黑白反差清晰锐利"],
+          },
+          {
+            id: "step_gen_h_3",
+            title: "全场景跨介质应用延展",
+            question: "在实体物料、移动端屏幕与社媒头像中，符号张力是否统一？",
+            purpose: "校准全链路视觉一致性",
+            deliverables: ["跨场景延展效果图", "规范应用手册草案"],
+            acceptanceCriteria: ["各画幅下视觉重心稳定", "符号记忆点高度统一"],
+          },
+        ],
+      },
+    ];
+    return {
+      routes: attachAlignmentScores(altRoutes, "route_gen_paper_alt"),
+      recommendedRouteId: "route_gen_paper_alt",
+    };
+  }
+
   const routes: Route[] = [
     {
       id: "route_gen_core",

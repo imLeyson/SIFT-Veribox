@@ -21,7 +21,10 @@ export async function runRoutesGeneration(
     // Model failure keeps current direction state, does not fallback to Mock
     rawPayload = await liveRoutes(input);
   } else {
-    const mock = getMockRoutes(input.rawBrief, input.state);
+    const mock = getMockRoutes(input.rawBrief, input.state, {
+      excludeThemeNames: input.excludeThemeNames,
+      refreshIndex: input.refreshIndex,
+    });
     rawPayload = {
       sessionId: input.sessionId,
       requestId: input.requestId,
