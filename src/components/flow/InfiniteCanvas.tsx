@@ -221,7 +221,7 @@ function FlowInner({ onOpenDossier }: { onOpenDossier?: () => void }) {
         color="#d2c8ba"
       />
       <Controls showInteractive={false} position="bottom-left" />
-      <Panel position="top-left">
+      <Panel position="bottom-center" className="!mb-6 z-20">
         <CanvasNavDock onOpenDossier={onOpenDossier ?? (() => {})} />
       </Panel>
     </ReactFlow>

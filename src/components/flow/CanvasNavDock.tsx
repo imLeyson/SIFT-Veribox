@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useReactFlow } from "@xyflow/react";
 import { useSiftStore } from "@/lib/convergence-store";
 import {
@@ -10,6 +11,8 @@ import {
   Search,
   Maximize2,
   FileDown,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 export function CanvasNavDock({
@@ -26,9 +29,27 @@ export function CanvasNavDock({
   const platformPlans = useSiftStore((s) => s.platformPlans);
 
   const isConfirmed = useSiftStore((s) => s.state?.status === "confirmed");
+  const hasStarted = hasState || routes.length > 0;
+  const [userCollapsed, setUserCollapsed] = useState<boolean | null>(null);
+  const isCollapsed = userCollapsed ?? !hasStarted;
+
+  if (isCollapsed) {
+    return (
+      <button
+        type="button"
+        onClick={() => setUserCollapsed(false)}
+        className="flex items-center gap-1.5 rounded-full border border-line/80 bg-cream/90 px-3 py-1.5 text-xs font-medium text-stone-600 shadow-md backdrop-blur-md hover:bg-white hover:text-ink transition-all cursor-pointer select-none"
+        title="展开流程节点导航"
+      >
+        <Compass className="h-3.5 w-3.5 text-accent" />
+        <span>流程导航</span>
+        <ChevronUp className="h-3 w-3 text-stone-400" />
+      </button>
+    );
+  }
 
   return (
-    <nav aria-label="流程节点导航" className="flex items-center gap-1 rounded-2xl border border-line/80 bg-cream/90 px-2 py-1.5 shadow-lg backdrop-blur-md">
+    <nav aria-label="流程节点导航" className="flex items-center gap-1 rounded-2xl border border-line/80 bg-cream/95 px-2 py-1.5 shadow-lg backdrop-blur-md max-w-[calc(100vw-2rem)] overflow-x-auto transition-all">
       {/* 00 Brief */}
       <button
         type="button"
@@ -206,24 +227,36 @@ export function CanvasNavDock({
       {/* Fit All Overview */}
       <button
         type="button"
-        title="全局鸟瞰"
+        title="全局鸟瞰 (适应全屏)"
         onClick={() =>
           void fitView({ padding: 0.2, maxZoom: 0.95, duration: 350 })
         }
-        className="flex items-center gap-1 rounded-xl p-1.5 text-xs text-muted transition-colors hover:bg-white/80 hover:text-ink"
+        className="flex items-center gap-1 rounded-xl p-1.5 text-xs text-muted transition-colors hover:bg-white/80 hover:text-ink cursor-pointer flex-shrink-0"
       >
         <Maximize2 className="h-3.5 w-3.5" />
       </button>
 
-      {/* Export Dossier Shortcut */}
+      {/* Export Dossier Shortcut (only when proposal available) */}
+      {(hasState || routes.length > 0) && (
+        <button
+          type="button"
+          title="导出设计探索全案简报"
+          onClick={onOpenDossier}
+          className="flex items-center gap-1 rounded-xl bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent transition-all hover:bg-accent hover:text-white cursor-pointer flex-shrink-0"
+        >
+          <FileDown className="h-3.5 w-3.5" />
+          <span>导出提案</span>
+        </button>
+      )}
+
+      {/* Collapse Toggle */}
       <button
         type="button"
-        title="导出设计探索全案简报"
-        onClick={onOpenDossier}
-        className="flex items-center gap-1 rounded-xl bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent transition-all hover:bg-accent hover:text-white"
+        title="收起导航栏"
+        onClick={() => setUserCollapsed(true)}
+        className="flex items-center rounded-xl p-1.5 text-xs text-stone-400 hover:text-ink hover:bg-white/80 transition-colors cursor-pointer flex-shrink-0"
       >
-        <FileDown className="h-3.5 w-3.5" />
-        <span>导出提案</span>
+        <ChevronDown className="h-3.5 w-3.5" />
       </button>
     </nav>
   );
