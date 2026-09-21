@@ -123,7 +123,7 @@ export function CanvasNavDock({
       {/* 05 Steps */}
       <button
         type="button"
-        title="跳转到 05 步骤推进"
+        title="跳转到 05 视觉视点"
         disabled={!selectedRouteId}
         onClick={() =>
           void fitView({
@@ -144,7 +144,7 @@ export function CanvasNavDock({
             selectedRouteId ? "text-emerald-600" : "text-stone-300"
           }`}
         />
-        <span>05 步骤</span>
+        <span>05 视点</span>
       </button>
 
       <span className="text-[10px] text-stone-300">›</span>
@@ -154,9 +154,9 @@ export function CanvasNavDock({
         type="button"
         title={
           platformPlans.length > 0
-            ? "跳转到 07 搜索方案"
+            ? "跳转到 07 灵感搜索"
             : selectedRouteId
-              ? "查看步骤并生成搜索方案"
+              ? "查看视点并生成灵感搜索"
               : "暂无搜索方案"
         }
         disabled={platformPlans.length === 0 && !selectedRouteId}

@@ -9,6 +9,11 @@ import type { PlatformPlan, PlatformSource } from "@/types/routes";
 import { buildPlatformSearchUrl } from "@/lib/agent/platform-registry";
 import { getPlatformInspirationClues } from "@/lib/agent/system-one";
 import {
+  getBriefAnchor,
+  getConvergenceAnchor,
+  toInspirationCopy,
+} from "@/lib/exploration-copy";
+import {
   ExternalLink,
   Copy,
   Check,
@@ -57,6 +62,8 @@ export function PlatformPlanNode({
   const routes = useSiftStore((s) => s.routes);
   const selectedRouteId = useSiftStore((s) => s.selectedRouteId);
   const sourceInteractions = useSiftStore((s) => s.sourceInteractions);
+  const rawBrief = useSiftStore((s) => s.rawBrief);
+  const state = useSiftStore((s) => s.state);
 
   const [replacingSourceId, setReplacingSourceId] = useState<string | null>(null);
   const [copiedKw, setCopiedKw] = useState<string | null>(null);
@@ -65,6 +72,8 @@ export function PlatformPlanNode({
   const route = routes.find((r) => r.id === plan.routeId || r.id === selectedRouteId);
   const step = route?.steps.find((st) => st.id === plan.stepId);
   const stepTitle = step ? step.title : "探索搜索方案";
+  const briefAnchor = getBriefAnchor(rawBrief, state?.brief.goal);
+  const convergenceAnchor = getConvergenceAnchor(state);
 
   const handleCopy = async (sourceId: string, kw: string) => {
     const success = await siftActions.copyKeyword(plan.stepId, sourceId, kw);
@@ -79,7 +88,7 @@ export function PlatformPlanNode({
       <NodeShell
         stage="07"
         kicker={`灵感方案 · ${stepTitle}`}
-        title="推荐搜索方案"
+        title="为视点找图"
         badge={
           <span className="text-[10px] font-mono text-stone-400">
             System 1 · {plan.systemOne?.latencyMs ?? 18}ms
@@ -88,11 +97,24 @@ export function PlatformPlanNode({
         selected={selected}
       >
         <div className="space-y-3 text-xs">
-          {/* Subtle utility bar - clean and unbloated */}
+          <div className="rounded-xl border border-amber-200/80 bg-amber-50/55 p-3 space-y-2">
+            <div className="flex items-center justify-between text-[10px] font-semibold text-amber-950">
+              <span>这次搜索要收集什么</span>
+              <span className="font-mono text-[9px] text-amber-700">VIEWPOINT → REFERENCES</span>
+            </div>
+            <p className="text-[11px] leading-relaxed text-amber-950/80">
+              围绕「{toInspirationCopy(step?.question || stepTitle)}」收集视觉证据，只做灵感对照，不进入执行判断。
+            </p>
+            <div className="grid gap-1 text-[10px] leading-relaxed text-amber-950/70">
+              <p><span className="font-semibold text-amber-950">Brief：</span>{briefAnchor}</p>
+              <p><span className="font-semibold text-amber-950">收敛线索：</span>{convergenceAnchor}</p>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between text-muted text-[11px] pb-0.5">
-            <span>精选 3 处搜索源</span>
+            <span>精选 3 处灵感来源</span>
             <span className="text-[10px] text-stone-400 font-sans">
-              已默认应用纯净设计检索
+              已过滤样机与模板噪音
             </span>
           </div>
 
@@ -104,6 +126,8 @@ export function PlatformPlanNode({
               const isSkipped = interaction.skipped;
               const clues =
                 source.inspirationClues || getPlatformInspirationClues(source.platform);
+              const sourceReason = toInspirationCopy(source.reason);
+              const roleTag = toInspirationCopy(source.roleTag);
               const matchPct =
                 plan.systemOne?.matchPercentages?.[source.id] ??
                 (idx === 0 ? 98 : idx === 1 ? 94 : 90);
@@ -127,7 +151,7 @@ export function PlatformPlanNode({
                         {source.platform}
                       </span>
                       <span className="text-[11px] text-muted truncate">
-                        {source.roleTag}
+                        {roleTag}
                       </span>
                     </div>
 
@@ -203,10 +227,10 @@ export function PlatformPlanNode({
                             }}
                           >
                             <span className="font-semibold text-ink">
-                              {alt.platform} · {alt.roleTag}
+                              {alt.platform} · {toInspirationCopy(alt.roleTag)}
                             </span>
                             <span className="text-[10px] text-muted truncate max-w-[120px]">
-                              {alt.reason}
+                              {toInspirationCopy(alt.reason)}
                             </span>
                           </button>
                         ))}
@@ -216,7 +240,7 @@ export function PlatformPlanNode({
 
                   {/* 1-Line Clean Reason */}
                   <p className="mt-1 text-[11px] text-muted leading-relaxed">
-                    {source.reason}
+                    {sourceReason}
                   </p>
 
                   {/* Editorial Inspection Clues */}
@@ -224,12 +248,12 @@ export function PlatformPlanNode({
                     <div className="mt-2 border-l border-line/90 pl-2 text-[11px] text-stone-500 space-y-0.5">
                       <p className="leading-snug">
                         <span className="font-medium text-ink">看点：</span>
-                        {clues.lookFor}
+                        {toInspirationCopy(clues.lookFor)}
                       </p>
                       {clues.avoid && (
                         <p className="leading-snug text-stone-400">
                           <span>避开：</span>
-                          {clues.avoid}
+                          {toInspirationCopy(clues.avoid)}
                         </p>
                       )}
                     </div>
@@ -239,7 +263,9 @@ export function PlatformPlanNode({
                   {!isSkipped && (
                     <div className="mt-2 pt-2 border-t border-line/40 flex flex-wrap items-center gap-1.5">
                       {source.keywords.map((k, ki) => {
-                        const displayKw = sanitizeKeyword(k.keyword, k.calibratedQuery);
+                        const displayKw = toInspirationCopy(
+                          sanitizeKeyword(k.keyword, k.calibratedQuery),
+                        );
                         const effectiveCopyKw =
                           k.advancedQuery || k.calibratedQuery || displayKw;
                         const isCopied =
@@ -252,7 +278,7 @@ export function PlatformPlanNode({
                           <div
                             key={ki}
                             className="group inline-flex items-center gap-1 rounded-md border border-line/80 bg-stone-50/60 hover:bg-white hover:border-ink/50 px-2 py-0.5 text-[11px] text-ink transition-all"
-                            title={k.meaning || displayKw}
+                            title={toInspirationCopy(k.meaning || displayKw)}
                           >
                             <button
                               type="button"
@@ -329,7 +355,7 @@ export function PlatformPlanNode({
                       >
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className="font-medium text-ink truncate">
-                            {alt.platform} · {alt.roleTag}
+                            {alt.platform} · {toInspirationCopy(alt.roleTag)}
                           </span>
                           <span className="text-[9px] font-mono text-stone-400 shrink-0">
                             {altMatch}%

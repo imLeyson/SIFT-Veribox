@@ -6,6 +6,11 @@ import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { cleanStepLabel, type Route } from "@/types/routes";
 import {
+  getBriefAnchor,
+  getConvergenceAnchor,
+  toInspirationCopy,
+} from "@/lib/exploration-copy";
+import {
   Sparkles,
   Check,
   ArrowRight,
@@ -76,6 +81,8 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
   const selectedRouteId = useSiftStore((s) => s.selectedRouteId);
   const recommendedRouteId = useSiftStore((s) => s.recommendedRouteId);
   const activeRequest = useSiftStore((s) => s.activeRequest);
+  const rawBrief = useSiftStore((s) => s.rawBrief);
+  const state = useSiftStore((s) => s.state);
 
   const isSelected = selectedRouteId === route.id;
   const hasSelection = Boolean(selectedRouteId);
@@ -102,11 +109,13 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
   const rawSubtitle = route.title.replace(/【.*?】/, "").trim();
   const visualHook = rawSubtitle && rawSubtitle !== heroTitle ? rawSubtitle : route.focusDimension;
 
-  const snapshotText = cleanText(route.visualSnapshot || route.purpose);
-  const recReason = cleanText(route.recommendedReason);
-  const coreProblemText = cleanText(route.coreProblem);
-  const prosText = cleanText(route.pros);
-  const consText = cleanText(route.cons);
+  const snapshotText = toInspirationCopy(cleanText(route.visualSnapshot || route.purpose));
+  const recReason = toInspirationCopy(cleanText(route.recommendedReason));
+  const coreProblemText = toInspirationCopy(cleanText(route.coreProblem));
+  const prosText = toInspirationCopy(cleanText(route.pros));
+  const consText = toInspirationCopy(cleanText(route.cons));
+  const briefAnchor = getBriefAnchor(rawBrief, state?.brief.goal);
+  const convergenceAnchor = getConvergenceAnchor(state);
 
   const territory = getTerritoryInfo(index, route.title, route.themeName);
   const TerritoryIcon = territory.icon;
@@ -140,7 +149,7 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
       >
         <div className="space-y-3 text-xs">
           {/* Territory Archetype Badge & Feasibility */}
-          <div className="flex items-center justify-between gap-1.5 text-[10.5px]">
+            <div className="flex items-center justify-between gap-1.5 text-[10.5px]">
             <span
               className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium border ${territory.badgeClass}`}
             >
@@ -148,22 +157,29 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
               <span>{territory.tag}</span>
             </span>
 
-            <div className="flex items-center gap-1 text-stone-400 font-mono text-[10px]">
-              {route.timeframe && <span>{route.timeframe}</span>}
-              {route.feasibility && (
-                <span>
-                  · {route.feasibility === "high" ? "稳妥落地" : route.feasibility === "medium" ? "需打样" : "探索性"}
-                </span>
-              )}
+            <span className="rounded-md bg-white/80 px-2 py-0.5 text-[10px] text-stone-500 border border-line/60">
+              开放式视觉探索
+            </span>
+          </div>
+
+          {/* Brief → convergence → theme trace: make the source of this route explicit. */}
+          <div className="rounded-xl border border-indigo-200/70 bg-indigo-50/45 p-3 space-y-2">
+            <div className="flex items-center justify-between text-[10px] font-semibold text-indigo-900">
+              <span>这条主题从哪里来</span>
+              <span className="font-mono text-[9px] text-indigo-500">BRIEF → DIRECTION → THEME</span>
+            </div>
+            <div className="grid gap-1.5 text-[10.5px] text-indigo-950/80">
+              <p><span className="font-semibold text-indigo-900">Brief：</span>{briefAnchor}</p>
+              <p><span className="font-semibold text-indigo-900">收敛线索：</span>{convergenceAnchor}</p>
             </div>
           </div>
 
-          {/* Hero: 画面速览（实物/界面长什么样，让人一眼看懂设计） */}
+          {/* Hero: invite a visual imagination, not a production decision. */}
           <div className="rounded-xl border border-stone-200/90 bg-stone-50/60 p-3 shadow-xs space-y-1.5">
             <div className="flex items-center justify-between text-[10.5px] font-bold text-ink">
               <span className="flex items-center gap-1 text-accent">
                 <Sparkles className="h-3 w-3 text-amber-500" />
-                画面速览 · 实物呈象
+                视觉想象 · 灵感画面
               </span>
               <span className="text-[9px] font-mono text-stone-400 uppercase tracking-wider">
                 VISUAL SNAPSHOT
@@ -199,8 +215,8 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
               </div>
             )}
             <div className="flex items-start gap-2">
-              <span className="shrink-0 px-1.5 py-0.5 rounded bg-stone-100 font-medium text-[10px] text-stone-600">
-                设计取舍
+                <span className="shrink-0 px-1.5 py-0.5 rounded bg-stone-100 font-medium text-[10px] text-stone-600">
+                  探索张力
               </span>
               <span className="text-stone-600 leading-snug">{coreProblemText}</span>
             </div>
@@ -211,14 +227,14 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
             <div className="rounded-lg bg-white/80 p-2.5 border border-line/70 space-y-0.5">
               <span className="font-semibold text-emerald-800 flex items-center gap-1 text-[10.5px]">
                 <Lightbulb className="h-3 w-3 text-emerald-600" />
-                视觉亮点
+                可收集的视觉线索
               </span>
               <p className="leading-relaxed text-stone-700 text-[11px]">{prosText}</p>
             </div>
             <div className="rounded-lg bg-white/80 p-2.5 border border-line/70 space-y-0.5">
               <span className="font-semibold text-amber-800 flex items-center gap-1 text-[10.5px]">
                 <ShieldAlert className="h-3 w-3 text-amber-600" />
-                防跑偏提示
+                保持主题纯度
               </span>
               <p className="leading-relaxed text-stone-700 text-[11px]">{consText}</p>
             </div>
@@ -227,7 +243,7 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
           {/* Visual Inspiration Angles */}
           <div className="pt-2 border-t border-line/60 space-y-1.5">
             <div className="flex items-center justify-between text-[10px] font-semibold text-stone-500 uppercase tracking-wider">
-              <span>灵感切入视点</span>
+              <span>由主题继续追问</span>
               <span className="font-mono text-[9px] text-stone-400">INSPIRATION ANGLES</span>
             </div>
             <div className="flex flex-wrap gap-1.5">

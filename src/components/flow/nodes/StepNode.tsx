@@ -7,6 +7,11 @@ import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { cleanStepLabel } from "@/types/routes";
 import {
+  getBriefAnchor,
+  getConvergenceAnchor,
+  toInspirationCopy,
+} from "@/lib/exploration-copy";
+import {
   Sparkles,
   ArrowRight,
   Plus,
@@ -51,6 +56,8 @@ export function StepNode({ selected }: NodeProps) {
   const addStepNote = useSiftStore((s) => s.addStepNote);
   const removeStepNote = useSiftStore((s) => s.removeStepNote);
   const activeRequest = useSiftStore((s) => s.activeRequest);
+  const rawBrief = useSiftStore((s) => s.rawBrief);
+  const state = useSiftStore((s) => s.state);
 
   const [noteInput, setNoteInput] = useState("");
 
@@ -64,6 +71,8 @@ export function StepNode({ selected }: NodeProps) {
   );
   const hasNextStep = activeIdx < route.steps.length - 1;
   const currentNotes = stepNotes[currentStep.id] ?? [];
+  const briefAnchor = getBriefAnchor(rawBrief, state?.brief.goal);
+  const convergenceAnchor = getConvergenceAnchor(state);
 
   const handleAddNote = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +90,17 @@ export function StepNode({ selected }: NodeProps) {
         selected={selected}
       >
         <div className="space-y-3.5 text-xs">
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 space-y-2">
+            <div className="flex items-center justify-between text-[10px] font-semibold text-zinc-700">
+              <span>把主题变成一个观察问题</span>
+              <span className="font-mono text-[9px] text-zinc-400">THEME → VIEWPOINT</span>
+            </div>
+            <div className="grid gap-1 text-[10.5px] leading-relaxed text-zinc-600">
+              <p><span className="font-semibold text-zinc-800">Brief：</span>{briefAnchor}</p>
+              <p><span className="font-semibold text-zinc-800">已收敛：</span>{convergenceAnchor}</p>
+            </div>
+          </div>
+
           {/* Step Timeline Indicator - All tabs fit evenly, 100% visible, no cut-off */}
           <div className="flex items-center gap-1.5 w-full">
             {route.steps.map((st, i) => {
@@ -118,14 +138,14 @@ export function StepNode({ selected }: NodeProps) {
                 <span className="font-mono text-[9px] text-stone-400">VISUAL FOCUS</span>
               </div>
               <p className="text-xs sm:text-[13px] font-semibold text-ink leading-snug">
-                {currentStep.question}
+                {toInspirationCopy(currentStep.question)}
               </p>
             </div>
 
             {currentStep.purpose && (
               <div className="pt-2 border-t border-line/40 text-[11px] text-stone-600 leading-relaxed">
-                <span className="font-medium text-stone-700">视觉意图：</span>
-                {currentStep.purpose}
+                <span className="font-medium text-stone-700">这一步要观察：</span>
+                {toInspirationCopy(currentStep.purpose)}
               </div>
             )}
           </div>
@@ -142,7 +162,7 @@ export function StepNode({ selected }: NodeProps) {
                 }
               >
                 <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-                <span className="font-medium">推荐搜索方案 (07) →</span>
+                <span className="font-medium">为这个视点找灵感 (07) →</span>
               </button>
             ) : (
               hasNextStep && (
