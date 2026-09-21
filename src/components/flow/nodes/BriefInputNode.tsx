@@ -290,10 +290,16 @@ export function BriefInputNode({ selected }: NodeProps) {
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <button
                 type="submit"
-                className="btn-primary w-full text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                className="btn-primary w-full text-xs flex items-center justify-center gap-1.5 cursor-pointer py-2.5 shadow-sm"
                 disabled={Boolean(activeRequest) || !rawBrief.trim()}
+                title="推荐：通过 1–2 个具象视觉问题，启发并精准对齐设计风格"
               >
-                <span>{activeRequest ? "正在分析…" : "对齐视觉取舍"}</span>
+                <span>{activeRequest ? "正在分析…" : "开始视觉对齐"}</span>
+                {!activeRequest && (
+                  <span className="rounded bg-amber-400/25 px-1 py-0.5 text-[9px] font-semibold text-amber-200">
+                    推荐
+                  </span>
+                )}
                 {!activeRequest && rawBrief.trim() && (
                   <kbd className="hidden sm:inline-block rounded bg-white/20 px-1 py-0.2 text-[10px] font-sans opacity-80">
                     ⌘↵
@@ -302,12 +308,17 @@ export function BriefInputNode({ selected }: NodeProps) {
               </button>
               <button
                 type="button"
-                className="btn-ghost w-full text-xs cursor-pointer"
+                className="btn-ghost w-full text-xs cursor-pointer py-2.5 border border-line/80 text-stone-600 hover:text-ink hover:bg-stone-50 transition-colors"
                 disabled={Boolean(activeRequest) || !rawBrief.trim()}
                 onClick={() => void siftActions.fastStart()}
+                title="跳过问答：AI 将基于通用假设直接生成设计方向"
               >
-                直接推导收敛
+                跳过提问 · 极速生成
               </button>
+            </div>
+            <div className="mt-1.5 flex items-center justify-between px-1 text-[10px] text-stone-400">
+              <span>✦ 推荐：启发式提问锁定风格</span>
+              <span>AI 自主假设 ↗</span>
             </div>
             <div className="mt-3.5 border-t border-line/60 pt-2.5">
               <p className="text-[11px] font-medium text-stone-500 mb-1.5">
