@@ -22,7 +22,7 @@ export const PLATFORM_REGISTRY: Record<string, PlatformDefinition> = {
     id: "dieline",
     name: "The Dieline",
     roleTag: "全球包装与造型标杆",
-    description: "全球商业包装设计标杆、前沿瓶型结构、环保包材与落地方案",
+    description: "全球商业包装设计标杆、前沿瓶型结构、环保包材与设计方案",
     urlTemplate: "https://thedieline.com/search/{query}",
     category: "packaging",
   },
@@ -48,7 +48,7 @@ export const PLATFORM_REGISTRY: Record<string, PlatformDefinition> = {
     id: "fontsinuse",
     name: "Fonts In Use",
     roleTag: "真实排印与字阶档案",
-    description: "全球真实商业落地中的中西字体搭配、版式字阶、网格骨架与排印学范例",
+    description: "全球真实商业设计中的中西字体搭配、版式字阶、网格骨架与排印学范例",
     urlTemplate: "https://fontsinuse.com/search?terms={query}",
     category: "typography",
   },
@@ -66,7 +66,7 @@ export const PLATFORM_REGISTRY: Record<string, PlatformDefinition> = {
     id: "behance",
     name: "Behance",
     roleTag: "完整全案与系统推演",
-    description: "成套品牌案、系统化落地案例、设计推演过程、工艺打样与完整视觉识别",
+    description: "成套品牌案、系统化设计案例、设计推演过程、工艺实拍与完整视觉识别",
     urlTemplate: "https://www.behance.net/search/projects?search={query}",
     category: "branding",
   },
@@ -74,7 +74,7 @@ export const PLATFORM_REGISTRY: Record<string, PlatformDefinition> = {
     id: "brandnew",
     name: "Brand New",
     roleTag: "品牌重塑与视觉系统",
-    description: "权威品牌重塑复盘，深度解析视觉锤、Logo、辅助图形与全套落地物料",
+    description: "权威品牌重塑复盘，深度解析视觉锤、Logo、辅助图形与全套品牌视觉物料",
     urlTemplate: "https://www.underconsideration.com/brandnew/?s={query}",
     category: "branding",
   },
@@ -105,7 +105,7 @@ export const PLATFORM_REGISTRY: Record<string, PlatformDefinition> = {
     category: "moodboard",
   },
 
-  // --- 5. Domestic Chinese Market Context (本土消费与工艺落地) ---
+  // --- 5. Domestic Chinese Market Context (本土消费与工艺质感) ---
   xiaohongshu: {
     id: "xiaohongshu",
     name: "小红书",
@@ -117,8 +117,8 @@ export const PLATFORM_REGISTRY: Record<string, PlatformDefinition> = {
   zcool: {
     id: "zcool",
     name: "站酷 (ZCOOL)",
-    roleTag: "本土商业落地与工艺案",
-    description: "中国本土顶尖设计团队商业案例、印刷厂实际打样工艺与本土消费品落地",
+    roleTag: "本土商业设计与工艺案例",
+    description: "中国本土顶尖设计团队商业案例、印刷工艺实拍与本土消费品设计范例",
     urlTemplate: "https://www.zcool.com.cn/search/content?word={query}",
     category: "domestic",
   },

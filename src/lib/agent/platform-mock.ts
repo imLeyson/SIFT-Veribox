@@ -94,7 +94,7 @@ export function getMockPlatformPlan(
         keywords: [
           {
             keyword: "sustainable recycled fiber product design",
-            meaning: "再生纤维在现代产品设计中的成套落地案例与表面质感",
+            meaning: "再生纤维在现代产品设计中的成套设计案例与表面质感",
             language: "en",
             searchType: "benchmark",
             advancedQuery: "sustainable recycled fiber product -mockup -template",
@@ -107,7 +107,7 @@ export function getMockPlatformPlan(
           },
           {
             keyword: "再生纤维 可持续产品 实物打样",
-            meaning: "国内高品质环保材料创新产品与实物落地案例",
+            meaning: "国内高品质环保材料创新产品与实物设计案例",
             language: "zh",
             searchType: "detail",
           },
@@ -213,7 +213,7 @@ export function getMockPlatformPlan(
         id: "src_zcool",
         platform: PLATFORM_REGISTRY.zcool.name,
         roleTag: PLATFORM_REGISTRY.zcool.roleTag,
-        reason: "查看国内本土团队在新材料产品打样与情感设计器物上的落地实践",
+        reason: "查看国内本土团队在新材料产品实拍与情感设计器物上的视觉实践",
         keywords: [
           {
             keyword: "可持续产品设计 再生材料 实物打样",
@@ -270,7 +270,7 @@ export function getMockPlatformPlan(
         keywords: [
           {
             keyword: "developer tool dark minimalist web design",
-            meaning: "极简开发者工具工程美学落地网页",
+            meaning: "极简开发者工具工程美学设计网页",
             language: "en",
             searchType: "moodboard",
           },
@@ -413,7 +413,7 @@ export function getMockPlatformPlan(
         id: "src_fontsinuse",
         platform: PLATFORM_REGISTRY.fontsinuse.name,
         roleTag: PLATFORM_REGISTRY.fontsinuse.roleTag,
-        reason: "全球真实商业落地中的中西字体搭配、字阶层级与双栏网格规范档案",
+        reason: "全球真实商业设计中的中西字体搭配、字阶层级与双栏网格规范档案",
         keywords: [
           {
             keyword: "swiss typography grid packaging bilingual label",
@@ -534,7 +534,7 @@ export function getMockPlatformPlan(
         id: "src_zcool",
         platform: PLATFORM_REGISTRY.zcool.name,
         roleTag: PLATFORM_REGISTRY.zcool.roleTag,
-        reason: "查阅国内顶尖设计团队在中英双语包装标签上的落地打样工艺",
+        reason: "查阅国内顶尖设计团队在中英双语包装标签上的排版与工艺细节",
         keywords: [
           {
             keyword: "双栏网格 包装设计 实物打样",
@@ -544,8 +544,8 @@ export function getMockPlatformPlan(
             advancedQuery: "网格 包装 实物打样 -素材",
           },
           {
-            keyword: "中文标签 排版规范 印厂落地",
-            meaning: "国内本土商业包装合规标签与字阶排印落地",
+            keyword: "中文标签 排版规范 工艺实拍",
+            meaning: "国内本土商业包装合规标签与字阶排印案例",
             language: "zh",
             searchType: "detail",
           },
@@ -664,7 +664,7 @@ export function getMockPlatformPlan(
         keywords: [
           {
             keyword: "minimalist visual identity still life packaging",
-            meaning: "成套极简视觉识别系统与包装落地案例",
+            meaning: "成套极简视觉识别系统与包装设计案例",
             language: "en",
             searchType: "benchmark",
             advancedQuery: "visual identity packaging -mockup -template",
@@ -682,11 +682,11 @@ export function getMockPlatformPlan(
         id: "src_zcool",
         platform: PLATFORM_REGISTRY.zcool.name,
         roleTag: PLATFORM_REGISTRY.zcool.roleTag,
-        reason: "查看国内年轻新消费品牌在桌面陪伴感与几何符号上的优秀落地案例",
+        reason: "查看国内年轻新消费品牌在桌面陪伴感与几何符号上的优秀设计案例",
         keywords: [
           {
             keyword: "桌面好物 几何包装 实物打样",
-            meaning: "国内商业落地案例",
+            meaning: "国内商业设计案例",
             language: "zh",
             searchType: "detail",
           },
@@ -701,29 +701,29 @@ export function getMockPlatformPlan(
       },
     ];
   } else if (isSkincareOrScience) {
-    // 4. Skincare & Science Evidence scenario
+    // 4. Clinical / Formula packaging scenario
     primary = [
       {
         id: "src_bpando",
         platform: PLATFORM_REGISTRY.bpando.name,
         roleTag: PLATFORM_REGISTRY.bpando.roleTag,
-        reason: "深度研读高冷实验室证据感、微型数据刻度排版与药剂学美感包装的微细节",
+        reason: "检索实验室风格、药剂排印美学与无墨微工艺",
         keywords: [
           {
-            keyword: "clinical skincare branding minimal label typographic scale",
-            meaning: "严谨实验室护肤品牌微刻度与纯净排版",
+            keyword: "clinical skincare branding minimal label",
+            meaning: "极简实验室风格医美包装标签与极简信息骨架",
             language: "en",
             searchType: "benchmark",
           },
           {
-            keyword: "uncoated frosted glass amber dropper packaging finish",
+            keyword: "frosted glass cosmetic bottle deboss",
             meaning: "哑光透光玻璃瓶身触感与微工艺细节",
             language: "en",
             searchType: "detail",
           },
           {
             keyword: "极简实验室护肤品 刻度排版 实物打样",
-            meaning: "配方逻辑图表化在瓶贴上的实际落地案",
+            meaning: "配方逻辑图表化在瓶贴上的实际设计案",
             language: "zh",
             searchType: "detail",
           },
@@ -853,11 +853,11 @@ export function getMockPlatformPlan(
         id: "src_bpando",
         platform: PLATFORM_REGISTRY.bpando.name,
         roleTag: PLATFORM_REGISTRY.bpando.roleTag,
-        reason: "针对本步骤特种原浆纸肌理与侧光深压凹，BP&O 是全球对无墨工艺与高克重纸张细节记录最深的权威档案",
+        reason: "针对本步骤特种原浆纸肌理与侧光深压凹，BP&O 是全球对无墨工艺与厚材质感纸张细节记录最深的权威档案",
         keywords: [
           {
-            keyword: "uncoated cotton paper packaging blind deboss 350g",
-            meaning: "350g 原浆棉纸无墨深压凹打样与侧光阴影细节",
+            keyword: "uncoated cotton paper packaging blind deboss",
+            meaning: "原浆棉纸无墨深压凹实物实拍与侧光阴影细节",
             language: "en",
             searchType: "detail",
             advancedQuery: "uncoated cotton paper blind deboss -mockup -template",
@@ -870,13 +870,13 @@ export function getMockPlatformPlan(
           },
           {
             keyword: "纯白特种纸 侧光无墨压凹 包装实拍",
-            meaning: "国内特种纸打样实拍案例与防蹭脏处理",
+            meaning: "国内特种纸实拍案例与质感呈现",
             language: "zh",
             searchType: "detail",
             advancedQuery: "纯白特种纸 压凹 实拍 -广告 -推广",
           },
         ],
-        searchUrl: buildPlatformSearchUrl("bpando", "uncoated cotton paper packaging blind deboss 350g"),
+        searchUrl: buildPlatformSearchUrl("bpando", "uncoated cotton paper packaging blind deboss"),
       },
       {
         id: "src_dieline",
@@ -886,7 +886,7 @@ export function getMockPlatformPlan(
         keywords: [
           {
             keyword: "minimalist tactile paper canister packaging",
-            meaning: "极简触感纸罐实物落地案与盒身比例",
+            meaning: "极简触感纸罐实物案例与盒身比例",
             language: "en",
             searchType: "benchmark",
             advancedQuery: "tactile paper canister packaging -mockup",
@@ -944,7 +944,7 @@ export function getMockPlatformPlan(
           },
           {
             keyword: "letterpress stationery blind impression",
-            meaning: "活版凸印无墨深压痕与高克重棉纸结合典范",
+            meaning: "活版凸印无墨深压痕与厚实棉纸结合典范",
             language: "en",
             searchType: "detail",
           },
@@ -955,18 +955,18 @@ export function getMockPlatformPlan(
         id: "src_zcool",
         platform: PLATFORM_REGISTRY.zcool.name,
         roleTag: PLATFORM_REGISTRY.zcool.roleTag,
-        reason: "查阅国内顶尖设计团队在特种纸无墨深压凹与 1:1 白模打样上的真实工艺案",
+        reason: "查阅国内顶尖设计团队在特种纸无墨深压凹与 1:1 白模实物上的真实设计案",
         keywords: [
           {
             keyword: "特种纸 深度压凹 茶包装 实物打样",
-            meaning: "本土印厂实际工艺参数与机台压力设置经验",
+            meaning: "特种纸深压凹与留白节奏的视觉质感表现",
             language: "zh",
             searchType: "detail",
             advancedQuery: "特种纸 压凹 打样 实物 -素材",
           },
           {
             keyword: "棉纸触感 罐装冷泡茶 实体打样",
-            meaning: "本土茶饮品牌高阶原浆棉纸包装落地案",
+            meaning: "本土茶饮品牌高阶原浆棉纸包装设计案",
             language: "zh",
             searchType: "detail",
           },
@@ -977,7 +977,7 @@ export function getMockPlatformPlan(
         id: "src_packagingoftheworld",
         platform: PLATFORM_REGISTRY.packagingoftheworld.name,
         roleTag: PLATFORM_REGISTRY.packagingoftheworld.roleTag,
-        reason: "跨品类横向检索全球类似高克重纯白触感纸在各消费品类中的实物成品",
+        reason: "跨品类横向检索全球类似厚实纯白触感纸在各消费品类中的实物成品",
         keywords: [
           {
             keyword: "white paper blind embossed canister packaging",
@@ -988,7 +988,7 @@ export function getMockPlatformPlan(
           },
           {
             keyword: "minimalist debossed tube packaging tea",
-            meaning: "极简圆柱纸筒深压痕商业落地案例",
+            meaning: "极简圆柱纸筒深压痕商业设计案例",
             language: "en",
             searchType: "benchmark",
           },
