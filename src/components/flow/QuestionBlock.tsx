@@ -9,25 +9,6 @@ function answerFor(drafts: Answer[], questionId: string) {
   return drafts.find((answer) => answer.questionId === questionId) ?? null;
 }
 
-function getQuestionCategoryTag(prompt: string, index: number): string {
-  if (/材质|纸|盒|工艺|触感|金属|打样|质感|压凹|烫/.test(prompt)) {
-    return `0${index + 1} · 材质工艺`;
-  }
-  if (/版式|排版|字|网格|层级|字阶|留白|负空间|信息/.test(prompt)) {
-    return `0${index + 1} · 版式层级`;
-  }
-  if (/色|彩|调|黑白|灰度|饱和度/.test(prompt)) {
-    return `0${index + 1} · 色彩基调`;
-  }
-  if (/冲突|优先|权衡|保哪个|取舍|平衡|成本/.test(prompt)) {
-    return `0${index + 1} · 核心权衡`;
-  }
-  if (/符号|隐喻|图形|意象|场景|情绪/.test(prompt)) {
-    return `0${index + 1} · 视觉意象`;
-  }
-  return `0${index + 1} · 视觉取舍`;
-}
-
 export function QuestionBlock({ questions }: { questions: Question[] }) {
   const { drafts, activeRequest, setDrafts } = useSiftStore();
   const title = useRef<HTMLParagraphElement>(null);
@@ -123,7 +104,7 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
         tabIndex={-1}
         className="text-[11px] leading-relaxed text-muted outline-none"
       >
-        对齐核心视觉取舍；未确定项可直接跳过。
+        对齐核心视觉取向；可按偏好选择或直接推进。
       </p>
 
       {questions.map((question, index) => {
@@ -140,32 +121,33 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
         return (
           <fieldset
             key={question.id}
-            className="space-y-2.5 rounded-2xl border border-line/70 bg-white/70 p-3 shadow-xs transition-all hover:border-line"
+            className="space-y-2 rounded-2xl border border-line/70 bg-white/70 p-3 shadow-xs transition-all hover:border-line"
           >
             <legend className="sr-only">第 {index + 1} 题</legend>
 
             {/* Question Header */}
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-600">
-                {getQuestionCategoryTag(question.prompt, index)}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-stone-100 font-mono text-[9.5px] font-bold text-stone-500">
+                  0{index + 1}
+                </span>
+                <span className="text-xs sm:text-sm font-semibold leading-snug text-ink">
+                  {question.prompt}
+                </span>
+              </div>
               {current && isQuestionAnswered(question) ? (
-                <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-700">
+                <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-700 shrink-0">
                   <Check className="h-3 w-3 text-emerald-600" />
                   <span>
                     {isUncertain
                       ? "暂不确定"
                       : isCustomFilled
-                        ? "其他"
+                        ? "已补充"
                         : "已选择"}
                   </span>
                 </span>
               ) : null}
             </div>
-
-            <p className="text-xs sm:text-sm font-medium leading-snug text-ink">
-              {question.prompt}
-            </p>
 
             {/* Options List */}
             <div

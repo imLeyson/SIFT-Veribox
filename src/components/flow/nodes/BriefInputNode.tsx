@@ -4,9 +4,8 @@ import type { NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
-import { EXAMPLES } from "@/lib/agent/examples";
 import { compressImageFile } from "@/lib/image-utils";
-import { ImagePlus, Plus, X, Eye, Zap, Sparkles, Check, HelpCircle } from "lucide-react";
+import { ImagePlus, Plus, Zap, Sparkles } from "lucide-react";
 import { evaluateBriefIntentSync } from "@/lib/agent/system-one";
 import { InlineEditableText } from "../InlineEditableText";
 import { VisualInspirationCard } from "../VisualInspirationCard";
@@ -195,34 +194,63 @@ export function BriefInputNode({ id, selected }: NodeProps) {
               }
             }}
           >
-            <div className="mb-2.5 space-y-1.5">
-              <div className="flex items-center justify-between text-[11px] text-muted">
-                <span className="text-stone-500">
-                  聚焦前期视觉策略与检索方向收敛 · <span className="text-stone-400">非生图交付工具</span>
-                </span>
-                {importedBrief && (
-                  <span className="text-accent font-medium">已载入草案</span>
-                )}
+            {/* Quick Starter Presets (Only when empty) */}
+            {!rawBrief.trim() && (
+              <div className="mb-2.5 space-y-1.5">
+                <div className="flex items-center justify-between text-[10.5px] text-stone-500">
+                  <span>快速载入设计场景或句式模板：</span>
+                  {importedBrief && (
+                    <span className="text-accent font-medium">已载入草案</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setRawBrief(
+                        "冷泡茶无墨白浆纸盒包装设计，目标是做都市年轻人的日常静心仪式感茶礼，希望材质以素净特种棉纸为主，强调纸张微肌理与极简双栏网格，杜绝花哨插画与过度装饰。"
+                      )
+                    }
+                    className="inline-flex items-center gap-1 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 px-2.5 py-0.5 text-[10.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    <span>🍵 冷萃茶无墨纸盒</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setRawBrief(
+                        "回收宠物毛发与植物纤维再造生活器物，用于现代桌面收纳与陪伴感小件，强调原生微颗粒、无塑料涂层与温润有机握持感，避免塑料质感与工业冰冷。"
+                      )
+                    }
+                    className="inline-flex items-center gap-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/80 px-2.5 py-0.5 text-[10.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    <span>🐾 再生纤维生活器物</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setRawBrief(
+                        "暗黑科技与极简工程美学风格的 AI 数据控制台，面向专业开发者，8px 严谨栅格与 1px 微光感冷灰描边，强调高密度信息呈现与状态指示，避免空洞装饰。"
+                      )
+                    }
+                    className="inline-flex items-center gap-1 rounded-full bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200/80 px-2.5 py-0.5 text-[10.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    <span>⚡ 先锋机能控制台</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRawBrief(
+                        "我想做一个【设计品类】，希望整体呈现【核心视觉调性与受众感受】，避免【明确的视觉禁忌与常见套路】，重点探索【材质工艺、排版结构或细节】。"
+                      );
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200/80 px-2.5 py-0.5 text-[10.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    <span>📋 填空句式</span>
+                  </button>
+                </div>
               </div>
-
-              <div className="flex items-center justify-between rounded-lg bg-stone-50/90 px-2.5 py-1.5 border border-line/70 text-[11px] text-stone-500">
-                <span className="truncate pr-2">
-                  推荐结构：我想做一个【品类】，希望【调性】，避免【禁忌】…
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRawBrief(
-                      "我想做一个【设计品类】，希望整体呈现【核心视觉调性与受众感受】，避免【明确的视觉禁忌与常见套路】，重点探索【材质工艺、排版结构或细节】。"
-                    );
-                  }}
-                  className="text-accent hover:underline cursor-pointer flex items-center gap-0.5 font-medium flex-shrink-0"
-                  title="一键载入结构化设计需求句式模板"
-                >
-                  <span>套用模板</span>
-                </button>
-              </div>
-            </div>
+            )}
 
             <textarea
               id="brief"
@@ -235,93 +263,20 @@ export function BriefInputNode({ id, selected }: NodeProps) {
               className="w-full resize-y rounded-xl border border-line bg-cream/70 px-3 py-2 text-xs sm:text-sm leading-relaxed outline-none focus:border-accent"
             />
 
-            {/* Quick Realistic Design Scenarios */}
-            {!rawBrief.trim() && (
-              <div className="mt-2 space-y-1.5">
-                <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider block">
-                  快速载入实战场景探索：
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRawBrief(
-                        "冷泡茶无墨白浆纸盒包装设计，目标是做都市年轻人的日常静心仪式感茶礼，希望材质以素净特种棉纸为主，强调纸张微肌理与极简双栏网格，杜绝花哨插画与过度装饰。"
-                      )
-                    }
-                    className="inline-flex items-center gap-1 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 px-2.5 py-1 text-[10.5px] font-medium transition-colors cursor-pointer"
-                  >
-                    <span>🍵</span>
-                    <span>冷萃茶无墨纸盒包装</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRawBrief(
-                        "回收宠物毛发与植物纤维再造生活器物，用于现代桌面收纳与陪伴感小件，强调原生微颗粒、无塑料涂层与温润有机握持感，避免塑料质感与工业冰冷。"
-                      )
-                    }
-                    className="inline-flex items-center gap-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 px-2.5 py-1 text-[10.5px] font-medium transition-colors cursor-pointer"
-                  >
-                    <span>🐾</span>
-                    <span>再生毛发纤维生活器物</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRawBrief(
-                        "暗黑科技与极简工程美学风格的 AI 数据控制台，面向专业开发者，8px 严谨栅格与 1px 微光感冷灰描边，强调高密度信息呈现与状态指示，避免空洞装饰。"
-                      )
-                    }
-                    className="inline-flex items-center gap-1 rounded-full bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200/80 px-2.5 py-1 text-[10.5px] font-medium transition-colors cursor-pointer"
-                  >
-                    <span>⚡</span>
-                    <span>先锋机能SaaS控制台</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Live Brief Diagnostics Radar */}
+            {/* Quiet Diagnostic Chip (Replacing bulky progress bar) */}
             {rawBrief.trim().length >= 4 && briefDiagnostics && (
-              <div className="mt-2.5 rounded-xl border border-line/80 bg-white/70 p-2.5 space-y-2">
-                <div className="flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-1.5 font-medium text-ink">
-                    <span>{briefDiagnostics.domainLabel}</span>
-                    <span className="text-stone-400 font-mono text-[10px]">
-                      · 匹配度 {Math.round(briefDiagnostics.confidence * 100)}%
-                    </span>
-                  </div>
-                  <span className="font-mono text-[9.5px] text-stone-400 flex items-center gap-1">
-                    <Sparkles className="h-2.5 w-2.5 text-amber-500" />
-                    <span>实时解析 · {briefDiagnostics.latencyMs}ms</span>
+              <div className="mt-2 flex items-center justify-between rounded-lg bg-stone-50/80 px-2.5 py-1.5 border border-line/60 text-[11px]">
+                <div className="flex items-center gap-1.5 text-stone-700 font-medium">
+                  <span>{briefDiagnostics.domainLabel}</span>
+                  <span className="text-stone-400">·</span>
+                  <span className="text-stone-500 font-normal">
+                    {briefDiagnostics.clarityScore >= 70 ? "诉求清晰" : "可继续补充细节"}
                   </span>
                 </div>
-
-                {/* Visual Clarity Progress Bar */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[10.5px]">
-                    <span className="text-stone-500">诉求清晰度</span>
-                    <span className="font-mono font-medium text-ink">
-                      {briefDiagnostics.clarityScore} / 100
-                    </span>
-                  </div>
-                  <div className="h-1 w-full overflow-hidden rounded-full bg-stone-200">
-                    <div
-                      className="h-full rounded-full bg-ink/75 transition-all duration-300"
-                      style={{ width: `${briefDiagnostics.clarityScore}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Contextual Clean Suggestion */}
                 {briefDiagnostics.suggestion && (
-                  <div className="flex items-start gap-1.5 pt-1 border-t border-line/40 text-[10.5px] text-stone-500 leading-relaxed">
-                    <Sparkles className="h-3 w-3 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <span>
-                      {briefDiagnostics.suggestion.replace(/^(?:💡|✨|⚡️)\s*/u, "")}
-                    </span>
-                  </div>
+                  <span className="text-[10px] text-stone-500 truncate max-w-[200px] sm:max-w-[230px]">
+                    {briefDiagnostics.suggestion.replace(/^(?:💡|✨|⚡️)\s*/u, "")}
+                  </span>
                 )}
               </div>
             )}
@@ -341,12 +296,17 @@ export function BriefInputNode({ id, selected }: NodeProps) {
               onDrop={handleDrop}
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-medium text-stone-700 flex items-center gap-1.5">
-                  <ImagePlus className="h-3.5 w-3.5 text-accent" />
-                  意向参考图 (可选，用于提炼材质与排版偏好，非垫图渲染)
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <ImagePlus className="h-3.5 w-3.5 text-indigo-600" />
+                  <span className="text-xs font-semibold text-ink">
+                    参考视觉单元
+                  </span>
+                  <span className="text-[10px] text-stone-400 font-mono">
+                    ({globalInspirations.length}/6)
+                  </span>
+                </div>
                 <span className="text-[10px] text-stone-400">
-                  支持直接截图粘贴 (⌘V) 或拖拽
+                  支持拖拽或 ⌘V 粘贴
                 </span>
               </div>
 
@@ -364,42 +324,31 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                 }}
               />
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-ink flex items-center gap-1">
-                    <ImagePlus className="h-3.5 w-3.5 text-indigo-600" />
-                    视觉灵感内容单元（参考图 / 外链图 / 截图）
-                  </span>
-                  <span className="text-[10px] text-stone-400 font-mono">
-                    已添加 {globalInspirations.length} / 6
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {globalInspirations.map((item) => (
-                    <VisualInspirationCard
-                      key={item.id}
-                      inspiration={item}
-                      onOpenInspector={(vis) => setInspectorItem(vis)}
-                    />
-                  ))}
-                  {globalInspirations.length < 6 && (
-                    <button
-                      type="button"
-                      disabled={Boolean(activeRequest) || compressing}
-                      onClick={() => setAddDialogOpen(true)}
-                      className="min-h-[110px] rounded-xl border-2 border-dashed border-stone-300 hover:border-indigo-400 hover:bg-white bg-white/50 flex flex-col items-center justify-center text-stone-500 hover:text-indigo-600 transition-all cursor-pointer p-2"
-                      title="上传参考图或添加外链灵感"
-                    >
-                      <Plus className="h-5 w-5" />
-                      <span className="text-[10.5px] mt-1 font-medium">
-                        {compressing ? "解析中…" : "添加视觉单元"}
-                      </span>
-                      <span className="text-[9px] text-stone-400">
-                        本地/外链/色板
-                      </span>
-                    </button>
-                  )}
-                </div>
+              <div className="grid grid-cols-3 gap-2">
+                {globalInspirations.map((item) => (
+                  <VisualInspirationCard
+                    key={item.id}
+                    inspiration={item}
+                    onOpenInspector={(vis) => setInspectorItem(vis)}
+                  />
+                ))}
+                {globalInspirations.length < 6 && (
+                  <button
+                    type="button"
+                    disabled={Boolean(activeRequest) || compressing}
+                    onClick={() => setAddDialogOpen(true)}
+                    className="min-h-[105px] rounded-xl border-2 border-dashed border-stone-300 hover:border-indigo-400 hover:bg-white bg-white/50 flex flex-col items-center justify-center text-stone-500 hover:text-indigo-600 transition-all cursor-pointer p-2"
+                    title="上传参考图或添加外链灵感"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="text-[10.5px] mt-1 font-medium">
+                      {compressing ? "解析中…" : "添加参考图"}
+                    </span>
+                    <span className="text-[9px] text-stone-400">
+                      本地/外链/色板
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -432,28 +381,6 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                 <Zap className="h-3.5 w-3.5 text-accent" />
                 <span>一键直出方向</span>
               </button>
-            </div>
-
-            {/* Quick Inspiration Examples */}
-            <div className="pt-2 border-t border-line/40">
-              <span className="text-[10.5px] font-medium text-stone-500 block mb-1">
-                快捷填充灵感示例：
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {EXAMPLES.map((example) => (
-                  <button
-                    key={example.label}
-                    type="button"
-                    disabled={Boolean(activeRequest)}
-                    onClick={() => {
-                      setRawBrief(example.brief);
-                    }}
-                    className="rounded-lg border border-line/70 bg-white/70 px-2 py-0.5 text-[11px] text-ink transition-colors hover:border-ink hover:bg-white active:scale-98 cursor-pointer"
-                  >
-                    {example.label}
-                  </button>
-                ))}
-              </div>
             </div>
           </form>
         )}

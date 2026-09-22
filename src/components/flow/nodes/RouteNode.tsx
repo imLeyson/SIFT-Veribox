@@ -262,39 +262,42 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
         }
         selected={selected || isSelected}
       >
-        <div className="space-y-3 text-xs">
+        <div className="space-y-2.5 text-xs">
           {/* Theme Title & Archetype Header */}
-          <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-line/50">
-            <InlineEditableText
-              value={heroTitle}
-              onSave={(newTitle) =>
-                updateRoute(route.id, { themeName: newTitle })
-              }
-              as="h4"
-              className="text-xs font-bold text-ink"
-              label="主题大名"
-              showEditIcon
-            />
-            <span
-              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium border text-[10px] shrink-0 ${dimension.badgeClass}`}
-            >
-              <DimensionIcon className="h-3 w-3" />
-              <span>{dimension.tag}</span>
-            </span>
+          <div className="space-y-1 pb-1 border-b border-line/50">
+            <div className="flex items-center justify-between gap-1.5">
+              <InlineEditableText
+                value={heroTitle}
+                onSave={(newTitle) =>
+                  updateRoute(route.id, { themeName: newTitle })
+                }
+                as="h4"
+                className="text-xs font-bold text-ink"
+                label="主题大名"
+                showEditIcon
+              />
+              <span
+                className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium border text-[10px] shrink-0 ${dimension.badgeClass}`}
+              >
+                <DimensionIcon className="h-3 w-3" />
+                <span>{dimension.tag}</span>
+              </span>
+            </div>
+            {/* Inline Starting Point & Hook Tags */}
+            <div className="flex items-center gap-1.5 text-[11px] text-stone-600 truncate">
+              <span className="font-medium text-ink truncate">{route.startingPoint}</span>
+              {visualHook && (
+                <>
+                  <span className="text-stone-300">·</span>
+                  <span className="text-stone-500 truncate">{visualHook}</span>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Hero: Visual Snapshot */}
-          <div className="rounded-xl border border-stone-200/90 bg-stone-50/60 p-3 shadow-xs space-y-1.5">
-            <div className="flex items-center justify-between text-[10.5px] font-bold text-ink">
-              <span className="flex items-center gap-1 text-accent">
-                <Sparkles className="h-3 w-3 text-amber-500" />
-                视觉想象 · 灵感画面
-              </span>
-              <span className="text-[9px] font-mono text-stone-400 uppercase tracking-wider">
-                VISUAL SNAPSHOT
-              </span>
-            </div>
-            <div className="text-xs sm:text-[12.5px] text-ink font-medium leading-relaxed font-serif bg-white/95 p-2.5 rounded-lg border border-line/60 shadow-2xs">
+          <div className="rounded-xl border border-stone-200/80 bg-stone-50/60 p-2.5 space-y-2">
+            <div className="text-xs sm:text-[12.5px] text-ink font-medium leading-relaxed font-serif bg-white p-2.5 rounded-lg border border-line/60 shadow-2xs">
               <span className="font-serif text-stone-400 mr-0.5">“</span>
               <InlineEditableText
                 value={snapshotText}
@@ -302,7 +305,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
                   updateRoute(route.id, { visualSnapshot: newSnapshot })
                 }
                 multiline
-                minRows={4}
+                minRows={3}
                 as="span"
                 className="text-ink font-serif"
                 inputClassName="font-serif text-xs sm:text-[13px] leading-relaxed"
@@ -313,11 +316,11 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
             </div>
 
             {/* Visual Inspiration Units for this Theme */}
-            <div className="pt-2 border-t border-line/40 space-y-1.5">
+            <div className="pt-1.5 border-t border-line/40 space-y-1">
               <div className="flex items-center justify-between text-[10px]">
                 <span className="font-semibold text-stone-500 flex items-center gap-1">
                   <ImagePlus className="h-3 w-3 text-indigo-600" />
-                  主题视觉参考（{routeVisuals.length > 0 ? `${routeVisuals.length} 专属` : "共享参考"}）
+                  主题参考（{routeVisuals.length > 0 ? `${routeVisuals.length} 专属` : "共享参考"}）
                 </span>
                 <button
                   type="button"
@@ -351,47 +354,13 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
                     e.stopPropagation();
                     setAddDialogOpen(true);
                   }}
-                  className="w-full py-2 rounded-lg border border-dashed border-stone-300 hover:border-indigo-400 bg-stone-50/50 hover:bg-white text-[10.5px] text-stone-500 hover:text-indigo-600 flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                  className="w-full py-1.5 rounded-lg border border-dashed border-stone-300 hover:border-indigo-400 bg-white/70 hover:bg-white text-[10px] text-stone-500 hover:text-indigo-600 flex items-center justify-center gap-1 cursor-pointer transition-colors"
                 >
                   <Plus className="h-3 w-3" />
-                  <span>为本主题添加专属视觉参考图</span>
+                  <span>添加专属参考图</span>
                 </button>
               )}
             </div>
-          </div>
-
-          {/* Concise Style & Method Summary */}
-          <div className="rounded-xl border border-line/70 bg-white/90 px-3 py-2 text-[11.5px] space-y-1">
-            <div className="flex items-center gap-1.5">
-              <span className="shrink-0 px-1.5 py-0.5 rounded bg-stone-100 font-medium text-[10px] text-stone-600">
-                基调
-              </span>
-              <InlineEditableText
-                value={route.startingPoint}
-                onSave={(newPoint) =>
-                  updateRoute(route.id, { startingPoint: newPoint })
-                }
-                as="span"
-                className="text-ink font-semibold truncate"
-                label="设计基调"
-              />
-            </div>
-            {visualHook && (
-              <div className="flex items-center gap-1.5">
-                <span className="shrink-0 px-1.5 py-0.5 rounded bg-stone-100 font-medium text-[10px] text-stone-600">
-                  手法
-                </span>
-                <InlineEditableText
-                  value={visualHook}
-                  onSave={(newHook) =>
-                    updateRoute(route.id, { focusDimension: newHook })
-                  }
-                  as="span"
-                  className="text-stone-700 truncate"
-                  label="视觉手法"
-                />
-              </div>
-            )}
           </div>
 
           {/* Recommended Reason */}
@@ -403,7 +372,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
           )}
 
           {/* Progressive Disclosure: Deep Rationale & Traceability */}
-          <details className="group rounded-xl border border-line/60 bg-cream/30 p-2 text-[11px]">
+          <details className="group rounded-xl border border-line/60 bg-cream/20 p-2 text-[11px]">
             <summary className="flex items-center justify-between cursor-pointer font-medium text-stone-500 hover:text-ink select-none px-1">
               <span>查看推导依据与线索细节</span>
               <span className="text-[10px] text-stone-400 group-open:text-ink transition-transform duration-150">
@@ -411,12 +380,12 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
               </span>
             </summary>
 
-            <div className="mt-2.5 space-y-2.5 pt-2 border-t border-line/50 text-[10.5px]">
+            <div className="mt-2 space-y-2 pt-2 border-t border-line/40 text-[10.5px]">
               {/* Brief trace */}
-              <div className="rounded-lg bg-indigo-50/50 p-2 border border-indigo-100 text-indigo-950 space-y-1">
-                <p><span className="font-semibold text-indigo-900">Brief：</span>{briefAnchor}</p>
+              <div className="rounded-lg bg-white/80 p-2 border border-line/60 text-stone-700 space-y-0.5">
+                <p><span className="font-semibold text-ink">Brief：</span>{briefAnchor}</p>
                 {prioritiesSummary.length > 0 && (
-                  <p><span className="font-semibold text-indigo-900">锁定坚持：</span>{prioritiesSummary.join("；")}</p>
+                  <p><span className="font-semibold text-emerald-800">锁定坚持：</span>{prioritiesSummary.join("；")}</p>
                 )}
                 {avoidSummary.length > 0 && (
                   <p className="text-amber-900"><span className="font-semibold text-amber-900">避开雷区：</span>{avoidSummary.join("；")}</p>
@@ -425,14 +394,14 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
 
               {/* Pros & Cons */}
               <div className="grid grid-cols-2 gap-1.5">
-                <div className="rounded-lg bg-white/90 p-2 border border-line/60 space-y-0.5">
+                <div className="rounded-lg bg-white/80 p-2 border border-line/60 space-y-0.5">
                   <span className="font-semibold text-emerald-800 flex items-center gap-1 text-[10px]">
                     <Lightbulb className="h-2.5 w-2.5 text-emerald-600" />
                     可收集线索
                   </span>
                   <p className="leading-snug text-stone-700">{prosText}</p>
                 </div>
-                <div className="rounded-lg bg-white/90 p-2 border border-line/60 space-y-0.5">
+                <div className="rounded-lg bg-white/80 p-2 border border-line/60 space-y-0.5">
                   <span className="font-semibold text-amber-800 flex items-center gap-1 text-[10px]">
                     <ShieldAlert className="h-2.5 w-2.5 text-amber-600" />
                     保持纯度
@@ -443,7 +412,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
 
               {/* Exploration Angles */}
               {route.steps.length > 0 && (
-                <div className="pt-1">
+                <div className="pt-0.5">
                   <span className="text-[10px] font-semibold text-stone-500 block mb-1">
                     追问视点切入：
                   </span>

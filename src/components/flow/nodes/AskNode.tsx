@@ -20,19 +20,6 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
         selected={selected}
       >
         <QuestionBlock questions={next.questions} />
-        <div className="mt-3 border-t border-line/60 pt-2.5">
-          <button
-            type="button"
-            className="btn-ghost w-full text-xs !py-1.5 text-stone-600 hover:text-ink cursor-pointer"
-            disabled={Boolean(activeRequest)}
-            onClick={siftActions.converge}
-          >
-            跳过提问，按已有判断收敛 →
-          </button>
-          <p className="mt-1 text-center text-[10px] text-stone-400">
-            通过关键视觉提问排除模糊地带，快速收敛出有画面感的设计主题
-          </p>
-        </div>
       </NodeShell>
     );
   }

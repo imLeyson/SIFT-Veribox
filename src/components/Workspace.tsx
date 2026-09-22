@@ -61,6 +61,11 @@ export function Workspace() {
             <span className="hidden md:inline-block rounded-md bg-stone-100 border border-stone-200 px-1.5 py-0.5 text-[10px] font-medium text-stone-600">
               视觉策略与方向收敛智能体
             </span>
+            {(runtimeMode ?? mode) === "mock" && (
+              <span className="rounded-md bg-amber-50 text-amber-800 border border-amber-200/80 px-1.5 py-0.5 text-[10px] font-mono">
+                Mock 示例
+              </span>
+            )}
           </div>
           <p className="mt-0.5 text-xs text-muted">
             收敛清晰有画面感的设计主题与检索方向 · 避免前期盲目试错
@@ -91,18 +96,13 @@ export function Workspace() {
           </button>
         </div>
       </header>
-      {(runtimeMode ?? mode) === "mock" && (
-        <p className="border-b border-line/60 bg-mist/60 px-4 py-2 text-xs text-muted">
-          Mock 示例模式；配置 API 密钥后可启用实时模型。
-        </p>
-      )}
       {storageWarning && (
-        <p
+        <div
           role="status"
-          className="border-b border-line px-4 py-2 text-xs text-muted"
+          className="border-b border-amber-200/80 bg-amber-50/70 px-4 py-1.5 text-xs text-amber-900"
         >
           {storageWarning}
-        </p>
+        </div>
       )}
       {error && (
         <div

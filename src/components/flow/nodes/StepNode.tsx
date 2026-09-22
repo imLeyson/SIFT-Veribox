@@ -149,7 +149,7 @@ export function StepNode({ id, selected }: NodeProps) {
           {/* Current Step Focus Box - Pure Visual Inspiration */}
           <div className="rounded-xl border border-line/80 bg-white/95 p-3.5 shadow-xs space-y-2.5">
             <div>
-              <div className="flex items-center justify-between text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-1">
+              <div className="flex items-center justify-between text-[10.5px] font-semibold text-stone-600 mb-1">
                 <div className="flex items-center gap-1">
                   <span>视点 0{activeIdx + 1} ·</span>
                   <InlineEditableText
@@ -162,7 +162,6 @@ export function StepNode({ id, selected }: NodeProps) {
                     label="视点标题"
                   />
                 </div>
-                <span className="font-mono text-[9px] text-stone-400">VISUAL FOCUS</span>
               </div>
               <InlineEditableText
                 value={toInspirationCopy(currentStep.question)}

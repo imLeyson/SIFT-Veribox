@@ -17,7 +17,6 @@ import {
   ExternalLink,
   Copy,
   Check,
-  EyeOff,
   RefreshCw,
   Search,
   ImagePlus,
@@ -183,20 +182,20 @@ export function PlatformPlanNode({
                   }`}
                 >
                   {/* Card Header */}
-                  <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-mono text-xs font-semibold text-ink">
-                        {idx + 1}.
+                      <span className="font-mono text-xs font-semibold text-stone-400">
+                        0{idx + 1}
                       </span>
                       <span className="font-bold text-xs text-ink truncate">
                         {source.platform}
                       </span>
-                      <span className="text-[11px] text-muted truncate">
-                        {roleTag}
+                      <span className="text-[11px] text-stone-500 truncate">
+                        · {roleTag}
                       </span>
                     </div>
 
-                    {/* Actions */}
+                    {/* Actions Group */}
                     <div className="flex items-center gap-1 shrink-0">
                       {/* 3-State Link Decision Badge */}
                       <button
@@ -216,53 +215,40 @@ export function PlatformPlanNode({
                             ? "bg-emerald-50 text-emerald-700 border-emerald-300 font-semibold"
                             : linkStatus === "discarded"
                               ? "bg-stone-100 text-stone-400 border-stone-300 line-through"
-                              : "bg-white/80 text-stone-500 border-line hover:border-amber-400 hover:text-amber-800"
+                              : "bg-white text-stone-500 border-line hover:border-amber-400 hover:text-amber-800"
                         }`}
-                        title={`状态：${linkStatus === "confirmed" ? "✓ 已确定参考链接（下轮AI硬约束）" : linkStatus === "uncertain" ? "? 待定参考链接" : "✕ 已舍弃链接（下轮AI负向排除）"}，点击切换`}
+                        title={`状态：${linkStatus === "confirmed" ? "✓ 已确定参考链接" : linkStatus === "uncertain" ? "? 待定参考链接" : "✕ 已舍弃链接"}，点击切换`}
                       >
                         <span>
                           {linkStatus === "confirmed"
-                            ? "✓ 确定"
+                            ? "✓"
                             : linkStatus === "discarded"
-                              ? "✕ 舍弃"
-                              : "? 待定"}
+                              ? "✕"
+                              : "?"}
                         </span>
                       </button>
 
-                      <span
-                        className="text-[9.5px] font-mono text-stone-400"
-                        title={`匹配度：${matchPct}%`}
-                      >
-                        {matchPct}%
-                      </span>
+                      {/* Replace Platform Secondary Button */}
                       <button
                         type="button"
-                        title={isSkipped ? "恢复" : "跳过"}
-                        className="rounded p-1 text-stone-300 hover:text-ink transition-colors"
-                        onClick={() =>
-                          siftActions.skipSource(plan.stepId, source.id)
-                        }
-                      >
-                        <EyeOff className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        title="替换平台"
-                        className="rounded p-1 text-stone-300 hover:text-ink transition-colors"
+                        title="替换为其他平台"
+                        className="rounded p-1 text-stone-300 hover:text-ink transition-colors cursor-pointer"
                         onClick={() =>
                           setReplacingSourceId(
                             replacingSourceId === source.id ? null : source.id,
                           )
                         }
                       >
-                        <RefreshCw className="h-3 w-3" />
+                        <RefreshCw className="h-2.5 w-2.5" />
                       </button>
+
+                      {/* Direct External Search Link */}
                       <a
                         href={getSearchUrl(source)}
                         target="_blank"
                         rel="noopener noreferrer"
                         title={`在 ${source.platform} 检索`}
-                        className="rounded p-1 text-stone-500 hover:text-accent transition-colors inline-flex items-center"
+                        className="rounded p-1 text-stone-600 hover:text-accent transition-colors inline-flex items-center cursor-pointer"
                         onClick={() =>
                           siftActions.recordSourceAction(
                             plan.stepId,

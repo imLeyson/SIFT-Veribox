@@ -370,10 +370,10 @@ export function StateNode({ id, selected }: NodeProps) {
         {/* Visual Guardrails: Priorities & Avoid */}
         <div className="grid grid-cols-2 gap-2 pt-1">
           {/* Priorities */}
-          <div className="rounded-xl bg-white/70 p-2.5 border border-line/70">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-semibold text-stone-600">
-                视觉坚持 (点击标记)
+          <div className="rounded-xl bg-white/80 p-2.5 border border-line/70">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10.5px] font-semibold text-stone-700">
+                视觉坚持
               </span>
               <button
                 type="button"
@@ -387,30 +387,23 @@ export function StateNode({ id, selected }: NodeProps) {
             </div>
 
             {addingPriority && (
-              <form onSubmit={handleAddPrioritySubmit} className="flex items-center gap-1 mb-1.5">
+              <form onSubmit={handleAddPrioritySubmit} className="flex items-center gap-1 mb-2">
                 <input
                   type="text"
                   value={newPriorityText}
                   onChange={(e) => setNewPriorityText(e.target.value)}
-                  placeholder="如：大面积素白留白"
+                  placeholder="输入坚持项…"
                   autoFocus
-                  className="flex-1 rounded border border-indigo-400 bg-white px-1.5 py-0.5 text-[10px] outline-none"
+                  className="flex-1 rounded-md border border-indigo-400 bg-white px-2 py-0.5 text-[10.5px] outline-none ring-2 ring-indigo-500/20"
                   onKeyDown={(e) => {
                     if (e.key === "Escape") setAddingPriority(false);
                   }}
                 />
                 <button
                   type="submit"
-                  className="rounded bg-indigo-600 text-white px-1.5 py-0.5 text-[9.5px] font-medium hover:bg-indigo-700 cursor-pointer"
+                  className="rounded-md bg-indigo-600 text-white px-2 py-0.5 text-[10px] font-medium hover:bg-indigo-700 cursor-pointer"
                 >
-                  加
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAddingPriority(false)}
-                  className="rounded bg-stone-100 text-stone-500 px-1 py-0.5 text-[9.5px] hover:bg-stone-200 cursor-pointer"
-                >
-                  ✕
+                  确定
                 </button>
               </form>
             )}
@@ -429,12 +422,12 @@ export function StateNode({ id, selected }: NodeProps) {
                   return (
                     <span
                       key={i}
-                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10.5px] mr-1 mb-1 border transition-all select-none ${
+                      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] mr-1 mb-1 border transition-all select-none ${
                         pStatus === "discarded"
                           ? "bg-stone-100 text-stone-400 border-line/50 line-through opacity-60"
                           : pStatus === "uncertain"
                             ? "bg-amber-50 text-amber-900 border-amber-300 border-dashed"
-                            : "bg-mist/60 text-stone-800 border-line/50 hover:border-ink/40"
+                            : "bg-stone-50 text-stone-800 border-line hover:border-ink/40"
                       }`}
                     >
                       <InlineEditableText
@@ -471,10 +464,10 @@ export function StateNode({ id, selected }: NodeProps) {
           </div>
 
           {/* Avoid */}
-          <div className="rounded-xl bg-white/70 p-2.5 border border-line/70">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-semibold text-stone-600">
-                视觉红线 (点击标记)
+          <div className="rounded-xl bg-white/80 p-2.5 border border-line/70">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10.5px] font-semibold text-stone-700">
+                视觉红线
               </span>
               <button
                 type="button"
@@ -488,30 +481,23 @@ export function StateNode({ id, selected }: NodeProps) {
             </div>
 
             {addingAvoid && (
-              <form onSubmit={handleAddAvoidSubmit} className="flex items-center gap-1 mb-1.5">
+              <form onSubmit={handleAddAvoidSubmit} className="flex items-center gap-1 mb-2">
                 <input
                   type="text"
                   value={newAvoidText}
                   onChange={(e) => setNewAvoidText(e.target.value)}
-                  placeholder="如：严禁塑料覆膜"
+                  placeholder="输入避雷红线…"
                   autoFocus
-                  className="flex-1 rounded border border-indigo-400 bg-white px-1.5 py-0.5 text-[10px] outline-none"
+                  className="flex-1 rounded-md border border-indigo-400 bg-white px-2 py-0.5 text-[10.5px] outline-none ring-2 ring-indigo-500/20"
                   onKeyDown={(e) => {
                     if (e.key === "Escape") setAddingAvoid(false);
                   }}
                 />
                 <button
                   type="submit"
-                  className="rounded bg-indigo-600 text-white px-1.5 py-0.5 text-[9.5px] font-medium hover:bg-indigo-700 cursor-pointer"
+                  className="rounded-md bg-indigo-600 text-white px-2 py-0.5 text-[10px] font-medium hover:bg-indigo-700 cursor-pointer"
                 >
-                  加
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAddingAvoid(false)}
-                  className="rounded bg-stone-100 text-stone-500 px-1 py-0.5 text-[9.5px] hover:bg-stone-200 cursor-pointer"
-                >
-                  ✕
+                  确定
                 </button>
               </form>
             )}
@@ -530,12 +516,12 @@ export function StateNode({ id, selected }: NodeProps) {
                   return (
                     <span
                       key={i}
-                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10.5px] mr-1 mb-1 border transition-all select-none ${
+                      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] mr-1 mb-1 border transition-all select-none ${
                         aStatus === "discarded"
                           ? "bg-stone-100 text-stone-400 border-line/50 line-through opacity-60"
                           : aStatus === "uncertain"
                             ? "bg-amber-50 text-amber-900 border-amber-300 border-dashed"
-                            : "bg-stone-100/80 text-stone-700 border-stone-200/60 hover:border-ink/40"
+                            : "bg-stone-50 text-stone-700 border-stone-200/80 hover:border-ink/40"
                       }`}
                     >
                       <InlineEditableText
