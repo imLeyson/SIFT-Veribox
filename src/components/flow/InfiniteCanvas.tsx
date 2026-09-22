@@ -98,7 +98,7 @@ function FlowInner({ onOpenDossier }: { onOpenDossier?: () => void }) {
       });
     }
 
-    // 03-04: Exploration Routes
+    // 03: Exploration Routes
     const routesStartX = (positions.direction?.x ?? stateX) + 430;
     if (routes.length > 0) {
       routes.forEach((route, idx) => {
@@ -120,7 +120,7 @@ function FlowInner({ onOpenDossier }: { onOpenDossier?: () => void }) {
       });
     }
 
-    // 05: Step Timeline for selected route
+    // 04: Step Timeline for selected route
     const stepsStartX = routesStartX + 3 * 430 + 30;
     if (selectedRouteId) {
       const stepNodeId = "steps";
@@ -139,7 +139,7 @@ function FlowInner({ onOpenDossier }: { onOpenDossier?: () => void }) {
         target: stepNodeId,
       });
 
-      // 06-08: Platform plans (Horizontal layout prevents vertical card stacking occlusion)
+      // 05: Platform plans (Horizontal layout prevents vertical card stacking occlusion)
       const planStartX = stepsStartX + 440;
       platformPlans.forEach((plan, planIdx) => {
         const planNodeId = `plan-${plan.stepId}`;

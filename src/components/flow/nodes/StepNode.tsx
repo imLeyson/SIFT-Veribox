@@ -94,7 +94,7 @@ export function StepNode({ id, selected }: NodeProps) {
     <div className="w-[380px] sm:w-[390px]">
       <NodeShell
         nodeId={id || "steps"}
-        stage="05"
+        stage="04"
         kicker={`灵感切入 · 视点 0${activeIdx + 1}/${route.steps.length}`}
         title={route.themeName || route.title}
         collapsedSummary={collapsedSummary}
@@ -163,7 +163,7 @@ export function StepNode({ id, selected }: NodeProps) {
                 }
               >
                 <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-                <span className="font-medium">为这个视点找灵感 (07) →</span>
+                <span className="font-medium">为这个视点找灵感 (05) →</span>
               </button>
             ) : (
               hasNextStep && (

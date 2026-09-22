@@ -147,10 +147,10 @@ export function CanvasNavDock({
 
       <span className="text-[10px] text-stone-300">›</span>
 
-      {/* 05 Steps */}
+      {/* 04 Steps */}
       <button
         type="button"
-        title="跳转到 05 视觉视点"
+        title="跳转到 04 视觉视点"
         disabled={!selectedRouteId}
         onClick={() =>
           void fitView({
@@ -171,17 +171,17 @@ export function CanvasNavDock({
             selectedRouteId ? "text-emerald-600" : "text-stone-300"
           }`}
         />
-        <span>05 视点</span>
+        <span>04 视点</span>
       </button>
 
       <span className="text-[10px] text-stone-300">›</span>
 
-      {/* 07 Search Plans */}
+      {/* 05 Search Plans */}
       <button
         type="button"
         title={
           platformPlans.length > 0
-            ? "跳转到 07 灵感检索"
+            ? "跳转到 05 灵感检索"
             : selectedRouteId
               ? "查看视点并获取精准检索方案"
               : "暂无检索方案"
@@ -220,7 +220,7 @@ export function CanvasNavDock({
             platformPlans.length > 0 ? "text-blue-600" : selectedRouteId ? "text-stone-500" : "text-stone-300"
           }`}
         />
-        <span>07 搜索</span>
+        <span>05 搜索</span>
         {platformPlans.length > 0 && (
           <span className="rounded-full bg-blue-100 px-1 text-[10px] font-semibold text-blue-800">
             {platformPlans.length}

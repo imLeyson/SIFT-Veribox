@@ -97,7 +97,7 @@ export function PlatformPlanNode({
     <div className="w-[380px] sm:w-[390px]">
       <NodeShell
         nodeId={id}
-        stage="07"
+        stage="05"
         kicker={`灵感方案 · ${stepTitle}`}
         title="为视点找图"
         collapsedSummary={collapsedSummary}

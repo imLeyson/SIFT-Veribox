@@ -4,7 +4,7 @@ import { useState } from "react";
 import { GripHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 import { useSiftStore } from "@/lib/convergence-store";
 
-export type StageId = "00" | "01" | "02" | "03" | "05" | "07";
+export type StageId = "00" | "01" | "02" | "03" | "04" | "05";
 
 export type StageStyle = {
   id: StageId;
@@ -38,15 +38,15 @@ export const STAGE_MAP: Record<StageId, StageStyle> = {
     pillBg: "bg-indigo-900 text-white",
     topBorder: "bg-indigo-600",
   },
-  "05": {
-    id: "05",
-    pillText: "05 视点",
+  "04": {
+    id: "04",
+    pillText: "04 视点",
     pillBg: "bg-zinc-800 text-white",
     topBorder: "bg-zinc-700",
   },
-  "07": {
-    id: "07",
-    pillText: "07 搜索",
+  "05": {
+    id: "05",
+    pillText: "05 搜索",
     pillBg: "bg-amber-800 text-white",
     topBorder: "bg-amber-600",
   },
@@ -60,8 +60,8 @@ function resolveStage(kicker: string, explicitStage?: StageId): StageStyle | nul
   if (/^01\b|RECORD|抉择|问答/.test(kicker)) return STAGE_MAP["01"];
   if (/^02\b|DIRECTION|收敛|方向|视觉主张/.test(kicker)) return STAGE_MAP["02"];
   if (/^03\b|领地|主题|路线/.test(kicker)) return STAGE_MAP["03"];
-  if (/^05\b|视点|焦点|推进|切入|工位|实操/.test(kicker)) return STAGE_MAP["05"];
-  if (/^07\b|搜索|方案|探索/.test(kicker)) return STAGE_MAP["07"];
+  if (/^(?:04|05)\b|视点|焦点|推进|切入|工位|实操/.test(kicker)) return STAGE_MAP["04"];
+  if (/^(?:05|07)\b|搜索|方案|探索/.test(kicker)) return STAGE_MAP["05"];
   return null;
 }
 
