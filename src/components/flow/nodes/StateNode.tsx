@@ -1,12 +1,12 @@
 "use client";
 import { useState } from "react";
-import type { NodeProps } from "@xyflow/react";
+import { useReactFlow, type NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { copyToClipboard } from "@/lib/clipboard";
 import { hasDirection } from "@/types/convergence";
-import { Check, Sparkles, ArrowRight, RefreshCw, GitBranch } from "lucide-react";
+import { Check, Sparkles, ArrowRight, RefreshCw, GitBranch, Eye } from "lucide-react";
 
 export function StateNode({ selected }: NodeProps) {
   const {
@@ -23,6 +23,35 @@ export function StateNode({ selected }: NodeProps) {
   } = useSiftStore();
   const [editing, setEditing] = useState(false);
   const [copiedKeyword, setCopiedKeyword] = useState<string | null>(null);
+  const { fitView } = useReactFlow();
+
+  const handleFocusCanvas = () => {
+    const canvasNodeIds = Object.keys(canvasItems).map((id) => ({
+      id: `node-${id}`,
+    }));
+    if (canvasNodeIds.length > 0) {
+      void fitView({
+        nodes: canvasNodeIds,
+        padding: 0.2,
+        maxZoom: 0.9,
+        duration: 400,
+      });
+    } else if (routes.length > 0) {
+      void fitView({
+        nodes: routes.map((r) => ({ id: `route-${r.id}` })),
+        padding: 0.28,
+        maxZoom: 0.95,
+        duration: 400,
+      });
+    }
+  };
+
+  const handleConfirmAndExplore = async () => {
+    await siftActions.confirm();
+    setTimeout(() => {
+      handleFocusCanvas();
+    }, 350);
+  };
 
   const handleCopyKeyword = async (keyword: string) => {
     const success = await copyToClipboard(keyword);
@@ -222,21 +251,22 @@ export function StateNode({ selected }: NodeProps) {
             <div className="grid gap-2 grid-cols-2">
               <button
                 type="button"
-                className="btn-primary text-xs py-2 flex items-center justify-center gap-1"
+                className="btn-primary text-xs py-2.5 flex items-center justify-center gap-1.5 font-medium shadow-sm rounded-xl cursor-pointer"
                 disabled={
                   Boolean(activeRequest) ||
                   editing ||
                   !hasDirection(state) ||
                   Boolean(storageWarning)
                 }
-                onClick={siftActions.confirm}
+                onClick={handleConfirmAndExplore}
+                title="锁定当前视觉主张，在画布生成确定项并开启分支探索"
               >
-                <span>确认方向并推进</span>
-                <ArrowRight className="h-3 w-3" />
+                <span>确认方向 · 进入画布探索</span>
+                <ArrowRight className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
-                className="btn-ghost text-xs py-2"
+                className="btn-ghost text-xs py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:text-ink cursor-pointer"
                 disabled={Boolean(activeRequest)}
                 onClick={() => setEditing(true)}
               >
@@ -248,54 +278,60 @@ export function StateNode({ selected }: NodeProps) {
 
         {/* Confirmed State Actions */}
         {confirmed && (
-          <div className="border-t border-line/60 pt-2.5 space-y-2">
-            {/* Canvas Exploration Active Notice */}
-            <div className="rounded-xl bg-emerald-50/90 border border-emerald-300/80 p-2.5 space-y-1 shadow-xs">
+          <div className="border-t border-stone-100 pt-2.5 space-y-2">
+            {/* Canvas Exploration Focus Card */}
+            <div className="rounded-xl bg-emerald-50/90 border border-emerald-300/80 p-3 space-y-2 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-950">
                   <GitBranch className="w-3.5 h-3.5 text-emerald-700" />
-                  已开启画布分支探索模式
+                  已锁定方向 · 画布探索中
                 </span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-200/90 text-emerald-900 font-mono font-medium">
-                  {Object.keys(branches).length} 分支 · {Object.keys(canvasItems).length} 节点
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-200/90 text-emerald-900 font-mono font-medium">
+                  {Object.keys(branches).length} 分支 · {Object.keys(canvasItems).length} 确定项
                 </span>
               </div>
               <p className="text-[11px] text-emerald-800 leading-relaxed">
-                6 维设计确定项已投放至右侧画布。可在卡片上切换【确定/待定/舍弃】并开辟新分支，或使用底部导航栏【打包方案组】。
+                6 维设计确定项已投放至右侧画布。可在卡片上标定【确定/待定/舍弃】并开辟新分支，或使用底部导航栏【打包方案组】。
               </p>
-            </div>
-
-            {routes.length === 0 ? (
               <button
                 type="button"
-                className="btn-primary w-full text-xs py-2 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-                disabled={Boolean(activeRequest)}
-                onClick={() => void siftActions.generateRoutes()}
-                title="基于已收敛的视觉策略，快速推导 3 套清晰、有画面感的设计主题与检索方向"
+                onClick={handleFocusCanvas}
+                className="w-full py-2 px-3 rounded-lg text-xs font-semibold bg-emerald-800 text-white hover:bg-emerald-700 transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                title="平滑移动至画布确定项卡片区"
               >
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>{activeRequest ? "正在推导设计主题…" : "推导 3 套设计主题与检索方向"}</span>
+                <Eye className="w-3.5 h-3.5 text-emerald-300" />
+                <span>聚焦画布分支卡片 →</span>
               </button>
-            ) : (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] text-emerald-800 bg-emerald-50 rounded-lg px-2.5 py-1.5 border border-emerald-200">
-                  <span className="flex items-center gap-1 font-medium">
-                    <Check className="h-3.5 w-3.5 text-emerald-600" />
-                    设计主题已就绪，于右侧选择画面切入点
-                  </span>
-                  <ArrowRight className="h-3 w-3 text-emerald-600" />
-                </div>
+            </div>
+
+            {/* Optional Thematic Routes Section (Secondary) */}
+            {routes.length > 0 ? (
+              <div className="pt-1 flex items-center justify-between text-[11px] text-stone-500">
+                <span className="flex items-center gap-1">
+                  <Check className="h-3 w-3 text-emerald-600" />
+                  已就绪 3 套切入主题
+                </span>
                 <button
                   type="button"
-                  className="w-full flex items-center justify-center gap-1.5 text-[11px] font-medium text-stone-600 hover:text-ink bg-stone-50 hover:bg-stone-100/80 border border-line/70 rounded-lg py-1.5 transition-colors cursor-pointer"
+                  className="text-stone-500 hover:text-stone-900 flex items-center gap-1 text-[11px] underline underline-offset-2 cursor-pointer"
                   disabled={Boolean(activeRequest)}
                   onClick={() => void siftActions.regenerateRoutes()}
-                  title="都不满意？重新推导一组互不相同的全新设计主题与检索方向"
+                  title="重新推导另一组切入主题"
                 >
-                  <RefreshCw className={`h-3 w-3 text-stone-500 ${activeRequest ? "animate-spin" : ""}`} />
-                  <span>{activeRequest ? "正在推导全新主题…" : "换一批设计主题与检索方向"}</span>
+                  <RefreshCw className={`h-2.5 w-2.5 ${activeRequest ? "animate-spin" : ""}`} />
+                  <span>换一批主题</span>
                 </button>
               </div>
+            ) : (
+              <button
+                type="button"
+                className="w-full text-center py-1 text-[11px] text-stone-500 hover:text-stone-800 transition-colors cursor-pointer"
+                disabled={Boolean(activeRequest)}
+                onClick={() => void siftActions.generateRoutes()}
+                title="基于已收敛的视觉策略，额外推导 3 套画面切入主题"
+              >
+                {activeRequest ? "正在推导主题…" : "＋ 衍生 3 套画面切入主题 (可选)"}
+              </button>
             )}
           </div>
         )}

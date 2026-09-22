@@ -6,12 +6,9 @@ import { useSiftStore } from "@/lib/convergence-store";
 import {
   FileEdit,
   Compass,
-  GitFork,
   GitBranch,
   Plus,
   ImageIcon,
-  CheckSquare,
-  Search,
   Maximize2,
   FileDown,
   ChevronDown,
@@ -95,341 +92,235 @@ export function CanvasNavDock({
     );
   }
 
+  const hasCanvasItems = Object.keys(canvasItems).length > 0;
+
+  const jumpToBrief = () => {
+    void fitView({
+      nodes: [{ id: "brief" }],
+      padding: 0.3,
+      maxZoom: 0.95,
+      duration: 350,
+    });
+  };
+
+  const jumpToDirection = () => {
+    if (!hasState) return;
+    void fitView({
+      nodes: [
+        {
+          id:
+            next?.type === "ask"
+              ? `round-${next.questions.map((q) => q.id).join("-")}`
+              : "direction",
+        },
+      ],
+      padding: 0.3,
+      maxZoom: 0.95,
+      duration: 350,
+    });
+  };
+
+  const jumpToCanvas = () => {
+    const itemKeys = Object.keys(canvasItems);
+    if (itemKeys.length > 0) {
+      void fitView({
+        nodes: itemKeys.map((id) => ({ id: `node-${id}` })),
+        padding: 0.25,
+        maxZoom: 0.95,
+        duration: 350,
+      });
+    } else if (isConfirmed) {
+      jumpToDirection();
+    }
+  };
+
+  const openCreateGroupModal = () => {
+    const determinedIds = Object.values(canvasItems)
+      .filter((it) => it.status === "determined")
+      .map((it) => it.id);
+    setSelectedItemIds(determinedIds);
+    setNewGroupName(
+      `方案 ${String.fromCharCode(65 + Object.keys(schemeGroups).length)} · 视觉深化`,
+    );
+    setIsCreateGroupOpen(true);
+  };
+
   return (
     <>
-      <nav aria-label="流程节点导航" className="flex items-center gap-1 rounded-2xl border border-line/80 bg-cream/95 px-2 py-1.5 shadow-lg backdrop-blur-md max-w-[calc(100vw-2rem)] overflow-x-auto transition-all">
-      {/* 00 Brief */}
-      <button
-        type="button"
-        title="跳转到 00 Brief"
-        onClick={() =>
-          void fitView({
-            nodes: [{ id: "brief" }],
-            padding: 0.3,
-            maxZoom: 0.95,
-            duration: 350,
-          })
-        }
-        className="flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium text-ink transition-all hover:bg-white/80"
+      <nav
+        aria-label="设计画布工具坞"
+        className="flex items-center gap-2 rounded-full border border-stone-200/90 bg-white/95 px-3 py-1.5 shadow-xl backdrop-blur-md transition-all select-none max-w-[calc(100vw-2rem)] overflow-x-auto"
       >
-        <FileEdit className="h-3.5 w-3.5 text-stone-500" />
-        <span>00 Brief</span>
-      </button>
-
-      <span className="text-[10px] text-stone-300">›</span>
-
-      {/* 01 Direction / Convergence */}
-      <button
-        type="button"
-        title="跳转到 01 方向收敛"
-        disabled={!hasState}
-        onClick={() =>
-          void fitView({
-            nodes: [
-              {
-                id:
-                  next?.type === "ask"
-                    ? `round-${next.questions.map((q) => q.id).join("-")}`
-                    : "direction",
-              },
-            ],
-            padding: 0.3,
-            maxZoom: 0.95,
-            duration: 350,
-          })
-        }
-        className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium transition-all ${
-          hasState
-            ? "text-ink hover:bg-white/80"
-            : "text-stone-300 cursor-not-allowed"
-        }`}
-      >
-        <Compass
-          className={`h-3.5 w-3.5 ${hasState ? "text-accent" : "text-stone-300"}`}
-        />
-        <span>01 收敛</span>
-        {isConfirmed && (
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-        )}
-      </button>
-
-      <span className="text-[10px] text-stone-300">›</span>
-
-      {/* 02 Canvas Branches */}
-      <button
-        type="button"
-        title="跳转到画布分支探索"
-        disabled={Object.keys(branches).length === 0 && !isConfirmed}
-        onClick={() => {
-          const itemKeys = Object.keys(canvasItems);
-          if (itemKeys.length > 0) {
-            void fitView({
-              nodes: itemKeys.map((id) => ({ id: `node-${id}` })),
-              padding: 0.25,
-              maxZoom: 0.95,
-              duration: 350,
-            });
-          }
-        }}
-        className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium transition-all ${
-          Object.keys(branches).length > 0 || isConfirmed
-            ? "text-ink hover:bg-white/80"
-            : "text-stone-300 cursor-not-allowed"
-        }`}
-      >
-        <GitBranch
-          className={`h-3.5 w-3.5 ${
-            Object.keys(branches).length > 0 || isConfirmed
-              ? "text-emerald-600"
-              : "text-stone-300"
-          }`}
-        />
-        <span>02 画布分支</span>
-        {Object.keys(branches).length > 0 && (
-          <span className="rounded-full bg-emerald-100 px-1 text-[10px] font-semibold text-emerald-800">
-            {Object.keys(branches).length}
-          </span>
-        )}
-      </button>
-
-      {/* Quick Add Buttons & Controls when confirmed or when canvas has items */}
-      {(isConfirmed || Object.keys(branches).length > 0) && (
-        <div className="flex items-center gap-1 pl-1 border-l border-line/60">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImageFile}
-            accept="image/*"
-            className="hidden"
-          />
+        {/* Section 1: 流程视角 (Brief → 方向 → 画布) */}
+        <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={handleAddText}
-            className="flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-medium text-stone-700 bg-stone-100 hover:bg-stone-200 transition-colors"
-            title="在当前分支新建文字灵感卡"
+            onClick={jumpToBrief}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+            title="跳转到 00 需求 Brief"
           >
-            <Plus className="h-3 w-3" />
-            <span>灵感卡</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-medium text-stone-700 bg-stone-100 hover:bg-stone-200 transition-colors"
-            title="上传参考图作为画布视觉约束"
-          >
-            <ImageIcon className="h-3 w-3" />
-            <span>参考图</span>
+            <FileEdit className="w-3.5 h-3.5 text-stone-500" />
+            <span>00 需求</span>
           </button>
 
-          {/* Scheme Group Packaging Button */}
+          <span className="text-stone-300 text-xs font-mono">/</span>
+
           <button
             type="button"
-            onClick={() => {
-              const determinedIds = Object.values(canvasItems)
-                .filter((it) => it.status === "determined")
-                .map((it) => it.id);
-              setSelectedItemIds(determinedIds);
-              setNewGroupName(
-                `方案 ${String.fromCharCode(65 + Object.keys(schemeGroups).length)} · 视觉深化`,
-              );
-              setIsCreateGroupOpen(true);
-            }}
-            className="flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200/70"
-            title="将已选确定项打包为独立设计方案组"
+            onClick={jumpToDirection}
+            disabled={!hasState}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+              hasState
+                ? "text-stone-700 hover:text-stone-900 hover:bg-stone-100"
+                : "text-stone-300 cursor-not-allowed"
+            }`}
+            title="跳转到 01 视觉方向收敛"
           >
-            <Layers className="h-3 w-3 text-emerald-600" />
-            <span>方案组</span>
-            {Object.keys(schemeGroups).length > 0 && (
-              <span className="rounded-full bg-emerald-200/80 px-1 text-[9px] font-bold text-emerald-900">
-                {Object.keys(schemeGroups).length}
+            <Compass className={`w-3.5 h-3.5 ${hasState ? "text-amber-600" : "text-stone-300"}`} />
+            <span>01 方向</span>
+            {isConfirmed && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+          </button>
+
+          <span className="text-stone-300 text-xs font-mono">/</span>
+
+          <button
+            type="button"
+            onClick={jumpToCanvas}
+            disabled={!hasCanvasItems && !isConfirmed}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+              hasCanvasItems || isConfirmed
+                ? "text-emerald-900 bg-emerald-50 hover:bg-emerald-100 font-semibold"
+                : "text-stone-300 cursor-not-allowed"
+            }`}
+            title="聚焦 02 画布分支与确定项"
+          >
+            <GitBranch className={`w-3.5 h-3.5 ${hasCanvasItems || isConfirmed ? "text-emerald-600" : "text-stone-300"}`} />
+            <span>02 画布</span>
+            {hasCanvasItems && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-200/80 text-emerald-900 font-mono font-bold">
+                {Object.keys(branches).length} 分支
               </span>
             )}
           </button>
-
-          {/* Dual Exploration Mode Switcher */}
-          <div className="flex items-center gap-0.5 bg-stone-200/70 p-0.5 rounded-lg text-[10px] ml-0.5">
-            <button
-              type="button"
-              onClick={() => setExplorationMode("high_constraint")}
-              className={`px-1.5 py-0.5 rounded-md font-medium transition-all ${
-                explorationMode === "high_constraint"
-                  ? "bg-white text-emerald-800 font-semibold shadow-xs"
-                  : "text-stone-500 hover:text-stone-800"
-              }`}
-              title="高约束收敛模式：严格贯彻所有确定项约束，做工艺与排版的精细微观推导"
-            >
-              🎯 高约束
-            </button>
-            <button
-              type="button"
-              onClick={() => setExplorationMode("low_constraint")}
-              className={`px-1.5 py-0.5 rounded-md font-medium transition-all ${
-                explorationMode === "low_constraint"
-                  ? "bg-white text-amber-800 font-semibold shadow-xs"
-                  : "text-stone-500 hover:text-stone-800"
-              }`}
-              title="低约束发散模式：在硬约束边界下，探索 2~3 种多向正交视觉假设"
-            >
-              💡 低约束
-            </button>
-          </div>
         </div>
-      )}
 
-      <span className="text-[10px] text-stone-300">›</span>
+        {/* Section 2: 画布实用工具箱 (在画布探索期展示) */}
+        {(isConfirmed || hasCanvasItems) && (
+          <>
+            <div className="h-4 w-px bg-stone-200 mx-0.5" />
 
-      {/* 03 Themes */}
-      <button
-        type="button"
-        title="跳转到 03 设计主题"
-        disabled={routes.length === 0}
-        onClick={() =>
-          void fitView({
-            nodes: routes.map((r) => ({ id: `route-${r.id}` })),
-            padding: 0.25,
-            maxZoom: 0.95,
-            duration: 350,
-          })
-        }
-        className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium transition-all ${
-          routes.length > 0
-            ? "text-ink hover:bg-white/80"
-            : "text-stone-300 cursor-not-allowed"
-        }`}
-      >
-        <GitFork
-          className={`h-3.5 w-3.5 ${
-            routes.length > 0 ? "text-amber-600" : "text-stone-300"
-          }`}
-        />
-        <span>03 主题</span>
-        {routes.length > 0 && (
-          <span className="rounded-full bg-stone-200/80 px-1 text-[10px] font-semibold text-stone-700">
-            {routes.length}
-          </span>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageFile}
+                accept="image/*"
+                className="hidden"
+              />
+
+              <button
+                type="button"
+                onClick={handleAddText}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-stone-700 bg-stone-100 hover:bg-stone-200 transition-colors"
+                title="在当前分支新建灵感文字卡"
+              >
+                <Plus className="w-3.5 h-3.5 text-stone-600" />
+                <span>灵感</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-stone-700 bg-stone-100 hover:bg-stone-200 transition-colors"
+                title="上传参考图作为视觉约束"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-stone-600" />
+                <span>参考图</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={openCreateGroupModal}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200/80"
+                title="将已认可的确定项打包为独立方案组"
+              >
+                <Layers className="w-3.5 h-3.5 text-emerald-600" />
+                <span>打包方案</span>
+                {Object.keys(schemeGroups).length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-emerald-200 text-emerald-900 font-bold">
+                    {Object.keys(schemeGroups).length}
+                  </span>
+                )}
+              </button>
+
+              {/* Dual Exploration Mode Switcher */}
+              <div className="flex items-center bg-stone-100 p-0.5 rounded-full border border-stone-200/60 text-xs ml-0.5">
+                <button
+                  type="button"
+                  onClick={() => setExplorationMode("high_constraint")}
+                  className={`px-2 py-0.5 rounded-full transition-all text-[11px] font-medium ${
+                    explorationMode === "high_constraint"
+                      ? "bg-white text-emerald-900 shadow-xs font-semibold"
+                      : "text-stone-500 hover:text-stone-800"
+                  }`}
+                  title="高约束深化：严格贯彻确定项，微观深化工艺与排版"
+                >
+                  🎯 深化
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExplorationMode("low_constraint")}
+                  className={`px-2 py-0.5 rounded-full transition-all text-[11px] font-medium ${
+                    explorationMode === "low_constraint"
+                      ? "bg-white text-amber-900 shadow-xs font-semibold"
+                      : "text-stone-500 hover:text-stone-800"
+                  }`}
+                  title="低约束发散：在硬约束边界下，探索 2~3 种多向视觉假设"
+                >
+                  💡 发散
+                </button>
+              </div>
+            </div>
+          </>
         )}
-      </button>
 
-      <span className="text-[10px] text-stone-300">›</span>
+        <div className="h-4 w-px bg-stone-200 mx-0.5" />
 
-      {/* 05 Steps */}
-      <button
-        type="button"
-        title="跳转到 05 视觉视点"
-        disabled={!selectedRouteId}
-        onClick={() =>
-          void fitView({
-            nodes: [{ id: "steps" }],
-            padding: 0.3,
-            maxZoom: 0.95,
-            duration: 350,
-          })
-        }
-        className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium transition-all ${
-          selectedRouteId
-            ? "text-ink hover:bg-white/80"
-            : "text-stone-300 cursor-not-allowed"
-        }`}
-      >
-        <CheckSquare
-          className={`h-3.5 w-3.5 ${
-            selectedRouteId ? "text-emerald-600" : "text-stone-300"
-          }`}
-        />
-        <span>05 视点</span>
-      </button>
-
-      <span className="text-[10px] text-stone-300">›</span>
-
-      {/* 07 Search Plans */}
-      <button
-        type="button"
-        title={
-          platformPlans.length > 0
-            ? "跳转到 07 灵感检索"
-            : selectedRouteId
-              ? "查看视点并获取精准检索方案"
-              : "暂无检索方案"
-        }
-        disabled={platformPlans.length === 0 && !selectedRouteId}
-        onClick={() => {
-          if (platformPlans.length > 0) {
-            const target =
-              platformPlans.find((p) => p.stepId === activeStepId) ??
-              platformPlans.at(-1);
-            if (target) {
-              void fitView({
-                nodes: [{ id: `plan-${target.stepId}` }],
-                padding: 0.28,
-                maxZoom: 0.95,
-                duration: 350,
-              });
+        {/* Section 3: 视图与提案导出 */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            title="全局鸟瞰 (适应全屏)"
+            onClick={() =>
+              void fitView({ padding: 0.2, maxZoom: 0.95, duration: 350 })
             }
-          } else if (selectedRouteId) {
-            void fitView({
-              nodes: [{ id: "steps" }],
-              padding: 0.28,
-              maxZoom: 0.95,
-              duration: 350,
-            });
-          }
-        }}
-        className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium transition-all ${
-          platformPlans.length > 0 || selectedRouteId
-            ? "text-ink hover:bg-white/80"
-            : "text-stone-300 cursor-not-allowed"
-        }`}
-      >
-        <Search
-          className={`h-3.5 w-3.5 ${
-            platformPlans.length > 0 ? "text-blue-600" : selectedRouteId ? "text-stone-500" : "text-stone-300"
-          }`}
-        />
-        <span>07 搜索</span>
-        {platformPlans.length > 0 && (
-          <span className="rounded-full bg-blue-100 px-1 text-[10px] font-semibold text-blue-800">
-            {platformPlans.length}
-          </span>
-        )}
-      </button>
+            className="p-1.5 rounded-full text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
 
-      <div className="mx-1 h-4 w-px bg-line/80" />
+          {(hasState || hasCanvasItems) && (
+            <button
+              type="button"
+              title="导出设计探索全案简报"
+              onClick={onOpenDossier}
+              className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-stone-900 text-white hover:bg-stone-800 transition-all shadow-xs cursor-pointer"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              <span>导出提案</span>
+            </button>
+          )}
 
-      {/* Fit All Overview */}
-      <button
-        type="button"
-        title="全局鸟瞰 (适应全屏)"
-        onClick={() =>
-          void fitView({ padding: 0.2, maxZoom: 0.95, duration: 350 })
-        }
-        className="flex items-center gap-1 rounded-xl p-1.5 text-xs text-muted transition-colors hover:bg-white/80 hover:text-ink cursor-pointer flex-shrink-0"
-      >
-        <Maximize2 className="h-3.5 w-3.5" />
-      </button>
-
-      {/* Export Dossier Shortcut (only when proposal available) */}
-      {(hasState || routes.length > 0) && (
-        <button
-          type="button"
-          title="导出设计探索全案简报"
-          onClick={onOpenDossier}
-          className="flex items-center gap-1 rounded-xl bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent transition-all hover:bg-accent hover:text-white cursor-pointer flex-shrink-0"
-        >
-          <FileDown className="h-3.5 w-3.5" />
-          <span>导出提案</span>
-        </button>
-      )}
-
-      {/* Collapse Toggle */}
-      <button
-        type="button"
-        title="收起导航栏"
-        onClick={() => setUserCollapsed(true)}
-        className="flex items-center rounded-xl p-1.5 text-xs text-stone-400 hover:text-ink hover:bg-white/80 transition-colors cursor-pointer flex-shrink-0"
-      >
-        <ChevronDown className="h-3.5 w-3.5" />
-      </button>
-    </nav>
+          <button
+            type="button"
+            title="收起导航栏"
+            onClick={() => setUserCollapsed(true)}
+            className="p-1 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </nav>
 
     {/* Scheme Group Packaging Modal */}
     {isCreateGroupOpen && (
