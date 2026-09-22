@@ -530,9 +530,9 @@ export function normalizeLiveRoutesPayload(
 
   const routes: Route[] = rawRoutes.slice(0, 3).map((r, i) => {
     const routeId = nonEmpty(r.id, `route_${i + 1}`);
-    let starting = nonEmpty(r.startingPoint, defaultStarts[i] ?? `探索领地 ${i + 1}`);
+    let starting = nonEmpty(r.startingPoint, defaultStarts[i] ?? `探索切入 ${i + 1}`);
     if (seenStarting.has(starting)) {
-      starting = `${starting}（领地 ${i + 1}）`;
+      starting = `${starting}（切入点 ${i + 1}）`;
     }
     seenStarting.add(starting);
 
@@ -663,7 +663,7 @@ export function normalizeLiveRoutesPayload(
       title: defaultTitles[i] ?? `【视觉策略与探索】实战方案 0${i + 1}`,
       themeName: defaultThemeNames[i] ?? `设计主题 0${i + 1}`,
       visualSnapshot: defaultSnapshots[i] ?? "大面积纯净留白，依靠材质微肌理与清晰字阶呈现克制现代美感。",
-      startingPoint: defaultStarts[i] ?? `领地 0${i + 1}`,
+      startingPoint: defaultStarts[i] ?? `切入维度 0${i + 1}`,
       focusDimension: defaultDimensions[i] ?? "综合美学表现",
       coreProblem: defaultCoreProblems[i] ?? defaultCoreProblems[0],
       purpose: defaultPurposes[i] ?? defaultPurposes[0],

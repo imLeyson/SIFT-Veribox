@@ -44,97 +44,105 @@ function cleanText(str: string | null | undefined): string {
     .trim();
 }
 
-function getTerritoryInfo(index: number, title: string, themeName?: string, focusDimension?: string) {
+function getDimensionInfo(
+  index: number,
+  title: string,
+  themeName?: string,
+  focusDimension?: string,
+) {
+  const cleanFocus = focusDimension
+    ?.replace(/^(?:领地|维度|探索维度|切入维度)\s*0?[1-3]\s*·?\s*/, "")
+    ?.replace(/（(?:领地|维度)\s*\d+）/, "")
+    ?.trim();
+
+  const defaultDimensions = [
+    {
+      name: "物料与表面微触感",
+      icon: Layers,
+      badgeClass: "bg-amber-50 text-amber-800 border-amber-200/80",
+    },
+    {
+      name: "情感形态与器物隐喻",
+      icon: Sparkles,
+      badgeClass: "bg-rose-50 text-rose-800 border-rose-200/80",
+    },
+    {
+      name: "视觉符号与记忆锤",
+      icon: Zap,
+      badgeClass: "bg-purple-50 text-purple-800 border-purple-200/80",
+    },
+  ];
+
+  let dimName = "";
+  let icon = defaultDimensions[index % 3].icon;
+  let badgeClass = defaultDimensions[index % 3].badgeClass;
+
   const combined = `${title} ${themeName ?? ""} ${focusDimension ?? ""}`.toLowerCase();
 
-  // 1. Sustainable Material / Product Design
-  if (
-    combined.includes("纤维") ||
-    combined.includes("材料转化") ||
-    combined.includes("原生物料") ||
-    combined.includes("微气孔")
-  ) {
-    return {
-      tag: `领地 0${index + 1} · 原生物料与微触感`,
-      badgeClass: "bg-amber-50 text-amber-800 border-amber-200/80",
-      icon: Layers,
-    };
-  }
-  if (
-    combined.includes("器物") ||
-    combined.includes("弧度") ||
-    combined.includes("握持") ||
-    combined.includes("陪伴") ||
-    combined.includes("情感")
-  ) {
-    return {
-      tag: `领地 0${index + 1} · 情感隐喻与器物形态`,
-      badgeClass: "bg-rose-50 text-rose-800 border-rose-200/80",
-      icon: Sparkles,
-    };
-  }
-  if (
-    combined.includes("机能") ||
-    combined.includes("共生") ||
-    combined.includes("日常") ||
-    combined.includes("卡扣") ||
-    combined.includes("构件")
-  ) {
-    return {
-      tag: `领地 0${index + 1} · 现代机能与日常共生`,
-      badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200/80",
-      icon: Compass,
-    };
-  }
-
-  // 2. Typography & Grid
-  if (
-    combined.includes("网格") ||
-    combined.includes("理性") ||
-    combined.includes("排版") ||
-    combined.includes("档案") ||
-    combined.includes("字阶")
-  ) {
-    return {
-      tag: `领地 0${index + 1} · 信息网格与秩序`,
-      badgeClass: "bg-blue-50 text-blue-800 border-blue-200/80",
-      icon: LayoutGrid,
-    };
-  }
-
-  // 3. Symbol / Visual Hammer
-  if (
-    combined.includes("符号") ||
-    combined.includes("视觉锤") ||
-    combined.includes("几何") ||
-    combined.includes("轮廓")
-  ) {
-    return {
-      tag: `领地 0${index + 1} · 视觉符号与记忆锤`,
-      badgeClass: "bg-purple-50 text-purple-800 border-purple-200/80",
-      icon: Zap,
-    };
-  }
-
-  // Category index defaults
+  // Route-specific semantic cues to ensure 3 cards are distinctly labeled
   if (index === 0) {
-    return {
-      tag: "领地 01 · 材质工艺与微触感",
-      badgeClass: "bg-amber-50 text-amber-800 border-amber-200/80",
-      icon: Layers,
-    };
+    if (/纤维|物料|材质|肌理|纸|触感|气孔/.test(combined)) {
+      dimName = "物料质感与微触感";
+      icon = Layers;
+      badgeClass = "bg-amber-50 text-amber-800 border-amber-200/80";
+    } else if (/软体|圆胖|陪伴|温润|卵石/.test(combined)) {
+      dimName = "软体陪伴与亲和形态";
+      icon = Sparkles;
+      badgeClass = "bg-rose-50 text-rose-800 border-rose-200/80";
+    } else if (cleanFocus && cleanFocus.length <= 12) {
+      dimName = cleanFocus;
+    } else {
+      dimName = "材质感知与微触感";
+      icon = Layers;
+      badgeClass = "bg-amber-50 text-amber-800 border-amber-200/80";
+    }
+  } else if (index === 1) {
+    if (/握持|指尖|同心圆|阻尼|手感|触觉/.test(combined)) {
+      dimName = "握持工学与触觉感知";
+      icon = Compass;
+      badgeClass = "bg-emerald-50 text-emerald-800 border-emerald-200/80";
+    } else if (/网格|排版|字阶|秩序|双栏/.test(combined)) {
+      dimName = "版式骨架与信息秩序";
+      icon = LayoutGrid;
+      badgeClass = "bg-blue-50 text-blue-800 border-blue-200/80";
+    } else if (/机能|共生|结构|卡扣/.test(combined)) {
+      dimName = "结构机能与日常共生";
+      icon = Compass;
+      badgeClass = "bg-emerald-50 text-emerald-800 border-emerald-200/80";
+    } else if (cleanFocus && cleanFocus.length <= 12) {
+      dimName = cleanFocus;
+    } else {
+      dimName = "器物形态与功能细节";
+      icon = Compass;
+      badgeClass = "bg-emerald-50 text-emerald-800 border-emerald-200/80";
+    }
+  } else {
+    // index === 2
+    if (/糖果|几何|色彩|分区|色块/.test(combined)) {
+      dimName = "几何拼接与色彩分区";
+      icon = Zap;
+      badgeClass = "bg-purple-50 text-purple-800 border-purple-200/80";
+    } else if (/符号|记忆|视觉锤|超级符号/.test(combined)) {
+      dimName = "视觉符号与记忆锚点";
+      icon = Zap;
+      badgeClass = "bg-purple-50 text-purple-800 border-purple-200/80";
+    } else if (/穿透|机能|极客|暗黑/.test(combined)) {
+      dimName = "先锋张力与视觉焦点";
+      icon = Zap;
+      badgeClass = "bg-purple-50 text-purple-800 border-purple-200/80";
+    } else if (cleanFocus && cleanFocus.length <= 12) {
+      dimName = cleanFocus;
+    } else {
+      dimName = "视觉张力与记忆锚点";
+      icon = Zap;
+      badgeClass = "bg-purple-50 text-purple-800 border-purple-200/80";
+    }
   }
-  if (index === 1) {
-    return {
-      tag: "领地 02 · 结构形态与秩序",
-      badgeClass: "bg-blue-50 text-blue-800 border-blue-200/80",
-      icon: LayoutGrid,
-    };
-  }
+
   return {
-    tag: "领地 03 · 视觉张力与记忆锚点",
-    badgeClass: "bg-purple-50 text-purple-800 border-purple-200/80",
-    icon: Zap,
+    tag: `切入维度 · ${dimName}`,
+    badgeClass,
+    icon,
   };
 }
 
@@ -181,8 +189,8 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
   const prioritiesSummary = getPrioritiesAnchor(state);
   const avoidSummary = getAvoidAnchor(state);
 
-  const territory = getTerritoryInfo(index, route.title, route.themeName, route.focusDimension);
-  const TerritoryIcon = territory.icon;
+  const dimension = getDimensionInfo(index, route.title, route.themeName, route.focusDimension);
+  const DimensionIcon = dimension.icon;
 
   const collapsedSummary = (
     <div className="flex items-center justify-between gap-1.5 w-full">
@@ -225,13 +233,13 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
         selected={selected || isSelected}
       >
         <div className="space-y-3 text-xs">
-          {/* Territory archetype */}
+          {/* Dimension archetype */}
           <div className="flex items-center justify-between gap-1.5 text-[10.5px]">
             <span
-              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium border ${territory.badgeClass}`}
+              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium border ${dimension.badgeClass}`}
             >
-              <TerritoryIcon className="h-3 w-3" />
-              <span>{territory.tag}</span>
+              <DimensionIcon className="h-3 w-3" />
+              <span>{dimension.tag}</span>
             </span>
 
             <span className="rounded-md bg-white/80 px-2 py-0.5 text-[10px] text-stone-500 border border-line/60">
