@@ -367,6 +367,27 @@ export function BriefInputNode({ selected }: NodeProps) {
                   </button>
                 ))}
               </div>
+
+              {/* Instant Canvas Exploration Demo Entry */}
+              <div className="mt-3 pt-2.5 border-t border-emerald-200/60 bg-emerald-50/60 -mx-1 px-3 py-2 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-emerald-700 text-white">
+                    新功能
+                  </span>
+                  <span className="text-[11px] font-medium text-emerald-950">
+                    画布探索与方案组
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => siftActions.loadDemoCanvas()}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-800 text-white hover:bg-emerald-700 transition-all shadow-xs cursor-pointer"
+                  title="直接体验老师要求的单人画布探索：确定项卡片、分支拓扑、方案组与双模式"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>⚡️ 一键载入画布探索演示</span>
+                </button>
+              </div>
             </div>
           </form>
         )}

@@ -428,6 +428,10 @@ export function createConvergenceActions(
       cancel();
       store.getState().reset();
     },
+    loadDemoCanvas: () => {
+      cancel();
+      store.getState().loadDemoCanvas();
+    },
   };
 }
 

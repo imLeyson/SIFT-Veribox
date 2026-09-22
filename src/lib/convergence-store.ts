@@ -169,6 +169,7 @@ export type SiftStore = Session & {
   toggleSchemeGroupCollapse: (groupId: string) => void;
   removeSchemeGroup: (groupId: string) => void;
   setExplorationMode: (mode: "high_constraint" | "low_constraint") => void;
+  loadDemoCanvas: () => void;
 };
 
 function emptySession(): Session {
@@ -827,6 +828,183 @@ export function createSiftStore(providedStorage?: StateStorage) {
         },
         setExplorationMode: (mode: "high_constraint" | "low_constraint") => {
           set({ explorationMode: mode });
+        },
+        loadDemoCanvas: () => {
+          const demoBrief = "冷泡茶包装设计，追求克制有品质的日常仪式感，避免红金罐与廉价塑料感。";
+          const rootBranchId = "branch-root";
+          const childBranchId = "branch-tactile";
+
+          const item1: CanvasItem = {
+            id: "demo-item-1",
+            type: "text",
+            branchId: rootBranchId,
+            status: "determined",
+            title: "【材质硬约束】350g触感棉纸无墨微压凹",
+            content: "保留特种棉纸的原生粗糙触感与微植物杂色纤维，主要字标依靠 0.4mm 模具无墨盲压呈现光影转折，杜绝厚重油墨封层。",
+            tags: ["触感棉纸", "无墨盲压", "物理触觉"],
+            createdAt: Date.now() - 30000,
+          };
+
+          const item2: CanvasItem = {
+            id: "demo-item-2",
+            type: "text",
+            branchId: rootBranchId,
+            status: "determined",
+            title: "【排版秩序】75%呼吸留白与8pt微字阶",
+            content: "采用类似档案或标本卡片的冷峻理性排版，大面积负空间留白，仅在侧面留出单色细字指引，形成宁静秩序感。",
+            tags: ["微字阶", "留白秩序", "去商业噪点"],
+            createdAt: Date.now() - 25000,
+          };
+
+          const item3: CanvasItem = {
+            id: "demo-item-3",
+            type: "text",
+            branchId: rootBranchId,
+            status: "undetermined",
+            title: "【色彩候选】冷萃茶汤琥珀透光色卡",
+            content: "辅助视觉提取茶汤穿透玻璃后的清洌琥珀色泽，作为封口贴与微细色块的点缀，避免大面积色块侵夺纸感。",
+            tags: ["自然琥珀", "透光质感"],
+            createdAt: Date.now() - 20000,
+          };
+
+          const item4: CanvasItem = {
+            id: "demo-item-4",
+            type: "text",
+            branchId: rootBranchId,
+            status: "discarded",
+            title: "【已舍弃】大面积荧光色与反光烫金",
+            content: "舍弃常规商业茶饮惯用的红金大字与反光高亮电化铝，彻底排除浮夸货架感。",
+            tags: ["拒绝红金", "拒绝浮夸"],
+            createdAt: Date.now() - 15000,
+          };
+
+          const item5: CanvasItem = {
+            id: "demo-item-5",
+            type: "exploration_card",
+            branchId: childBranchId,
+            status: "determined",
+            title: "【工艺落地】350g棉纸+0.4mm盲压模具",
+            content: "严格贯彻已有材质约束，主面选用 350g 哑光触感特种棉纸，核心字标采用 0.4mm 模具精细盲压，满足近距离把玩的精致感。",
+            tags: ["工艺参数", "棉纸触感", "盲压深度"],
+            sourceNodeId: "node-demo-item-1",
+            createdAt: Date.now() - 10000,
+          };
+
+          const item6: CanvasItem = {
+            id: "demo-item-6",
+            type: "exploration_card",
+            branchId: childBranchId,
+            status: "undetermined",
+            title: "【双栏网格】70%负空间与非对称留白",
+            content: "左侧 30% 区域收纳必须的产地、克重与冲泡指引，右侧 70% 形成完整呼吸负空间，营造东方式的清醒与安定感。",
+            tags: ["非对称网格", "负空间", "呼吸节奏"],
+            sourceNodeId: "node-demo-item-1",
+            createdAt: Date.now() - 5000,
+          };
+
+          const rootBranch: Branch = {
+            id: rootBranchId,
+            name: "主方向探索",
+            parentId: null,
+            sourceNodeId: "direction",
+            inheritedConstraints: [
+              {
+                id: "const-1",
+                sourceItemId: "demo-item-1",
+                type: "text",
+                title: "材质硬约束",
+                content: "350g触感棉纸无墨微压凹",
+              },
+            ],
+            createdAt: Date.now() - 35000,
+          };
+
+          const childBranch: Branch = {
+            id: childBranchId,
+            name: "分支：触觉阻尼与微观工艺深化",
+            parentId: rootBranchId,
+            sourceNodeId: "node-demo-item-1",
+            inheritedConstraints: [
+              {
+                id: "const-1",
+                sourceItemId: "demo-item-1",
+                type: "text",
+                title: "材质硬约束",
+                content: "350g触感棉纸无墨微压凹",
+              },
+              {
+                id: "const-2",
+                sourceItemId: "demo-item-2",
+                type: "text",
+                title: "排版秩序",
+                content: "75%呼吸留白与8pt微字阶",
+              },
+            ],
+            createdAt: Date.now() - 12000,
+          };
+
+          const scheme1: SchemeGroup = {
+            id: "scheme-demo-1",
+            name: "方案 A · 极简冷峻触觉",
+            branchId: childBranchId,
+            itemIds: ["demo-item-1", "demo-item-2", "demo-item-5"],
+            collapsed: false,
+            summary: "以特种棉纸的原生触觉阻尼与 75% 呼吸留白为核心特征，建立专业冷峻的信赖感。",
+            createdAt: Date.now() - 2000,
+          };
+
+          set({
+            rawBrief: demoBrief,
+            state: {
+              revision: 2,
+              status: "confirmed",
+              validationAction: null,
+              brief: {
+                goal: "冷泡茶包装设计",
+                audience: "追求品质生活的都市年轻人",
+                deliverable: "罐装主视觉与材料排版规范",
+              },
+              constraints: [
+                { text: "避免使用大面积高饱和色彩与反光烫金", basis: "user", sourceIds: ["brief"] },
+                { text: "强调日常仪式感与原生态触觉", basis: "user", sourceIds: ["brief"] },
+              ],
+              direction: {
+                intent: { text: "以触觉阻尼感与克制排版传达冷冽与日常品质仪式", basis: "assumption", sourceIds: ["brief"] },
+                priorities: [
+                  { text: "优先采用未涂布棉纸与无墨深压凹", basis: "assumption", sourceIds: ["brief"] },
+                  { text: "大面积呼吸留白与档案式微字阶", basis: "assumption", sourceIds: ["brief"] },
+                ],
+                avoid: [
+                  { text: "避免大面积荧光色与电化铝烫金", basis: "assumption", sourceIds: ["brief"] },
+                ],
+                criteria: [
+                  { text: "近距离拿捏具有独特的纸张阻尼手感", basis: "assumption", sourceIds: ["brief"] },
+                ],
+              },
+              currentHypothesis: "物理触觉的高反差能让使用者在未阅读文字前建立原生纯净的第一感知",
+              uncertainties: [],
+            },
+            next: null,
+            branches: {
+              [rootBranchId]: rootBranch,
+              [childBranchId]: childBranch,
+            },
+            activeBranchId: childBranchId,
+            canvasItems: {
+              "demo-item-1": item1,
+              "demo-item-2": item2,
+              "demo-item-3": item3,
+              "demo-item-4": item4,
+              "demo-item-5": item5,
+              "demo-item-6": item6,
+            },
+            schemeGroups: {
+              "scheme-demo-1": scheme1,
+            },
+            explorationMode: "high_constraint",
+            activeRequest: null,
+            error: null,
+          });
         },
         reset: () =>
           set({ ...emptySession(), activeRequest: null, error: null }),

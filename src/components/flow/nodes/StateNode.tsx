@@ -6,7 +6,7 @@ import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { copyToClipboard } from "@/lib/clipboard";
 import { hasDirection } from "@/types/convergence";
-import { Check, Sparkles, ArrowRight, RefreshCw } from "lucide-react";
+import { Check, Sparkles, ArrowRight, RefreshCw, GitBranch } from "lucide-react";
 
 export function StateNode({ selected }: NodeProps) {
   const {
@@ -17,6 +17,8 @@ export function StateNode({ selected }: NodeProps) {
     storageWarning,
     routes,
     briefImages,
+    branches,
+    canvasItems,
     setCorrectionDraft,
   } = useSiftStore();
   const [editing, setEditing] = useState(false);
@@ -246,7 +248,23 @@ export function StateNode({ selected }: NodeProps) {
 
         {/* Confirmed State Actions */}
         {confirmed && (
-          <div className="border-t border-line/60 pt-2.5">
+          <div className="border-t border-line/60 pt-2.5 space-y-2">
+            {/* Canvas Exploration Active Notice */}
+            <div className="rounded-xl bg-emerald-50/90 border border-emerald-300/80 p-2.5 space-y-1 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-950">
+                  <GitBranch className="w-3.5 h-3.5 text-emerald-700" />
+                  已开启画布分支探索模式
+                </span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-200/90 text-emerald-900 font-mono font-medium">
+                  {Object.keys(branches).length} 分支 · {Object.keys(canvasItems).length} 节点
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-800 leading-relaxed">
+                6 维设计确定项已投放至右侧画布。可在卡片上切换【确定/待定/舍弃】并开辟新分支，或使用底部导航栏【打包方案组】。
+              </p>
+            </div>
+
             {routes.length === 0 ? (
               <button
                 type="button"
