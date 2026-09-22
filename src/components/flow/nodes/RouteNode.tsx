@@ -282,8 +282,10 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
                   updateRoute(route.id, { visualSnapshot: newSnapshot })
                 }
                 multiline
+                minRows={4}
                 as="span"
                 className="text-ink font-serif"
+                inputClassName="font-serif text-xs sm:text-[13px] leading-relaxed"
                 label="灵感画面快照"
                 showEditIcon
               />

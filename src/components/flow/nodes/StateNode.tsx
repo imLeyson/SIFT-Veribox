@@ -84,6 +84,7 @@ export function StateNode({ id, selected }: NodeProps) {
               value={state.direction.intent.text}
               onSave={(newIntent) => updateStateIntent(newIntent)}
               multiline
+              minRows={4}
               as="p"
               className="text-xs sm:text-sm font-medium text-ink leading-relaxed font-serif block w-full"
               inputClassName="font-serif text-sm leading-relaxed"
@@ -117,6 +118,7 @@ export function StateNode({ id, selected }: NodeProps) {
               value={state.currentHypothesis}
               onSave={(newHyp) => updateStateHypothesis(newHyp)}
               multiline
+              minRows={3}
               as="p"
               className="text-stone-800 leading-snug block w-full"
               label="设计假设"

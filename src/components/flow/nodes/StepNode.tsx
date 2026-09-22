@@ -157,6 +157,7 @@ export function StepNode({ id, selected }: NodeProps) {
                   updateRouteStep(route.id, currentStep.id, { question: newQuestion })
                 }
                 multiline
+                minRows={3}
                 as="p"
                 className="text-xs sm:text-[13px] font-semibold text-ink leading-snug block w-full"
                 label="视点设问"
@@ -173,6 +174,7 @@ export function StepNode({ id, selected }: NodeProps) {
                     updateRouteStep(route.id, currentStep.id, { purpose: newPurpose })
                   }
                   multiline
+                  minRows={3}
                   as="span"
                   className="text-stone-600 block flex-1"
                   label="观察重点"

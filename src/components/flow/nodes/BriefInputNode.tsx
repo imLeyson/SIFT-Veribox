@@ -119,6 +119,7 @@ export function BriefInputNode({ id, selected }: NodeProps) {
               value={rawBrief}
               onSave={(newBrief) => updateRawBrief(newBrief)}
               multiline
+              minRows={6}
               as="p"
               className="whitespace-pre-wrap text-sm leading-relaxed text-ink font-serif w-full block"
               inputClassName="font-serif text-sm leading-relaxed"
