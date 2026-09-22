@@ -11,6 +11,9 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     platformPlans = [],
     stepNotes = {},
     completedCriteria = {},
+    branches = {},
+    canvasItems = {},
+    schemeGroups = {},
   } = store;
 
   const now = new Date().toLocaleDateString("zh-CN", {
@@ -190,6 +193,86 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       lines.push(`- **核心问题**：${r.coreProblem}`);
       lines.push(`- **视觉亮点 / 防跑偏**：${r.pros} / ${r.cons}\n`);
     });
+  }
+
+  // Section 03: Canvas Exploration Branches & Scheme Groups
+  const branchList = Object.values(branches);
+  const groupList = Object.values(schemeGroups);
+  if (branchList.length > 0 || groupList.length > 0) {
+    lines.push(`## 03 画布探索分支与方案沉淀 (Canvas Exploration & Schemes)`);
+
+    if (groupList.length > 0) {
+      lines.push(`### 📦 已沉淀方案组 (Scheme Groups)`);
+
+      if (groupList.length >= 2) {
+        lines.push(`#### 📊 方案组横向对比矩阵 (Scheme Comparison Matrix)`);
+        lines.push(`| 方案组名称 | 包含资产数 | 核心特征/确定项概览 | 对应来源分支 |`);
+        lines.push(`| :--- | :---: | :--- | :--- |`);
+        groupList.forEach((group) => {
+          const items = group.itemIds
+            .map((id) => canvasItems[id])
+            .filter(Boolean);
+          const branchName =
+            (group.branchId && branches[group.branchId]?.name) || "根分支";
+          const features =
+            items
+              .map((it) => it.title || it.content.slice(0, 14))
+              .join("、") || "暂无资产";
+          lines.push(
+            `| **${group.name}** | ${items.length} 项 | ${features} | ${branchName} |`,
+          );
+        });
+        lines.push("");
+      }
+
+      groupList.forEach((group, idx) => {
+        const items = group.itemIds
+          .map((id) => canvasItems[id])
+          .filter(Boolean);
+        lines.push(`#### 方案组 ${idx + 1}：${group.name}`);
+        if (group.summary) lines.push(`> ${group.summary}\n`);
+        lines.push(`包含 **${items.length}** 个确定视觉与策略资产：`);
+        items.forEach((it) => {
+          const statusTag =
+            it.status === "determined" ? "✅ [确定项]" : "⏳ [待定]";
+          lines.push(
+            `- ${statusTag} **${it.title || "设计洞察"}**：${it.content || ""}`,
+          );
+        });
+        lines.push("");
+      });
+    }
+
+    if (branchList.length > 0) {
+      lines.push(`### 🌿 并行探索分支 (Exploration Branches)`);
+      branchList.forEach((branch, idx) => {
+        lines.push(`#### 分支 ${idx + 1}：${branch.name}`);
+        if (branch.inheritedConstraints.length > 0) {
+          lines.push(`- **继承硬约束**：`);
+          branch.inheritedConstraints.forEach((c) => {
+            lines.push(
+              `  * [${c.type}] ${c.title ? `${c.title}: ` : ""}${c.content}`,
+            );
+          });
+        }
+        const bItems = Object.values(canvasItems).filter(
+          (it) => it.branchId === branch.id,
+        );
+        if (bItems.length > 0) {
+          lines.push(`- **分支探索卡片**：`);
+          bItems.forEach((it) => {
+            const statusTag =
+              it.status === "determined"
+                ? "✅"
+                : it.status === "discarded"
+                ? "❌ [已舍弃]"
+                : "💡";
+            lines.push(`  * ${statusTag} **${it.title || "探索卡片"}**：${it.content}`);
+          });
+        }
+        lines.push("");
+      });
+    }
   }
 
   lines.push(`\n---\n*由 SIFT 生成 · 面向设计师的视觉策略与方向收敛智能体 · 快速收敛清晰有画面感的设计主题与检索方向，避免前期漫无目的地试错*`);

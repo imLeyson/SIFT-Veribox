@@ -10,6 +10,7 @@ import {
   RoutesResultSchema,
   PlatformPlanResultSchema,
 } from "./agent/routes-schema";
+import { BranchExploreOutputSchema } from "./agent/canvas-schema";
 import { copyToClipboard } from "./clipboard";
 import type { Answer, ConvergenceInput, TurnEvent } from "@/types/convergence";
 
@@ -329,6 +330,99 @@ export function createConvergenceActions(
       keyword?: string,
     ) => {
       store.getState().recordSourceAction(stepId, sourceId, action, keyword);
+    },
+    exploreBranch: async (
+      sourceItemId: string,
+      userPrompt?: string,
+      options?: {
+        customBranchName?: string;
+        extraConstraintItemIds?: string[];
+      },
+    ): Promise<string | null> => {
+      const s = store.getState();
+      const sourceItem = s.canvasItems[sourceItemId];
+      if (!sourceItem) return null;
+
+      const token = s.beginRequest();
+      if (!token) return null;
+
+      const items = Object.values(s.canvasItems);
+      const determinedIds = new Set<string>();
+      determinedIds.add(sourceItemId);
+      if (options?.extraConstraintItemIds) {
+        for (const id of options.extraConstraintItemIds) {
+          if (s.canvasItems[id]) determinedIds.add(id);
+        }
+      }
+      for (const item of items) {
+        if (item.status === "determined") {
+          determinedIds.add(item.id);
+        }
+      }
+
+      const discardedItems = items
+        .filter((it) => it.status === "discarded")
+        .map((it) => it.content || it.title || "")
+        .filter(Boolean);
+
+      const branchName =
+        options?.customBranchName?.trim() ||
+        `分支：${sourceItem.title || sourceItem.content.slice(0, 12) || "灵感深化"}`;
+      const newBranchId = s.createBranchFromItems(
+        branchName,
+        Array.from(determinedIds),
+        sourceItem.branchId ?? s.activeBranchId,
+        `node-${sourceItemId}`,
+      );
+
+      const inheritedConstraints =
+        s.branches[newBranchId]?.inheritedConstraints ?? [];
+
+      try {
+        const res = await fetcher("/api/branch-explore", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            branchId: newBranchId,
+            branchName,
+            parentNodeId: `node-${sourceItemId}`,
+            inheritedConstraints,
+            discardedItems,
+            userPrompt,
+            explorationMode: s.explorationMode,
+          }),
+        });
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          throw new Error(errJson.error || "分支探索请求失败");
+        }
+
+        const data = await res.json();
+        const parsed = BranchExploreOutputSchema.parse(data);
+
+        parsed.generatedCards.forEach((card, idx) => {
+          store.getState().addCanvasItem({
+            id: `card-${newBranchId}-${idx + 1}-${Date.now()}`,
+            branchId: newBranchId,
+            type: "exploration_card",
+            status: "undetermined",
+            title: card.title,
+            content: card.content,
+            tags: card.tags,
+            sourceNodeId: `node-${sourceItemId}`,
+          });
+        });
+
+        store.setState({ activeRequest: null, error: null });
+        return newBranchId;
+      } catch (err) {
+        store.setState({
+          activeRequest: null,
+          error: err instanceof Error ? err.message : "分支探索生成失败",
+        });
+        return null;
+      }
     },
     reset: () => {
       cancel();

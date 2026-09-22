@@ -20,6 +20,11 @@ import {
   PlatformPlanSchema,
 } from "./agent/routes-schema";
 import {
+  CanvasItemSchema,
+  BranchSchema,
+  SchemeGroupSchema,
+} from "./agent/canvas-schema";
+import {
   hasDirection,
   type Answer,
   type TurnResult,
@@ -28,8 +33,14 @@ import type {
   Route,
   PlatformPlan,
 } from "@/types/routes";
+import type {
+  CanvasItem,
+  Branch,
+  SchemeGroup,
+  ItemStatus,
+} from "@/types/canvas";
 
-export const STORAGE_KEY = "sift-convergence-v3";
+export const STORAGE_KEY = "sift-convergence-v4";
 
 const SourceInteractionSchema = z.object({
   skipped: z.boolean().optional(),
@@ -58,6 +69,7 @@ const SessionSchema = z
     explorationStage: z
       .enum([
         "state_confirmed",
+        "canvas_active",
         "routes",
         "route_selected",
         "step_active",
@@ -73,6 +85,13 @@ const SessionSchema = z
     sourceInteractions: z.record(z.string(), SourceInteractionSchema),
     stepNotes: z.record(z.string(), z.array(z.string())).default({}),
     completedCriteria: z.record(z.string(), z.array(z.string())).default({}),
+    branches: z.record(z.string(), BranchSchema).default({}),
+    activeBranchId: z.string().nullable().default(null),
+    canvasItems: z.record(z.string(), CanvasItemSchema).default({}),
+    schemeGroups: z.record(z.string(), SchemeGroupSchema).default({}),
+    explorationMode: z
+      .enum(["high_constraint", "low_constraint"])
+      .default("high_constraint"),
   })
   .superRefine((value, ctx) => {
     if (
@@ -125,6 +144,31 @@ export type SiftStore = Session & {
     keyword?: string,
   ) => void;
   reset: () => void;
+  setCanvasItemStatus: (itemId: string, status: ItemStatus) => void;
+  addCanvasItem: (
+    item: Omit<CanvasItem, "id" | "createdAt" | "status" | "tags"> & {
+      id?: string;
+      status?: ItemStatus;
+      tags?: string[];
+    },
+  ) => string;
+  removeCanvasItem: (itemId: string) => void;
+  updateCanvasItem: (itemId: string, patch: Partial<CanvasItem>) => void;
+  createBranchFromItems: (
+    name: string,
+    sourceItemIds: string[],
+    parentBranchId?: string | null,
+    sourceNodeId?: string | null,
+  ) => string;
+  setActiveBranch: (branchId: string | null) => void;
+  createSchemeGroup: (
+    name: string,
+    itemIds: string[],
+    color?: string,
+  ) => string;
+  toggleSchemeGroupCollapse: (groupId: string) => void;
+  removeSchemeGroup: (groupId: string) => void;
+  setExplorationMode: (mode: "high_constraint" | "low_constraint") => void;
 };
 
 function emptySession(): Session {
@@ -150,6 +194,11 @@ function emptySession(): Session {
     sourceInteractions: {},
     stepNotes: {},
     completedCriteria: {},
+    branches: {},
+    activeBranchId: null,
+    canvasItems: {},
+    schemeGroups: {},
+    explorationMode: "high_constraint",
   };
 }
 
@@ -163,6 +212,58 @@ export function createSiftStore(providedStorage?: StateStorage) {
         if (stored !== null) {
           JSON.parse(stored); // Recover malformed JSON before Zustand's decoder.
           return stored;
+        }
+
+        // Migrate from sift-convergence-v3
+        const v3 = await target.getItem("sift-convergence-v3");
+        if (v3 !== null) {
+          const parsed = JSON.parse(v3);
+          const raw = parsed?.state ?? parsed;
+          const isConfirmed = raw?.state?.status === "confirmed";
+          const rootBranchId = "branch-root";
+          const initialBranches: Record<string, unknown> = raw?.branches ?? {};
+          const initialItems: Record<string, unknown> = raw?.canvasItems ?? {};
+
+          if (isConfirmed && Object.keys(initialBranches).length === 0) {
+            initialBranches[rootBranchId] = {
+              id: rootBranchId,
+              name: "主方向探索",
+              parentId: null,
+              sourceNodeId: "direction",
+              inheritedConstraints: [],
+              createdAt: Date.now(),
+            };
+            if (raw?.state?.direction?.intent) {
+              const intentId = `item-intent-migrated`;
+              const intentContent =
+                typeof raw.state.direction.intent === "string"
+                  ? raw.state.direction.intent
+                  : (raw.state.direction.intent?.text ?? "");
+              initialItems[intentId] = {
+                id: intentId,
+                type: "text",
+                branchId: rootBranchId,
+                status: "determined",
+                title: "核心意图",
+                content: intentContent,
+                tags: ["intent"],
+                createdAt: Date.now(),
+              };
+            }
+          }
+
+          return JSON.stringify({
+            state: {
+              ...emptySession(),
+              ...raw,
+              branches: initialBranches,
+              activeBranchId: raw?.activeBranchId ?? (isConfirmed ? rootBranchId : null),
+              canvasItems: initialItems,
+              schemeGroups: raw?.schemeGroups ?? {},
+              explorationMode: raw?.explorationMode ?? "high_constraint",
+            },
+            version: 1,
+          });
         }
 
         // Migrate from sift-convergence-v2
@@ -331,6 +432,77 @@ export function createSiftStore(providedStorage?: StateStorage) {
           const state = get().state;
           if (!state || state.status !== "checkpoint" || !hasDirection(state))
             return;
+
+          const rootBranchId = "branch-root";
+          const newBranches = { ...get().branches };
+          const newItems = { ...get().canvasItems };
+
+          if (!newBranches[rootBranchId]) {
+            newBranches[rootBranchId] = {
+              id: rootBranchId,
+              name: "主方向探索",
+              parentId: null,
+              sourceNodeId: "direction",
+              inheritedConstraints: [],
+              createdAt: Date.now(),
+            };
+
+            if (state.direction.intent) {
+              const intentItemId = `item-intent-${Date.now()}`;
+              newItems[intentItemId] = {
+                id: intentItemId,
+                type: "text",
+                branchId: rootBranchId,
+                status: "determined",
+                title: "核心意图",
+                content: state.direction.intent.text,
+                tags: ["intent"],
+                createdAt: Date.now(),
+              };
+            }
+            if (state.direction.priorities?.length) {
+              const priItemId = `item-pri-${Date.now()}`;
+              newItems[priItemId] = {
+                id: priItemId,
+                type: "text",
+                branchId: rootBranchId,
+                status: "determined",
+                title: "坚守原则",
+                content: state.direction.priorities.map((p) => p.text).join("；"),
+                tags: ["priorities"],
+                createdAt: Date.now() + 1,
+              };
+            }
+            if (state.currentHypothesis) {
+              const hypItemId = `item-hyp-${Date.now()}`;
+              newItems[hypItemId] = {
+                id: hypItemId,
+                type: "text",
+                branchId: rootBranchId,
+                status: "undetermined",
+                title: "设计假设",
+                content: state.currentHypothesis,
+                tags: ["hypothesis"],
+                createdAt: Date.now() + 2,
+              };
+            }
+            const briefImages = get().briefImages;
+            briefImages.forEach((img, idx) => {
+              const imgItemId = `item-img-${idx}-${Date.now()}`;
+              newItems[imgItemId] = {
+                id: imgItemId,
+                type: "image",
+                branchId: rootBranchId,
+                status: "determined",
+                title: `参考素材 ${idx + 1}`,
+                content: "Brief 导入参考图",
+                imageUrl: img,
+                tags: ["reference_image"],
+                createdAt: Date.now() + 3 + idx,
+              };
+            });
+          }
+
           set({
             state: {
               ...state,
@@ -338,6 +510,9 @@ export function createSiftStore(providedStorage?: StateStorage) {
               revision: state.revision + 1,
             },
             explorationStage: "state_confirmed",
+            branches: newBranches,
+            activeBranchId: get().activeBranchId ?? rootBranchId,
+            canvasItems: newItems,
             activeRequest: null,
             error: null,
           });
@@ -518,6 +693,141 @@ export function createSiftStore(providedStorage?: StateStorage) {
             },
           });
         },
+        setCanvasItemStatus: (itemId: string, status: ItemStatus) => {
+          const item = get().canvasItems[itemId];
+          if (!item) return;
+          set({
+            canvasItems: {
+              ...get().canvasItems,
+              [itemId]: { ...item, status },
+            },
+          });
+        },
+        addCanvasItem: (item) => {
+          const id = item.id ?? `item-${crypto.randomUUID()}`;
+          const branchId = item.branchId ?? get().activeBranchId ?? "branch-root";
+          const newItem: CanvasItem = {
+            id,
+            branchId,
+            type: item.type,
+            status: item.status ?? "undetermined",
+            title: item.title,
+            content: item.content ?? "",
+            imageUrl: item.imageUrl,
+            sourceNodeId: item.sourceNodeId,
+            tags: item.tags ?? [],
+            createdAt: Date.now(),
+          };
+          set({
+            canvasItems: {
+              ...get().canvasItems,
+              [id]: newItem,
+            },
+          });
+          return id;
+        },
+        removeCanvasItem: (itemId: string) => {
+          const items = { ...get().canvasItems };
+          delete items[itemId];
+          const groups = { ...get().schemeGroups };
+          for (const gId of Object.keys(groups)) {
+            if (groups[gId].itemIds.includes(itemId)) {
+              groups[gId] = {
+                ...groups[gId],
+                itemIds: groups[gId].itemIds.filter((id) => id !== itemId),
+              };
+            }
+          }
+          set({ canvasItems: items, schemeGroups: groups });
+        },
+        updateCanvasItem: (itemId: string, patch: Partial<CanvasItem>) => {
+          const item = get().canvasItems[itemId];
+          if (!item) return;
+          set({
+            canvasItems: {
+              ...get().canvasItems,
+              [itemId]: { ...item, ...patch },
+            },
+          });
+        },
+        createBranchFromItems: (
+          name: string,
+          sourceItemIds: string[],
+          parentBranchId?: string | null,
+          sourceNodeId?: string | null,
+        ) => {
+          const newBranchId = `branch-${crypto.randomUUID()}`;
+          const items = get().canvasItems;
+          const inheritedConstraints = sourceItemIds
+            .map((id) => items[id])
+            .filter((it): it is CanvasItem => Boolean(it))
+            .map((it) => ({
+              id: `constraint-${it.id}`,
+              sourceItemId: it.id,
+              type: it.type,
+              title: it.title,
+              content: it.content || it.title || "确定项约束",
+              imageUrl: it.imageUrl,
+            }));
+
+          const newBranch: Branch = {
+            id: newBranchId,
+            name,
+            parentId: parentBranchId ?? get().activeBranchId ?? "branch-root",
+            sourceNodeId: sourceNodeId ?? (sourceItemIds[0] ? `node-${sourceItemIds[0]}` : null),
+            inheritedConstraints,
+            createdAt: Date.now(),
+          };
+
+          set({
+            branches: {
+              ...get().branches,
+              [newBranchId]: newBranch,
+            },
+            activeBranchId: newBranchId,
+          });
+          return newBranchId;
+        },
+        setActiveBranch: (branchId: string | null) => {
+          set({ activeBranchId: branchId });
+        },
+        createSchemeGroup: (name: string, itemIds: string[], color?: string) => {
+          const id = `scheme-${crypto.randomUUID()}`;
+          const newGroup: SchemeGroup = {
+            id,
+            name,
+            branchId: get().activeBranchId ?? undefined,
+            itemIds,
+            color,
+            collapsed: false,
+            createdAt: Date.now(),
+          };
+          set({
+            schemeGroups: {
+              ...get().schemeGroups,
+              [id]: newGroup,
+            },
+          });
+          return id;
+        },
+        toggleSchemeGroupCollapse: (groupId: string) => {
+          const group = get().schemeGroups[groupId];
+          if (!group) return;
+          set({
+            schemeGroups: {
+              ...get().schemeGroups,
+              [groupId]: { ...group, collapsed: !group.collapsed },
+            },
+          });
+        },
+        removeSchemeGroup: (groupId: string) => {
+          const groups = { ...get().schemeGroups };
+          delete groups[groupId];
+          set({ schemeGroups: groups });
+        },
+        setExplorationMode: (mode: "high_constraint" | "low_constraint") => {
+          set({ explorationMode: mode });
+        },
         reset: () =>
           set({ ...emptySession(), activeRequest: null, error: null }),
       }),
@@ -548,6 +858,11 @@ export function createSiftStore(providedStorage?: StateStorage) {
           sourceInteractions,
           stepNotes,
           completedCriteria,
+          branches,
+          activeBranchId,
+          canvasItems,
+          schemeGroups,
+          explorationMode,
         }) => ({
           sessionId,
           rawBrief,
@@ -570,6 +885,11 @@ export function createSiftStore(providedStorage?: StateStorage) {
           sourceInteractions,
           stepNotes,
           completedCriteria,
+          branches,
+          activeBranchId,
+          canvasItems,
+          schemeGroups,
+          explorationMode,
         }),
         merge: (saved, current) => {
           if (!saved) return { ...current, storageWarning: readWarning };
