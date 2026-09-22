@@ -179,6 +179,12 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
   const rawSubtitle = route.title.replace(/【.*?】/, "").trim();
   const visualHook = rawSubtitle && rawSubtitle !== heroTitle ? rawSubtitle : route.focusDimension;
 
+  const itemDecisions = useSiftStore((s) => s.itemDecisions);
+  const setItemDecision = useSiftStore((s) => s.setItemDecision);
+  const removeItemDecision = useSiftStore((s) => s.removeItemDecision);
+  const themeDecision = itemDecisions[`theme_${route.id}`];
+  const isDiscarded = themeDecision?.status === "discarded";
+
   const snapshotText = toInspirationCopy(cleanText(route.visualSnapshot || route.purpose));
   const recReason = toInspirationCopy(cleanText(route.recommendedReason));
   const coreProblemText = toInspirationCopy(cleanText(route.coreProblem));
@@ -206,11 +212,13 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
   return (
     <div
       className={`transition-all duration-300 w-[380px] sm:w-[390px] ${
-        isWeakened
-          ? "opacity-75 hover:opacity-100"
-          : isSelected
-            ? "ring-2 ring-indigo-600/70 shadow-md"
-            : "hover:shadow-md"
+        isDiscarded
+          ? "opacity-50 grayscale border-dashed"
+          : isWeakened
+            ? "opacity-75 hover:opacity-100"
+            : isSelected
+              ? "ring-2 ring-indigo-600/70 shadow-md"
+              : "hover:shadow-md"
       }`}
     >
       <NodeShell
@@ -352,7 +360,20 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
 
           {/* Actions: Select or Swap Themes */}
           <div className="pt-1 border-t border-line/60 space-y-1.5">
-            {isSelected ? (
+            {isDiscarded ? (
+              <div className="flex items-center justify-between rounded-xl bg-stone-100/90 p-2.5 border border-line/70">
+                <span className="text-[11px] text-stone-500 line-through">
+                  已舍弃此方向（下轮不再推荐）
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeItemDecision(`theme_${route.id}`)}
+                  className="rounded-md bg-white border border-line px-2 py-0.5 text-[11px] text-accent font-medium hover:border-accent transition-colors cursor-pointer"
+                >
+                  恢复
+                </button>
+              </div>
+            ) : isSelected ? (
               <div className="flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
                   <Check className="h-4 w-4" />
@@ -388,12 +409,32 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
                       : "btn-primary shadow-sm hover:shadow"
                   }`}
                   disabled={Boolean(activeRequest)}
-                  onClick={() => siftActions.selectRoute(route.id)}
+                  onClick={() => {
+                    removeItemDecision(`theme_${route.id}`);
+                    siftActions.selectRoute(route.id);
+                  }}
                 >
                   <span>{hasSelection ? "切换为此设计主题" : "选择此设计主题"}</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>
-                <div className="flex justify-center">
+                <div className="flex items-center justify-between px-0.5">
+                  <button
+                    type="button"
+                    className="text-[10.5px] text-stone-400 hover:text-red-700 flex items-center gap-1 py-0.5 transition-colors cursor-pointer"
+                    onClick={() => {
+                      setItemDecision({
+                        id: `theme_${route.id}`,
+                        type: "theme",
+                        content: route.themeName || route.title,
+                        label: "设计主题",
+                        status: "discarded",
+                        sourceNode: "03 主题",
+                      });
+                    }}
+                    title="舍弃此方向，下轮换一批或检索将避免同类风格"
+                  >
+                    <span>✕ 舍弃此方向</span>
+                  </button>
                   <button
                     type="button"
                     className="text-[10.5px] text-stone-400 hover:text-ink flex items-center gap-1 py-0.5 transition-colors cursor-pointer"
@@ -402,7 +443,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
                     title="重新推导一组互不相同的全新设计主题"
                   >
                     <RefreshCw className="h-2.5 w-2.5" />
-                    <span>都不喜欢？换一批全新主题</span>
+                    <span>换一批主题</span>
                   </button>
                 </div>
               </div>

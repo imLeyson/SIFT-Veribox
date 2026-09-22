@@ -6,7 +6,7 @@ import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { EXAMPLES } from "@/lib/agent/examples";
 import { compressImageFile } from "@/lib/image-utils";
-import { ImagePlus, Plus, X, Eye, Zap, Sparkles } from "lucide-react";
+import { ImagePlus, Plus, X, Eye, Zap, Sparkles, Check, HelpCircle } from "lucide-react";
 import { evaluateBriefIntentSync } from "@/lib/agent/system-one";
 
 export function BriefInputNode({ id, selected }: NodeProps) {
@@ -16,6 +16,8 @@ export function BriefInputNode({ id, selected }: NodeProps) {
     state,
     activeRequest,
     importedBrief,
+    itemDecisions,
+    setItemDecision,
     setRawBrief,
     addBriefImage,
     removeBriefImage,
@@ -120,24 +122,60 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                   附带参考图（{briefImages.length} 张，提取视觉偏好，点击大图预览）：
                 </span>
                 <div className="flex gap-2 flex-wrap">
-                  {briefImages.map((img, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setPreviewImage(img)}
-                      className="group relative h-14 w-14 rounded-lg overflow-hidden border border-line bg-stone-100 hover:ring-2 hover:ring-accent transition-all flex-shrink-0 cursor-pointer text-left"
-                      title="点击查看高清大图"
-                    >
-                      <img
-                        src={img}
-                        alt={`参考意向图 ${idx + 1}`}
-                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
-                      />
-                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <Eye className="h-4 w-4 text-white drop-shadow" />
+                  {briefImages.map((img, idx) => {
+                    const imgId = `brief_img_${idx}`;
+                    const currentStatus = itemDecisions[imgId]?.status ?? "confirmed";
+                    const nextStatus =
+                      currentStatus === "confirmed"
+                        ? "uncertain"
+                        : currentStatus === "uncertain"
+                          ? "discarded"
+                          : "confirmed";
+                    return (
+                      <div
+                        key={idx}
+                        className={`group relative h-14 w-14 rounded-lg overflow-hidden border transition-all flex-shrink-0 text-left ${
+                          currentStatus === "discarded"
+                            ? "opacity-40 grayscale border-stone-300"
+                            : currentStatus === "uncertain"
+                              ? "border-amber-300 ring-1 ring-amber-300/60"
+                              : "border-emerald-300 ring-1 ring-emerald-300/60"
+                        }`}
+                      >
+                        <img
+                          src={img}
+                          alt={`参考意向图 ${idx + 1}`}
+                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200 cursor-pointer"
+                          onClick={() => setPreviewImage(img)}
+                          title="点击查看高清大图"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setItemDecision({
+                              id: imgId,
+                              type: "image",
+                              content: img,
+                              label: `参考图 0${idx + 1}`,
+                              status: nextStatus,
+                              sourceNode: "00 简报",
+                            });
+                          }}
+                          className={`absolute top-0.5 right-0.5 z-10 flex h-4 items-center gap-0.5 rounded px-1 text-[9px] font-mono font-bold shadow-2xs transition-transform hover:scale-105 cursor-pointer ${
+                            currentStatus === "confirmed"
+                              ? "bg-emerald-700 text-white"
+                              : currentStatus === "uncertain"
+                                ? "bg-amber-700 text-white"
+                                : "bg-stone-700 text-white line-through"
+                          }`}
+                          title={`当前状态：${currentStatus === "confirmed" ? "✓ 确定（核心参考）" : currentStatus === "uncertain" ? "? 待定（备选参考）" : "✕ 舍弃（下轮排除）"}，点击切换`}
+                        >
+                          {currentStatus === "confirmed" ? "✓" : currentStatus === "uncertain" ? "?" : "✕"}
+                        </button>
                       </div>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -283,30 +321,71 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                 }}
               />
 
-              <div className="flex items-center gap-2 flex-wrap">
-                {briefImages.map((img, idx) => (
-                  <div
-                    key={idx}
-                    className="relative group h-14 w-14 rounded-lg overflow-hidden border border-line bg-stone-100 flex-shrink-0"
-                  >
-                    <img
-                      src={img}
-                      alt={`参考图 ${idx + 1}`}
-                      className="h-full w-full object-cover cursor-pointer"
-                      onClick={() => setPreviewImage(img)}
-                      title="点击放大预览"
-                    />
-                    <button
-                      type="button"
-                      disabled={Boolean(activeRequest)}
-                      onClick={() => removeBriefImage(idx)}
-                      className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-80 hover:opacity-100 hover:scale-110 transition-all cursor-pointer"
-                      title="删除图片"
+              <div className="flex flex-wrap gap-2 items-center">
+                {briefImages.map((img, idx) => {
+                  const imgId = `brief_img_${idx}`;
+                  const currentStatus = itemDecisions[imgId]?.status ?? "confirmed";
+                  const nextStatus =
+                    currentStatus === "confirmed"
+                      ? "uncertain"
+                      : currentStatus === "uncertain"
+                        ? "discarded"
+                        : "confirmed";
+                  return (
+                    <div
+                      key={idx}
+                      className={`relative group h-14 w-14 rounded-lg overflow-hidden border flex-shrink-0 transition-all ${
+                        currentStatus === "discarded"
+                          ? "opacity-40 grayscale border-stone-300"
+                          : currentStatus === "uncertain"
+                            ? "border-amber-300 ring-1 ring-amber-300/60"
+                            : "border-emerald-300 ring-1 ring-emerald-300/60"
+                      }`}
                     >
-                      <X className="h-2.5 w-2.5" />
-                    </button>
-                  </div>
-                ))}
+                      <img
+                        src={img}
+                        alt={`参考图 ${idx + 1}`}
+                        className="h-full w-full object-cover cursor-pointer"
+                        onClick={() => setPreviewImage(img)}
+                        title="点击放大预览"
+                      />
+                      {/* Decision Status Toggle */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setItemDecision({
+                            id: imgId,
+                            type: "image",
+                            content: img,
+                            label: `参考图 0${idx + 1}`,
+                            status: nextStatus,
+                            sourceNode: "00 简报",
+                          });
+                        }}
+                        className={`absolute top-0.5 left-0.5 z-10 flex h-4 items-center gap-0.5 rounded px-1 text-[9px] font-mono font-bold shadow-2xs transition-transform hover:scale-105 cursor-pointer ${
+                          currentStatus === "confirmed"
+                            ? "bg-emerald-700 text-white"
+                            : currentStatus === "uncertain"
+                              ? "bg-amber-700 text-white"
+                              : "bg-stone-700 text-white line-through"
+                        }`}
+                        title={`状态：${currentStatus === "confirmed" ? "✓ 确定" : currentStatus === "uncertain" ? "? 待定" : "✕ 舍弃"}，点击切换`}
+                      >
+                        {currentStatus === "confirmed" ? "✓" : currentStatus === "uncertain" ? "?" : "✕"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={Boolean(activeRequest)}
+                        onClick={() => removeBriefImage(idx)}
+                        className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-80 hover:opacity-100 hover:scale-110 transition-all cursor-pointer"
+                        title="删除图片"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                  );
+                })}
 
                 {briefImages.length < 3 && (
                   <button

@@ -439,6 +439,25 @@ export function livePlatformPlan(input: PlatformPlanInput): Promise<unknown> {
 5. 所有搜索平台的角色与关键词，必须严格服务于为「${stepTitle}」收集具体的视觉参考与质感证据！
 6. 严禁出现脱离当前品类与材质的孤立通用词（如不可对实体产品搜 2D 平面名片或茶包装！）。`;
 
+  if (input.decisions) {
+    const { confirmed, uncertain, discarded } = input.decisions;
+    if (confirmed.length > 0) {
+      promptSystem += `\n\n【⚠️ 设计师已明确确认的内容（强力约束）】：\n${confirmed
+        .map((c) => `- [${c.type}] ${c.label ? `${c.label}: ` : ""}${c.content}`)
+        .join("\n")}\n搜索关键词与平台方案应高度贴合这些已确认的核心基石！`;
+    }
+    if (uncertain.length > 0) {
+      promptSystem += `\n\n【待验证的未决点（提供佐证检索）】：\n${uncertain
+        .map((u) => `- [${u.type}] ${u.label ? `${u.label}: ` : ""}${u.content}`)
+        .join("\n")}\n可通过搜索为这些不确定项收集多方视觉证据。`;
+    }
+    if (discarded.length > 0) {
+      promptSystem += `\n\n【🚫 设计师已明确舍弃的内容（负向排除红线）】：\n${discarded
+        .map((d) => `- [${d.type}] ${d.label ? `${d.label}: ` : ""}${d.content}`)
+        .join("\n")}\n严禁推荐与上述已舍弃项相关的关键词，且生成的搜索式中可自动加入负向排除语法（如 -keyword）！`;
+    }
+  }
+
   const userPrompt = `【当前需要检索的工位视点与设计上下文】：
 - 设计任务主体：${rawGoal}
 ${deliverable ? `- 交付形态：${deliverable}` : ""}

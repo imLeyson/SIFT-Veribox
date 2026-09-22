@@ -6,7 +6,7 @@ import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { copyToClipboard } from "@/lib/clipboard";
 import { hasDirection } from "@/types/convergence";
-import { Check, Sparkles, ArrowRight, RefreshCw } from "lucide-react";
+import { Check, Sparkles, ArrowRight, RefreshCw, HelpCircle, X } from "lucide-react";
 import { toInspirationCopy } from "@/lib/exploration-copy";
 
 export function StateNode({ id, selected }: NodeProps) {
@@ -18,6 +18,8 @@ export function StateNode({ id, selected }: NodeProps) {
     storageWarning,
     routes,
     briefImages,
+    itemDecisions,
+    setItemDecision,
     setCorrectionDraft,
   } = useSiftStore();
   const [editing, setEditing] = useState(false);
@@ -119,25 +121,64 @@ export function StateNode({ id, selected }: NodeProps) {
               {state.visualKeywords.map((rawKeyword, idx) => {
                 const keyword = toInspirationCopy(rawKeyword).trim();
                 if (!keyword) return null;
+                const kwId = `kw_${keyword}`;
+                const currentStatus = itemDecisions[kwId]?.status ?? "confirmed";
+                const nextStatus =
+                  currentStatus === "confirmed"
+                    ? "uncertain"
+                    : currentStatus === "uncertain"
+                      ? "discarded"
+                      : "confirmed";
+
                 return (
-                  <button
+                  <div
                     key={idx}
-                    type="button"
-                    onClick={() => handleCopyKeyword(keyword)}
-                    className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border transition-colors cursor-pointer select-none ${
-                      copiedKeyword === keyword
-                        ? "bg-stone-100 text-ink border-ink/40"
-                        : "bg-white text-stone-800 border-line hover:border-ink/50 hover:text-ink"
+                    className={`inline-flex items-center rounded-md text-[11px] font-medium border transition-all ${
+                      currentStatus === "discarded"
+                        ? "bg-stone-100 text-stone-400 border-line/60 line-through opacity-60"
+                        : currentStatus === "uncertain"
+                          ? "bg-amber-50/60 text-amber-900 border-amber-300 border-dashed"
+                          : "bg-white text-stone-800 border-line hover:border-ink/50 hover:text-ink"
                     }`}
-                    title="点击复制关键词"
                   >
-                    {copiedKeyword === keyword ? (
-                      <Check className="h-2.5 w-2.5 text-emerald-600 mr-1" />
-                    ) : (
-                      <span className="text-stone-400 mr-0.5 font-mono">#</span>
-                    )}
-                    <span>{copiedKeyword === keyword ? "已复制" : keyword}</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyKeyword(keyword)}
+                      className="inline-flex items-center px-1.5 py-0.5 cursor-pointer"
+                      title="点击复制关键词"
+                    >
+                      {copiedKeyword === keyword ? (
+                        <Check className="h-2.5 w-2.5 text-emerald-600 mr-1" />
+                      ) : (
+                        <span className="text-stone-400 mr-0.5 font-mono">#</span>
+                      )}
+                      <span>{copiedKeyword === keyword ? "已复制" : keyword}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setItemDecision({
+                          id: kwId,
+                          type: "text",
+                          content: keyword,
+                          label: "视觉关键词",
+                          status: nextStatus,
+                          sourceNode: "02 方向",
+                        });
+                      }}
+                      className={`px-1 py-0.5 text-[9px] font-mono border-l border-line/40 transition-colors cursor-pointer select-none ${
+                        currentStatus === "confirmed"
+                          ? "text-emerald-700 hover:bg-emerald-50"
+                          : currentStatus === "uncertain"
+                            ? "text-amber-700 hover:bg-amber-100 font-bold"
+                            : "text-stone-400 hover:bg-stone-200"
+                      }`}
+                      title={`状态：${currentStatus === "confirmed" ? "✓ 确定项" : currentStatus === "uncertain" ? "? 待定项" : "✕ 舍弃项"}，点击切换`}
+                    >
+                      {currentStatus === "confirmed" ? "✓" : currentStatus === "uncertain" ? "?" : "✕"}
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -149,18 +190,48 @@ export function StateNode({ id, selected }: NodeProps) {
           {/* Priorities */}
           <div className="rounded-xl bg-white/70 p-2.5 border border-line/70">
             <span className="text-[10px] font-semibold text-stone-600 block mb-1">
-              视觉坚持
+              视觉坚持 (点击可标记)
             </span>
             {state.direction.priorities.length > 0 ? (
               <div className="space-y-1">
-                {state.direction.priorities.slice(0, 3).map((p, i) => (
-                  <span
-                    key={i}
-                    className="inline-block rounded bg-mist/60 px-1.5 py-0.5 text-[10.5px] text-stone-800 mr-1 mb-1 border border-line/50"
-                  >
-                    {p.text}
-                  </span>
-                ))}
+                {state.direction.priorities.slice(0, 3).map((p, i) => {
+                  const pId = `priority_${i}_${p.text.slice(0, 12)}`;
+                  const pStatus = itemDecisions[pId]?.status ?? "confirmed";
+                  const nextPStatus =
+                    pStatus === "confirmed"
+                      ? "uncertain"
+                      : pStatus === "uncertain"
+                        ? "discarded"
+                        : "confirmed";
+                  return (
+                    <span
+                      key={i}
+                      onClick={() => {
+                        setItemDecision({
+                          id: pId,
+                          type: "text",
+                          content: p.text,
+                          label: "视觉坚持",
+                          status: nextPStatus,
+                          sourceNode: "02 方向",
+                        });
+                      }}
+                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10.5px] mr-1 mb-1 border transition-all cursor-pointer select-none ${
+                        pStatus === "discarded"
+                          ? "bg-stone-100 text-stone-400 border-line/50 line-through opacity-60"
+                          : pStatus === "uncertain"
+                            ? "bg-amber-50 text-amber-900 border-amber-300 border-dashed"
+                            : "bg-mist/60 text-stone-800 border-line/50 hover:border-ink/40"
+                      }`}
+                      title={`状态：${pStatus === "confirmed" ? "✓ 确定" : pStatus === "uncertain" ? "? 待定" : "✕ 舍弃"}，点击切换`}
+                    >
+                      <span>{p.text}</span>
+                      <span className="text-[9px] font-mono text-stone-400">
+                        {pStatus === "confirmed" ? "✓" : pStatus === "uncertain" ? "?" : "✕"}
+                      </span>
+                    </span>
+                  );
+                })}
               </div>
             ) : (
               <span className="text-[10px] text-muted">尚未明确</span>
@@ -170,18 +241,48 @@ export function StateNode({ id, selected }: NodeProps) {
           {/* Avoid */}
           <div className="rounded-xl bg-white/70 p-2.5 border border-line/70">
             <span className="text-[10px] font-semibold text-stone-600 block mb-1">
-              视觉红线
+              视觉红线 (点击可标记)
             </span>
             {state.direction.avoid.length > 0 ? (
               <div className="space-y-1">
-                {state.direction.avoid.slice(0, 3).map((a, i) => (
-                  <span
-                    key={i}
-                    className="inline-block rounded bg-stone-100/80 px-1.5 py-0.5 text-[10.5px] text-stone-700 mr-1 mb-1 border border-stone-200/60"
-                  >
-                    {a.text}
-                  </span>
-                ))}
+                {state.direction.avoid.slice(0, 3).map((a, i) => {
+                  const aId = `avoid_${i}_${a.text.slice(0, 12)}`;
+                  const aStatus = itemDecisions[aId]?.status ?? "confirmed";
+                  const nextAStatus =
+                    aStatus === "confirmed"
+                      ? "uncertain"
+                      : aStatus === "uncertain"
+                        ? "discarded"
+                        : "confirmed";
+                  return (
+                    <span
+                      key={i}
+                      onClick={() => {
+                        setItemDecision({
+                          id: aId,
+                          type: "text",
+                          content: a.text,
+                          label: "视觉红线",
+                          status: nextAStatus,
+                          sourceNode: "02 方向",
+                        });
+                      }}
+                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10.5px] mr-1 mb-1 border transition-all cursor-pointer select-none ${
+                        aStatus === "discarded"
+                          ? "bg-stone-100 text-stone-400 border-line/50 line-through opacity-60"
+                          : aStatus === "uncertain"
+                            ? "bg-amber-50 text-amber-900 border-amber-300 border-dashed"
+                            : "bg-stone-100/80 text-stone-700 border-stone-200/60 hover:border-ink/40"
+                      }`}
+                      title={`状态：${aStatus === "confirmed" ? "✓ 确定" : aStatus === "uncertain" ? "? 待定" : "✕ 舍弃"}，点击切换`}
+                    >
+                      <span>{a.text}</span>
+                      <span className="text-[9px] font-mono text-stone-400">
+                        {aStatus === "confirmed" ? "✓" : aStatus === "uncertain" ? "?" : "✕"}
+                      </span>
+                    </span>
+                  );
+                })}
               </div>
             ) : (
               <span className="text-[10px] text-muted">暂无</span>

@@ -758,6 +758,24 @@ export function liveRoutes(input: RoutesInput): Promise<unknown> {
   if (input.excludeThemeNames && input.excludeThemeNames.length > 0) {
     promptSystem += `\n\n【用户更换主题指令】：用户对上一批设计主题（${input.excludeThemeNames.join("、")}）不满意，要求换一批全新的创意领地与设计主题！严禁与上述主题重复或雷同，必须推导截然不同的视觉手法与画面呈象！`;
   }
+  if (input.decisions) {
+    const { confirmed, uncertain, discarded } = input.decisions;
+    if (confirmed.length > 0) {
+      promptSystem += `\n\n【⚠️ 设计师已明确确认的设计基石（绝对硬约束）】：\n${confirmed
+        .map((c) => `- [${c.type}] ${c.label ? `${c.label}: ` : ""}${c.content}`)
+        .join("\n")}\n生成的 3 个设计主题必须 100% 贯彻并呼应上述已确认项！`;
+    }
+    if (uncertain.length > 0) {
+      promptSystem += `\n\n【设计师暂定不确定的探索点（3 套主题可围绕此进行差异化发散）】：\n${uncertain
+        .map((u) => `- [${u.type}] ${u.label ? `${u.label}: ` : ""}${u.content}`)
+        .join("\n")}\n可在不同主题中对上述不确定想法尝试不同的视觉解法。`;
+    }
+    if (discarded.length > 0) {
+      promptSystem += `\n\n【🚫 设计师已明确舍弃的内容（绝对红线，严禁出现）】：\n${discarded
+        .map((d) => `- [${d.type}] ${d.label ? `${d.label}: ` : ""}${d.content}`)
+        .join("\n")}\n严禁在主题名称、视觉快照、设计哲学与步骤中推荐任何与上述已舍弃项相似的方向！`;
+    }
+  }
 
   const userPrompt = `【任务设计背景与已收敛方向状态 (Design State)】：
 - 原始 Brief 核心目标：${rawGoal}

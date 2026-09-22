@@ -2,6 +2,27 @@ import { z } from "zod";
 
 const text = z.string().trim().min(1);
 const shortText = text.max(240);
+export const DecisionStatusSchema = z.enum(["confirmed", "uncertain", "discarded"]);
+export type DecisionStatus = z.infer<typeof DecisionStatusSchema>;
+
+export const ItemDecisionSchema = z.object({
+  id: text,
+  type: z.enum(["text", "image", "link", "theme"]),
+  content: text,
+  label: shortText.optional(),
+  status: DecisionStatusSchema,
+  sourceNode: text.optional(),
+  updatedAt: z.number().int().nonnegative(),
+});
+export type ItemDecision = z.infer<typeof ItemDecisionSchema>;
+
+export const DecisionContextSchema = z.object({
+  confirmed: z.array(ItemDecisionSchema).default([]),
+  uncertain: z.array(ItemDecisionSchema).default([]),
+  discarded: z.array(ItemDecisionSchema).default([]),
+});
+export type DecisionContext = z.infer<typeof DecisionContextSchema>;
+
 export const JudgmentSchema = z.object({
   text: shortText,
   basis: z.enum(["user", "assumption"]),
@@ -162,6 +183,7 @@ export const ConvergenceInputSchema = z
     history: z.array(HistoryEntrySchema),
     pendingQuestions: z.array(QuestionSchema).min(2).max(3).nullable(),
     event: EventSchema,
+    decisions: DecisionContextSchema.optional(),
   })
   .superRefine((value, ctx) => {
     const issue = (message: string) =>

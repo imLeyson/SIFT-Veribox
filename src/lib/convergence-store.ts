@@ -9,8 +9,12 @@ import {
 import { z } from "zod";
 import {
   AnswerSchema,
+  DecisionContext,
+  DecisionStatus,
   DesignStateSchema,
   HistoryEntrySchema,
+  ItemDecision,
+  ItemDecisionSchema,
   NextSchema,
   TurnPayloadSchema,
   TurnResultSchema,
@@ -74,6 +78,7 @@ const SessionSchema = z
     stepNotes: z.record(z.string(), z.array(z.string())).default({}),
     completedCriteria: z.record(z.string(), z.array(z.string())).default({}),
     collapsedNodes: z.record(z.string(), z.boolean()).default({}),
+    itemDecisions: z.record(z.string(), ItemDecisionSchema).default({}),
   })
   .superRefine((value, ctx) => {
     if (
@@ -129,6 +134,10 @@ export type SiftStore = Session & {
   setNodeCollapse: (nodeId: string, collapsed: boolean) => void;
   collapseCompletedNodes: () => void;
   expandAllNodes: () => void;
+  setItemDecision: (decision: Omit<ItemDecision, "updatedAt">) => void;
+  toggleItemStatus: (id: string, nextStatus: DecisionStatus) => void;
+  removeItemDecision: (id: string) => void;
+  getDecisionContext: () => DecisionContext;
   reset: () => void;
 };
 
@@ -156,6 +165,7 @@ function emptySession(): Session {
     stepNotes: {},
     completedCriteria: {},
     collapsedNodes: {},
+    itemDecisions: {},
   };
 }
 
@@ -565,6 +575,52 @@ export function createSiftStore(providedStorage?: StateStorage) {
         expandAllNodes: () => {
           set({ collapsedNodes: {} });
         },
+        setItemDecision: (decision) => {
+          set((s) => ({
+            itemDecisions: {
+              ...s.itemDecisions,
+              [decision.id]: {
+                ...decision,
+                updatedAt: Date.now(),
+              },
+            },
+          }));
+        },
+        toggleItemStatus: (id, nextStatus) => {
+          set((s) => {
+            const current = s.itemDecisions[id];
+            if (!current) return s;
+            return {
+              itemDecisions: {
+                ...s.itemDecisions,
+                [id]: {
+                  ...current,
+                  status: nextStatus,
+                  updatedAt: Date.now(),
+                },
+              },
+            };
+          });
+        },
+        removeItemDecision: (id) => {
+          set((s) => {
+            const next = { ...s.itemDecisions };
+            delete next[id];
+            return { itemDecisions: next };
+          });
+        },
+        getDecisionContext: () => {
+          const decisions = get().itemDecisions;
+          const confirmed: ItemDecision[] = [];
+          const uncertain: ItemDecision[] = [];
+          const discarded: ItemDecision[] = [];
+          for (const item of Object.values(decisions)) {
+            if (item.status === "confirmed") confirmed.push(item);
+            else if (item.status === "uncertain") uncertain.push(item);
+            else if (item.status === "discarded") discarded.push(item);
+          }
+          return { confirmed, uncertain, discarded };
+        },
         reset: () =>
           set({ ...emptySession(), activeRequest: null, error: null }),
       }),
@@ -596,6 +652,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
           stepNotes,
           completedCriteria,
           collapsedNodes,
+          itemDecisions,
         }) => ({
           sessionId,
           rawBrief,
@@ -619,6 +676,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
           stepNotes,
           completedCriteria,
           collapsedNodes,
+          itemDecisions,
         }),
         merge: (saved, current) => {
           if (!saved) return { ...current, storageWarning: readWarning };

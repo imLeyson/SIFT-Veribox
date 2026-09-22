@@ -437,16 +437,26 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
         .trim()
         .slice(0, 40),
     )
-    .filter(Boolean)
+    .filter(Boolean);
+
+  const discardedSet = new Set(
+    (input.decisions?.discarded ?? [])
+      .map((d) => d.content.toLowerCase().trim())
+      .filter(Boolean),
+  );
+  const filteredKeywords = visualKeywords
+    .filter((k) => !discardedSet.has(k.toLowerCase().trim()))
     .slice(0, 8);
-  if (visualKeywords.length === 0) {
+
+  const finalVisualKeywords = filteredKeywords.length > 0 ? filteredKeywords : visualKeywords.slice(0, 8);
+  if (finalVisualKeywords.length === 0) {
     if (state.direction && typeof state.direction === "object") {
       const intentText = (state.direction as RecordLike).intent;
       if (intentText && typeof intentText === "object" && typeof (intentText as RecordLike).text === "string") {
-        visualKeywords.push(((intentText as RecordLike).text as string).slice(0, 20));
+        finalVisualKeywords.push(((intentText as RecordLike).text as string).slice(0, 20));
       }
     }
-    visualKeywords.push("极简版式", "克制质感");
+    finalVisualKeywords.push("极简版式", "克制质感");
   }
 
   return {
@@ -471,18 +481,42 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
             }
           : previous?.validationAction ?? null,
       uncertainties,
-      visualKeywords,
+      visualKeywords: finalVisualKeywords,
     },
     next,
   };
 }
 
 export function liveConvergence(input: ConvergenceInput): Promise<unknown> {
-  const images = input.images ?? [];
+  const rawImages = input.images ?? [];
+  const discardedImageUrls = new Set(
+    (input.decisions?.discarded ?? [])
+      .filter((d) => d.type === "image")
+      .map((d) => d.content),
+  );
+  const images = rawImages.filter((img) => !discardedImageUrls.has(img));
   const { images: _ignored, ...pureInput } = input;
   let prompt = SYSTEM;
   if (input.rawBrief?.trim()) {
     prompt += `\n\n【当前任务核心 Brief 锚点】：${input.rawBrief}\n提问与状态更新必须严格紧扣此主题（如宠物生活、SaaS工作台、潮玩IP、品牌VI等），严禁发生主体漂移！`;
+  }
+  if (input.decisions) {
+    const { confirmed, uncertain, discarded } = input.decisions;
+    if (confirmed.length > 0) {
+      prompt += `\n\n【不可动摇的设计师已确认项（必须 100% 遵守的硬约束）】：\n${confirmed
+        .map((c) => `- [${c.type}] ${c.label ? `${c.label}: ` : ""}${c.content}`)
+        .join("\n")}\n后续方向收敛、视觉主张与提问必须完全尊重这些已确认基石，绝不可背离！`;
+    }
+    if (uncertain.length > 0) {
+      prompt += `\n\n【待验证的不确定想法与假设（优先提问与探索切入点）】：\n${uncertain
+        .map((u) => `- [${u.type}] ${u.label ? `${u.label}: ` : ""}${u.content}`)
+        .join("\n")}\n可围绕这些未定点提出分水岭对比选项或提炼为待探索假说。`;
+    }
+    if (discarded.length > 0) {
+      prompt += `\n\n【绝对禁止：设计师已明确舍弃的内容（负向排除红线）】：\n${discarded
+        .map((d) => `- [${d.type}] ${d.label ? `${d.label}: ` : ""}${d.content}`)
+        .join("\n")}\n严禁在视觉主张、视觉关键词、后续提问及选项中以任何形式重新引入这些已舍弃的方向！`;
+    }
   }
   return completeJson(prompt, JSON.stringify(pureInput), "none", images).then((payload) =>
     normalizeLivePayload(payload, input),

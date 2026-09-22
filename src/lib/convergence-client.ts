@@ -45,6 +45,7 @@ export function createConvergenceActions(
         history: s.history,
         pendingQuestions: s.next?.type === "ask" ? s.next.questions : null,
         event,
+        decisions: s.getDecisionContext(),
       });
       const response = await fetcher(
         event.type === "start" || event.type === "fast_start"
@@ -119,6 +120,7 @@ export function createConvergenceActions(
         history: s.history,
         excludeThemeNames,
         refreshIndex: options?.refresh ? 1 : 0,
+        decisions: s.getDecisionContext(),
       };
       const response = await fetcher("/api/routes", {
         method: "POST",
@@ -179,6 +181,7 @@ export function createConvergenceActions(
         selectedRoute,
         currentStep,
         completedStepIds: s.platformPlans.map((p) => p.stepId),
+        decisions: s.getDecisionContext(),
       };
       const response = await fetcher("/api/platform-plan", {
         method: "POST",
