@@ -19,7 +19,6 @@ export function BriefInputNode({ id, selected }: NodeProps) {
     briefImages,
     state,
     activeRequest,
-    importedBrief,
     itemDecisions,
     setItemDecision,
     setRawBrief,
@@ -194,64 +193,6 @@ export function BriefInputNode({ id, selected }: NodeProps) {
               }
             }}
           >
-            {/* Quick Starter Presets (Only when empty) */}
-            {!rawBrief.trim() && (
-              <div className="mb-2.5 space-y-1.5">
-                <div className="flex items-center justify-between text-[10.5px] text-stone-500">
-                  <span>快速载入设计场景或句式模板：</span>
-                  {importedBrief && (
-                    <span className="text-accent font-medium">已载入草案</span>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRawBrief(
-                        "冷泡茶无墨白浆纸盒包装设计，目标是做都市年轻人的日常静心仪式感茶礼，希望材质以素净特种棉纸为主，强调纸张微肌理与极简双栏网格，杜绝花哨插画与过度装饰。"
-                      )
-                    }
-                    className="inline-flex items-center gap-1 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 px-2.5 py-0.5 text-[10.5px] font-medium transition-colors cursor-pointer"
-                  >
-                    <span>🍵 冷萃茶无墨纸盒</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRawBrief(
-                        "回收宠物毛发与植物纤维再造生活器物，用于现代桌面收纳与陪伴感小件，强调原生微颗粒、无塑料涂层与温润有机握持感，避免塑料质感与工业冰冷。"
-                      )
-                    }
-                    className="inline-flex items-center gap-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/80 px-2.5 py-0.5 text-[10.5px] font-medium transition-colors cursor-pointer"
-                  >
-                    <span>🐾 再生纤维生活器物</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRawBrief(
-                        "暗黑科技与极简工程美学风格的 AI 数据控制台，面向专业开发者，8px 严谨栅格与 1px 微光感冷灰描边，强调高密度信息呈现与状态指示，避免空洞装饰。"
-                      )
-                    }
-                    className="inline-flex items-center gap-1 rounded-full bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200/80 px-2.5 py-0.5 text-[10.5px] font-medium transition-colors cursor-pointer"
-                  >
-                    <span>⚡ 先锋机能控制台</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRawBrief(
-                        "我想做一个【设计品类】，希望整体呈现【核心视觉调性与受众感受】，避免【明确的视觉禁忌与常见套路】，重点探索【材质工艺、排版结构或细节】。"
-                      );
-                    }}
-                    className="inline-flex items-center gap-1 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200/80 px-2.5 py-0.5 text-[10.5px] font-medium transition-colors cursor-pointer"
-                  >
-                    <span>📋 填空句式</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
             <textarea
               id="brief"
               value={rawBrief}
