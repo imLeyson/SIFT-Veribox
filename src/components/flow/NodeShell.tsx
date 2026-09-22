@@ -22,15 +22,15 @@ export const STAGE_MAP: Record<StageId, StageStyle> = {
   },
   "01": {
     id: "01",
-    pillText: "01 方向",
-    pillBg: "bg-emerald-800 text-white",
-    topBorder: "bg-emerald-600",
+    pillText: "01 抉择",
+    pillBg: "bg-sky-800 text-white",
+    topBorder: "bg-sky-600",
   },
   "02": {
     id: "02",
-    pillText: "02 抉择",
-    pillBg: "bg-sky-800 text-white",
-    topBorder: "bg-sky-600",
+    pillText: "02 方向",
+    pillBg: "bg-emerald-800 text-white",
+    topBorder: "bg-emerald-600",
   },
   "03": {
     id: "03",
@@ -57,8 +57,8 @@ function resolveStage(kicker: string, explicitStage?: StageId): StageStyle | nul
     return STAGE_MAP[explicitStage];
   }
   if (/^00\b|简报/.test(kicker)) return STAGE_MAP["00"];
-  if (/^01\b|DIRECTION|收敛|方向/.test(kicker)) return STAGE_MAP["01"];
-  if (/^02\b|RECORD|抉择|问答/.test(kicker)) return STAGE_MAP["02"];
+  if (/^01\b|RECORD|抉择|问答/.test(kicker)) return STAGE_MAP["01"];
+  if (/^02\b|DIRECTION|收敛|方向|视觉主张/.test(kicker)) return STAGE_MAP["02"];
   if (/^03\b|领地|主题|路线/.test(kicker)) return STAGE_MAP["03"];
   if (/^05\b|视点|焦点|推进|切入|工位|实操/.test(kicker)) return STAGE_MAP["05"];
   if (/^07\b|搜索|方案|探索/.test(kicker)) return STAGE_MAP["07"];

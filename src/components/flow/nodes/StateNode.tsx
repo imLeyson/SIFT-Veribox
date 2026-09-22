@@ -7,6 +7,7 @@ import { siftActions } from "@/lib/convergence-client";
 import { copyToClipboard } from "@/lib/clipboard";
 import { hasDirection } from "@/types/convergence";
 import { Check, Sparkles, ArrowRight, RefreshCw } from "lucide-react";
+import { toInspirationCopy } from "@/lib/exploration-copy";
 
 export function StateNode({ id, selected }: NodeProps) {
   const {
@@ -52,13 +53,13 @@ export function StateNode({ id, selected }: NodeProps) {
     <div className="w-[380px] sm:w-[390px]">
       <NodeShell
         nodeId={id || "direction"}
-        stage="01"
+        stage="02"
         kicker={
           confirmed
             ? "视觉主张 · 已确认"
             : checkpoint
               ? "视觉主张 · 检查点"
-              : "01 视觉主张 · 方向收敛"
+              : "02 视觉主张 · 方向收敛"
         }
         title="核心视觉方向"
         collapsedSummary={collapsedSummary}
@@ -115,26 +116,30 @@ export function StateNode({ id, selected }: NodeProps) {
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {state.visualKeywords.map((keyword, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleCopyKeyword(keyword)}
-                  className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border transition-colors cursor-pointer select-none ${
-                    copiedKeyword === keyword
-                      ? "bg-stone-100 text-ink border-ink/40"
-                      : "bg-white text-stone-800 border-line hover:border-ink/50 hover:text-ink"
-                  }`}
-                  title="点击复制关键词"
-                >
-                  {copiedKeyword === keyword ? (
-                    <Check className="h-2.5 w-2.5 text-emerald-600 mr-1" />
-                  ) : (
-                    <span className="text-stone-400 mr-0.5 font-mono">#</span>
-                  )}
-                  <span>{copiedKeyword === keyword ? "已复制" : keyword}</span>
-                </button>
-              ))}
+              {state.visualKeywords.map((rawKeyword, idx) => {
+                const keyword = toInspirationCopy(rawKeyword).trim();
+                if (!keyword) return null;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleCopyKeyword(keyword)}
+                    className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border transition-colors cursor-pointer select-none ${
+                      copiedKeyword === keyword
+                        ? "bg-stone-100 text-ink border-ink/40"
+                        : "bg-white text-stone-800 border-line hover:border-ink/50 hover:text-ink"
+                    }`}
+                    title="点击复制关键词"
+                  >
+                    {copiedKeyword === keyword ? (
+                      <Check className="h-2.5 w-2.5 text-emerald-600 mr-1" />
+                    ) : (
+                      <span className="text-stone-400 mr-0.5 font-mono">#</span>
+                    )}
+                    <span>{copiedKeyword === keyword ? "已复制" : keyword}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

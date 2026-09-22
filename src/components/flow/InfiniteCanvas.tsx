@@ -47,12 +47,20 @@ function FlowInner({ onOpenDossier }: { onOpenDossier?: () => void }) {
     const edges: Edge[] = [];
     let parent = "brief";
 
-    for (const [index, turn] of history.entries()) {
+    // Only display history turns that actually contain user answers or text corrections.
+    // Pure checkpoint transitions (e.g. "一键收敛", "开始设计") are action events, not design choice cards.
+    const meaningfulTurns = history.filter(
+      (turn) =>
+        (turn.event.type === "answer" && (turn.questions?.length ?? 0) > 0) ||
+        turn.event.type === "correct",
+    );
+
+    for (const [index, turn] of meaningfulTurns.entries()) {
       const id = `turn-${turn.id}`;
       nodes.push({
         id,
         type: "ask",
-        position: positions[id] ?? { x: 40 + index * 440, y: 1000 },
+        position: positions[id] ?? { x: 40 + index * 440, y: 560 },
         data: { historyId: turn.id },
       });
       edges.push({ id: `${parent}-${id}`, source: parent, target: id });

@@ -14,8 +14,8 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
     return (
       <NodeShell
         nodeId={id}
-        stage="02"
-        kicker="关键视觉提问 · 锁定方向"
+        stage="01"
+        kicker="01 关键提问 · 视觉抉择"
         title="关键视觉抉择"
         selected={selected}
       >
@@ -77,7 +77,8 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
   return (
     <NodeShell
       nodeId={id || `turn-${turn.id}`}
-      kicker={`RECORD · R${turn.afterRevision}`}
+      stage="01"
+      kicker={`01 记录 · R${turn.afterRevision}`}
       title={
         turn.event.type === "correct"
           ? "已补充修改"

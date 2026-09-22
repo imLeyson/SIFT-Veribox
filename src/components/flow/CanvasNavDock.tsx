@@ -105,7 +105,7 @@ export function CanvasNavDock({
         <Compass
           className={`h-3.5 w-3.5 ${hasState ? "text-accent" : "text-stone-300"}`}
         />
-        <span>01 收敛</span>
+        <span>{next?.type === "ask" ? "01 抉择" : "02 方向"}</span>
         {isConfirmed && (
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
         )}
