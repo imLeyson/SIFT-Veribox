@@ -29,8 +29,11 @@ export function StateNode({ id, selected }: NodeProps) {
     updateStateIntent,
     updateStatePriority,
     updateStateAvoid,
+    addStatePriority,
+    addStateAvoid,
     updateStateHypothesis,
     updateVisualKeyword,
+    addVisualKeyword,
   } = useSiftStore();
   const visualInspirations = useSiftStore((s) => s.visualInspirations || []);
   const [editing, setEditing] = useState(false);
@@ -38,6 +41,41 @@ export function StateNode({ id, selected }: NodeProps) {
   const [inspectorItem, setInspectorItem] = useState<VisualInspiration | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [copiedColor, setCopiedColor] = useState<string | null>(null);
+
+  // Quick add states for custom constraints & keywords
+  const [addingPriority, setAddingPriority] = useState(false);
+  const [newPriorityText, setNewPriorityText] = useState("");
+  const [addingAvoid, setAddingAvoid] = useState(false);
+  const [newAvoidText, setNewAvoidText] = useState("");
+  const [addingKeyword, setAddingKeyword] = useState(false);
+  const [newKeywordText, setNewKeywordText] = useState("");
+
+  const handleAddPrioritySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPriorityText.trim()) {
+      addStatePriority(newPriorityText.trim());
+      setNewPriorityText("");
+      setAddingPriority(false);
+    }
+  };
+
+  const handleAddAvoidSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newAvoidText.trim()) {
+      addStateAvoid(newAvoidText.trim());
+      setNewAvoidText("");
+      setAddingAvoid(false);
+    }
+  };
+
+  const handleAddKeywordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newKeywordText.trim()) {
+      addVisualKeyword(newKeywordText.trim());
+      setNewKeywordText("");
+      setAddingKeyword(false);
+    }
+  };
 
   const confirmedVisuals = visualInspirations.filter((v) => v.status !== "discarded");
   const allColors = Array.from(
@@ -205,101 +243,181 @@ export function StateNode({ id, selected }: NodeProps) {
         )}
 
         {/* Extracted Visual Keywords */}
-        {state.visualKeywords && state.visualKeywords.length > 0 && (
-          <div className="rounded-xl bg-white/70 p-2.5 border border-line/70">
-            <div className="flex items-center justify-between mb-1.5">
+        <div className="rounded-xl bg-white/70 p-2.5 border border-line/70">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5">
               <span className="text-[10.5px] font-medium text-ink">
                 视觉关键词
               </span>
-              <span className="text-[9.5px] text-stone-400 font-mono">
-                {briefImages.length > 0 ? "参考图与简报提炼" : "简报提炼"}
-              </span>
+              <button
+                type="button"
+                onClick={() => setAddingKeyword((prev) => !prev)}
+                className="text-[9.5px] text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-0.5 cursor-pointer"
+                title="添加自定义关键词"
+              >
+                <Plus className="h-2.5 w-2.5" />
+                <span>添加</span>
+              </button>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {state.visualKeywords.map((rawKeyword, idx) => {
-                const keyword = toInspirationCopy(rawKeyword).trim();
-                if (!keyword) return null;
-                const kwId = `kw_${keyword}`;
-                const currentStatus = itemDecisions[kwId]?.status ?? "confirmed";
-                const nextStatus =
-                  currentStatus === "confirmed"
-                    ? "uncertain"
-                    : currentStatus === "uncertain"
-                      ? "discarded"
-                      : "confirmed";
-
-                return (
-                  <div
-                    key={idx}
-                    className={`inline-flex items-center rounded-md text-[11px] font-medium border transition-all ${
-                      currentStatus === "discarded"
-                        ? "bg-stone-100 text-stone-400 border-line/60 line-through opacity-60"
-                        : currentStatus === "uncertain"
-                          ? "bg-amber-50/60 text-amber-900 border-amber-300 border-dashed"
-                          : "bg-white text-stone-800 border-line hover:border-ink/50 hover:text-ink"
-                    }`}
-                  >
-                    <div className="inline-flex items-center px-1.5 py-0.5">
-                      {copiedKeyword === keyword ? (
-                        <Check className="h-2.5 w-2.5 text-emerald-600 mr-1" />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleCopyKeyword(keyword)}
-                          className="text-stone-400 mr-0.5 font-mono hover:text-ink cursor-pointer"
-                          title="点击复制关键词"
-                        >
-                          #
-                        </button>
-                      )}
-                      <InlineEditableText
-                        value={keyword}
-                        onSave={(newKw) => updateVisualKeyword(idx, newKw)}
-                        as="span"
-                        label="视觉关键词"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setItemDecision({
-                          id: kwId,
-                          type: "text",
-                          content: keyword,
-                          label: "视觉关键词",
-                          status: nextStatus,
-                          sourceNode: "02 方向",
-                        });
-                      }}
-                      className={`px-1 py-0.5 text-[9px] font-mono border-l border-line/40 transition-colors cursor-pointer select-none ${
-                        currentStatus === "confirmed"
-                          ? "text-emerald-700 hover:bg-emerald-50"
-                          : currentStatus === "uncertain"
-                            ? "text-amber-700 hover:bg-amber-100 font-bold"
-                            : "text-stone-400 hover:bg-stone-200"
-                      }`}
-                      title={`状态：${currentStatus === "confirmed" ? "✓ 确定项" : currentStatus === "uncertain" ? "? 待定项" : "✕ 舍弃项"}，点击切换`}
-                    >
-                      {currentStatus === "confirmed" ? "✓" : currentStatus === "uncertain" ? "?" : "✕"}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+            <span className="text-[9.5px] text-stone-400 font-mono">
+              {briefImages.length > 0 ? "参考图与简报提炼" : "简报提炼"}
+            </span>
           </div>
-        )}
+
+          {addingKeyword && (
+            <form onSubmit={handleAddKeywordSubmit} className="flex items-center gap-1 mb-2">
+              <input
+                type="text"
+                value={newKeywordText}
+                onChange={(e) => setNewKeywordText(e.target.value)}
+                placeholder="输入关键词（如：冷调极简、无墨压凹）"
+                autoFocus
+                className="flex-1 rounded-md border border-indigo-400 bg-white px-2 py-0.5 text-[11px] outline-none ring-2 ring-indigo-500/20"
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setAddingKeyword(false);
+                }}
+              />
+              <button
+                type="submit"
+                className="rounded-md bg-indigo-600 text-white px-2 py-0.5 text-[10.5px] font-medium hover:bg-indigo-700 cursor-pointer"
+              >
+                确定
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddingKeyword(false)}
+                className="rounded-md bg-stone-100 text-stone-600 px-1.5 py-0.5 text-[10.5px] hover:bg-stone-200 cursor-pointer"
+              >
+                取消
+              </button>
+            </form>
+          )}
+
+          <div className="flex flex-wrap gap-1.5">
+            {(state.visualKeywords ?? []).map((rawKeyword, idx) => {
+              const keyword = toInspirationCopy(rawKeyword).trim();
+              if (!keyword) return null;
+              const kwId = `kw_${keyword}`;
+              const currentStatus = itemDecisions[kwId]?.status ?? "confirmed";
+              const nextStatus =
+                currentStatus === "confirmed"
+                  ? "uncertain"
+                  : currentStatus === "uncertain"
+                    ? "discarded"
+                    : "confirmed";
+
+              return (
+                <div
+                  key={idx}
+                  className={`inline-flex items-center rounded-md text-[11px] font-medium border transition-all ${
+                    currentStatus === "discarded"
+                      ? "bg-stone-100 text-stone-400 border-line/60 line-through opacity-60"
+                      : currentStatus === "uncertain"
+                        ? "bg-amber-50/60 text-amber-900 border-amber-300 border-dashed"
+                        : "bg-white text-stone-800 border-line hover:border-ink/50 hover:text-ink"
+                  }`}
+                >
+                  <div className="inline-flex items-center px-1.5 py-0.5">
+                    {copiedKeyword === keyword ? (
+                      <Check className="h-2.5 w-2.5 text-emerald-600 mr-1" />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleCopyKeyword(keyword)}
+                        className="text-stone-400 mr-0.5 font-mono hover:text-ink cursor-pointer"
+                        title="点击复制关键词"
+                      >
+                        #
+                      </button>
+                    )}
+                    <InlineEditableText
+                      value={keyword}
+                      onSave={(newKw) => updateVisualKeyword(idx, newKw)}
+                      as="span"
+                      label="视觉关键词"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setItemDecision({
+                        id: kwId,
+                        type: "text",
+                        content: keyword,
+                        label: "视觉关键词",
+                        status: nextStatus,
+                        sourceNode: "02 方向",
+                      });
+                    }}
+                    className={`px-1 py-0.5 text-[9px] font-mono border-l border-line/40 transition-colors cursor-pointer select-none ${
+                      currentStatus === "confirmed"
+                        ? "text-emerald-700 hover:bg-emerald-50"
+                        : currentStatus === "uncertain"
+                          ? "text-amber-700 hover:bg-amber-100 font-bold"
+                          : "text-stone-400 hover:bg-stone-200"
+                    }`}
+                    title={`状态：${currentStatus === "confirmed" ? "✓ 确定项" : currentStatus === "uncertain" ? "? 待定项" : "✕ 舍弃项"}，点击切换`}
+                  >
+                    {currentStatus === "confirmed" ? "✓" : currentStatus === "uncertain" ? "?" : "✕"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Visual Guardrails: Priorities & Avoid */}
         <div className="grid grid-cols-2 gap-2 pt-1">
           {/* Priorities */}
           <div className="rounded-xl bg-white/70 p-2.5 border border-line/70">
-            <span className="text-[10px] font-semibold text-stone-600 block mb-1">
-              视觉坚持 (点击可标记)
-            </span>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-semibold text-stone-600">
+                视觉坚持 (点击标记)
+              </span>
+              <button
+                type="button"
+                onClick={() => setAddingPriority((prev) => !prev)}
+                className="text-[9.5px] text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-0.5 cursor-pointer"
+                title="添加自定义坚持项"
+              >
+                <Plus className="h-2.5 w-2.5" />
+                <span>添加</span>
+              </button>
+            </div>
+
+            {addingPriority && (
+              <form onSubmit={handleAddPrioritySubmit} className="flex items-center gap-1 mb-1.5">
+                <input
+                  type="text"
+                  value={newPriorityText}
+                  onChange={(e) => setNewPriorityText(e.target.value)}
+                  placeholder="如：大面积素白留白"
+                  autoFocus
+                  className="flex-1 rounded border border-indigo-400 bg-white px-1.5 py-0.5 text-[10px] outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setAddingPriority(false);
+                  }}
+                />
+                <button
+                  type="submit"
+                  className="rounded bg-indigo-600 text-white px-1.5 py-0.5 text-[9.5px] font-medium hover:bg-indigo-700 cursor-pointer"
+                >
+                  加
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddingPriority(false)}
+                  className="rounded bg-stone-100 text-stone-500 px-1 py-0.5 text-[9.5px] hover:bg-stone-200 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </form>
+            )}
+
             {state.direction.priorities.length > 0 ? (
               <div className="space-y-1">
-                {state.direction.priorities.slice(0, 3).map((p, i) => {
+                {state.direction.priorities.map((p, i) => {
                   const pId = `priority_${i}_${p.text.slice(0, 12)}`;
                   const pStatus = itemDecisions[pId]?.status ?? "confirmed";
                   const nextPStatus =
@@ -354,12 +472,53 @@ export function StateNode({ id, selected }: NodeProps) {
 
           {/* Avoid */}
           <div className="rounded-xl bg-white/70 p-2.5 border border-line/70">
-            <span className="text-[10px] font-semibold text-stone-600 block mb-1">
-              视觉红线 (点击标记 · 双击修改)
-            </span>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-semibold text-stone-600">
+                视觉红线 (点击标记)
+              </span>
+              <button
+                type="button"
+                onClick={() => setAddingAvoid((prev) => !prev)}
+                className="text-[9.5px] text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-0.5 cursor-pointer"
+                title="添加自定义红线"
+              >
+                <Plus className="h-2.5 w-2.5" />
+                <span>添加</span>
+              </button>
+            </div>
+
+            {addingAvoid && (
+              <form onSubmit={handleAddAvoidSubmit} className="flex items-center gap-1 mb-1.5">
+                <input
+                  type="text"
+                  value={newAvoidText}
+                  onChange={(e) => setNewAvoidText(e.target.value)}
+                  placeholder="如：严禁塑料覆膜"
+                  autoFocus
+                  className="flex-1 rounded border border-indigo-400 bg-white px-1.5 py-0.5 text-[10px] outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setAddingAvoid(false);
+                  }}
+                />
+                <button
+                  type="submit"
+                  className="rounded bg-indigo-600 text-white px-1.5 py-0.5 text-[9.5px] font-medium hover:bg-indigo-700 cursor-pointer"
+                >
+                  加
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddingAvoid(false)}
+                  className="rounded bg-stone-100 text-stone-500 px-1 py-0.5 text-[9.5px] hover:bg-stone-200 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </form>
+            )}
+
             {state.direction.avoid.length > 0 ? (
               <div className="space-y-1">
-                {state.direction.avoid.slice(0, 3).map((a, i) => {
+                {state.direction.avoid.map((a, i) => {
                   const aId = `avoid_${i}_${a.text.slice(0, 12)}`;
                   const aStatus = itemDecisions[aId]?.status ?? "confirmed";
                   const nextAStatus =
@@ -408,7 +567,7 @@ export function StateNode({ id, selected }: NodeProps) {
                 })}
               </div>
             ) : (
-              <span className="text-[10px] text-muted">暂无</span>
+              <span className="text-[10px] text-muted">尚未明确</span>
             )}
           </div>
         </div>

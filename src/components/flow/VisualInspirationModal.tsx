@@ -36,8 +36,30 @@ export function VisualInspirationModal({
   const [copiedHex, setCopiedHex] = useState<string | null>(null);
   const [newKeyword, setNewKeyword] = useState("");
   const [justAddedKw, setJustAddedKw] = useState<string | null>(null);
+  const [addingColor, setAddingColor] = useState(false);
+  const [customHex, setCustomHex] = useState("#2B3A42");
 
   if (!inspiration) return null;
+
+  const handleAddColorSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    let hex = customHex.trim().toUpperCase();
+    if (!hex.startsWith("#")) hex = `#${hex}`;
+    if (!/^#[0-9A-F]{6}$/i.test(hex)) return;
+    const current = inspiration.palette || [];
+    if (!current.includes(hex)) {
+      updateVisualInspiration(inspiration.id, {
+        palette: [...current, hex],
+      });
+    }
+    setAddingColor(false);
+  };
+
+  const handleRemoveColor = (hexToRemove: string) => {
+    updateVisualInspiration(inspiration.id, {
+      palette: (inspiration.palette || []).filter((h) => h !== hexToRemove),
+    });
+  };
 
   const handleCopy = (hex: string) => {
     void navigator.clipboard.writeText(hex);
@@ -207,21 +229,66 @@ export function VisualInspirationModal({
               </p>
             </div>
 
-            {/* Extracted Color Palette */}
-            {inspiration.palette && inspiration.palette.length > 0 && (
-              <div className="rounded-xl border border-line/80 bg-white p-3 space-y-2">
-                <div className="flex items-center justify-between text-[11px]">
+            {/* Extracted & Custom Color Palette */}
+            <div className="rounded-xl border border-line/80 bg-white p-3 space-y-2">
+              <div className="flex items-center justify-between text-[11px]">
+                <div className="flex items-center gap-1.5">
                   <span className="font-semibold text-stone-600 flex items-center gap-1">
                     <Palette className="h-3.5 w-3.5 text-indigo-600" />
                     解构调色板 (Color Palette)
                   </span>
-                  <span className="text-stone-400 font-mono text-[10px]">
-                    {inspiration.palette.length} 色采样
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAddingColor((prev) => !prev)}
+                    className="text-[9.5px] text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-0.5 cursor-pointer"
+                    title="添加自定义色值"
+                  >
+                    <Plus className="h-2.5 w-2.5" />
+                    <span>添加</span>
+                  </button>
                 </div>
+                <span className="text-stone-400 font-mono text-[10px]">
+                  {(inspiration.palette || []).length} 色
+                </span>
+              </div>
+
+              {addingColor && (
+                <form onSubmit={handleAddColorSubmit} className="flex items-center gap-1.5 py-1">
+                  <input
+                    type="color"
+                    value={customHex}
+                    onChange={(e) => setCustomHex(e.target.value.toUpperCase())}
+                    className="h-7 w-7 rounded cursor-pointer border border-line p-0.5"
+                    title="点击拾取颜色"
+                  />
+                  <input
+                    type="text"
+                    value={customHex}
+                    onChange={(e) => setCustomHex(e.target.value.toUpperCase())}
+                    placeholder="#RRGGBB"
+                    maxLength={7}
+                    className="w-24 rounded border border-indigo-400 bg-white px-1.5 py-0.5 font-mono text-[11px] outline-none uppercase"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded bg-indigo-600 text-white px-2 py-0.5 text-[10px] font-medium hover:bg-indigo-700 cursor-pointer"
+                  >
+                    确定
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAddingColor(false)}
+                    className="rounded bg-stone-100 text-stone-500 px-1.5 py-0.5 text-[10px] hover:bg-stone-200 cursor-pointer"
+                  >
+                    取消
+                  </button>
+                </form>
+              )}
+
+              {(inspiration.palette || []).length > 0 ? (
                 <div className="grid grid-cols-5 gap-1.5">
-                  {inspiration.palette.map((hex, idx) => (
-                    <div key={idx} className="group/item flex flex-col items-center gap-1">
+                  {inspiration.palette!.map((hex, idx) => (
+                    <div key={idx} className="group/item flex flex-col items-center gap-1 relative">
                       <div
                         className="h-10 w-full rounded-md border border-black/10 shadow-2xs relative overflow-hidden transition-transform group-hover/item:scale-105 cursor-pointer"
                         style={{ backgroundColor: hex }}
@@ -233,6 +300,17 @@ export function VisualInspirationModal({
                             已复制
                           </div>
                         )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveColor(hex);
+                          }}
+                          className="absolute top-0.5 right-0.5 h-3.5 w-3.5 rounded-full bg-black/50 text-white text-[8px] opacity-0 group-hover/item:opacity-100 flex items-center justify-center hover:bg-black/80 transition-opacity"
+                          title="删除此色"
+                        >
+                          ✕
+                        </button>
                       </div>
                       <span className="text-[9.5px] font-mono text-stone-500 select-all">
                         {hex}
@@ -248,8 +326,12 @@ export function VisualInspirationModal({
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-[10px] text-stone-400 py-1">
+                  暂未采样到有效色谱，可点击上方「+ 添加」自定义色值。
+                </p>
+              )}
+            </div>
 
             {/* Visual Keywords & Tags */}
             <div className="rounded-xl border border-line/80 bg-white p-3 space-y-2">

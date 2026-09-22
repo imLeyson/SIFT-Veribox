@@ -235,6 +235,53 @@ export function BriefInputNode({ id, selected }: NodeProps) {
               className="w-full resize-y rounded-xl border border-line bg-cream/70 px-3 py-2 text-xs sm:text-sm leading-relaxed outline-none focus:border-accent"
             />
 
+            {/* Quick Realistic Design Scenarios */}
+            {!rawBrief.trim() && (
+              <div className="mt-2 space-y-1.5">
+                <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider block">
+                  快速载入实战场景探索：
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setRawBrief(
+                        "冷泡茶无墨白浆纸盒包装设计，目标是做都市年轻人的日常静心仪式感茶礼，希望材质以素净特种棉纸为主，强调纸张微肌理与极简双栏网格，杜绝花哨插画与过度装饰。"
+                      )
+                    }
+                    className="inline-flex items-center gap-1 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 px-2.5 py-1 text-[10.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    <span>🍵</span>
+                    <span>冷萃茶无墨纸盒包装</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setRawBrief(
+                        "回收宠物毛发与植物纤维再造生活器物，用于现代桌面收纳与陪伴感小件，强调原生微颗粒、无塑料涂层与温润有机握持感，避免塑料质感与工业冰冷。"
+                      )
+                    }
+                    className="inline-flex items-center gap-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 px-2.5 py-1 text-[10.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    <span>🐾</span>
+                    <span>再生毛发纤维生活器物</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setRawBrief(
+                        "暗黑科技与极简工程美学风格的 AI 数据控制台，面向专业开发者，8px 严谨栅格与 1px 微光感冷灰描边，强调高密度信息呈现与状态指示，避免空洞装饰。"
+                      )
+                    }
+                    className="inline-flex items-center gap-1 rounded-full bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200/80 px-2.5 py-1 text-[10.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    <span>⚡</span>
+                    <span>先锋机能SaaS控制台</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Live Brief Diagnostics Radar */}
             {rawBrief.trim().length >= 4 && briefDiagnostics && (
               <div className="mt-2.5 rounded-xl border border-line/80 bg-white/70 p-2.5 space-y-2">

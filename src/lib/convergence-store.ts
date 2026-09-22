@@ -163,8 +163,11 @@ export type SiftStore = Session & {
   updateStateIntent: (text: string) => void;
   updateStatePriority: (index: number, text: string) => void;
   updateStateAvoid: (index: number, text: string) => void;
+  addStatePriority: (text: string) => void;
+  addStateAvoid: (text: string) => void;
   updateStateHypothesis: (text: string) => void;
   updateVisualKeyword: (index: number, keyword: string) => void;
+  addVisualKeyword: (text: string) => void;
   updateRoute: (routeId: string, partial: Partial<Route>) => void;
   updateRouteStep: (routeId: string, stepId: string, partial: Partial<RouteStep>) => void;
   updatePlatformKeyword: (
@@ -933,6 +936,68 @@ export function createSiftStore(providedStorage?: StateStorage) {
             };
           });
         },
+        addStatePriority: (text: string) => {
+          const trimmed = text.trim();
+          if (!trimmed) return;
+          set((s) => {
+            if (!s.state) return s;
+            const priorities = [
+              ...s.state.direction.priorities,
+              { text: trimmed, basis: "user" as const, sourceIds: ["user_add"] },
+            ];
+            const newIndex = priorities.length - 1;
+            return {
+              state: {
+                ...s.state,
+                revision: s.state.revision + 1,
+                direction: { ...s.state.direction, priorities },
+              },
+              itemDecisions: {
+                ...s.itemDecisions,
+                [`priority_${newIndex}`]: {
+                  id: `priority_${newIndex}`,
+                  type: "text",
+                  content: trimmed,
+                  label: "视觉坚持 (已添加)",
+                  status: "confirmed",
+                  sourceNode: "02 方向",
+                  updatedAt: Date.now(),
+                },
+              },
+            };
+          });
+        },
+        addStateAvoid: (text: string) => {
+          const trimmed = text.trim();
+          if (!trimmed) return;
+          set((s) => {
+            if (!s.state) return s;
+            const avoid = [
+              ...s.state.direction.avoid,
+              { text: trimmed, basis: "user" as const, sourceIds: ["user_add"] },
+            ];
+            const newIndex = avoid.length - 1;
+            return {
+              state: {
+                ...s.state,
+                revision: s.state.revision + 1,
+                direction: { ...s.state.direction, avoid },
+              },
+              itemDecisions: {
+                ...s.itemDecisions,
+                [`avoid_${newIndex}`]: {
+                  id: `avoid_${newIndex}`,
+                  type: "text",
+                  content: trimmed,
+                  label: "视觉红线 (已添加)",
+                  status: "confirmed",
+                  sourceNode: "02 方向",
+                  updatedAt: Date.now(),
+                },
+              },
+            };
+          });
+        },
         updateStateHypothesis: (text: string) => {
           set((s) => {
             if (!s.state) return s;
@@ -967,6 +1032,36 @@ export function createSiftStore(providedStorage?: StateStorage) {
                   type: "text",
                   content: keyword,
                   label: "视觉关键词 (已自定义)",
+                  status: "confirmed",
+                  sourceNode: "02 方向",
+                  updatedAt: Date.now(),
+                },
+              },
+            };
+          });
+        },
+        addVisualKeyword: (text: string) => {
+          const trimmed = text.trim();
+          if (!trimmed) return;
+          set((s) => {
+            if (!s.state) return s;
+            const visualKeywords = [...(s.state.visualKeywords ?? [])];
+            if (!visualKeywords.includes(trimmed)) {
+              visualKeywords.push(trimmed);
+            }
+            return {
+              state: {
+                ...s.state,
+                revision: s.state.revision + 1,
+                visualKeywords,
+              },
+              itemDecisions: {
+                ...s.itemDecisions,
+                [`kw_${trimmed}`]: {
+                  id: `kw_${trimmed}`,
+                  type: "text",
+                  content: trimmed,
+                  label: "视觉关键词 (已添加)",
                   status: "confirmed",
                   sourceNode: "02 方向",
                   updatedAt: Date.now(),
