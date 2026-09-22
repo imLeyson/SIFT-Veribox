@@ -189,7 +189,6 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
   const visualHook = rawSubtitle && rawSubtitle !== heroTitle ? rawSubtitle : route.focusDimension;
 
   const itemDecisions = useSiftStore((s) => s.itemDecisions);
-  const setItemDecision = useSiftStore((s) => s.setItemDecision);
   const removeItemDecision = useSiftStore((s) => s.removeItemDecision);
   const themeDecision = itemDecisions[`theme_${route.id}`];
   const isDiscarded = themeDecision?.status === "discarded";
@@ -491,24 +490,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
                   <span>{hasSelection ? "切换为此设计主题" : "选择此设计主题"}</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>
-                <div className="flex items-center justify-between px-0.5">
-                  <button
-                    type="button"
-                    className="text-[10.5px] text-stone-400 hover:text-red-700 flex items-center gap-1 py-0.5 transition-colors cursor-pointer"
-                    onClick={() => {
-                      setItemDecision({
-                        id: `theme_${route.id}`,
-                        type: "theme",
-                        content: route.themeName || route.title,
-                        label: "设计主题",
-                        status: "discarded",
-                        sourceNode: "03 主题",
-                      });
-                    }}
-                    title="舍弃此方向，下轮换一批或检索将避免同类风格"
-                  >
-                    <span>✕ 舍弃此方向</span>
-                  </button>
+                <div className="flex items-center justify-center pt-1">
                   <button
                     type="button"
                     className="text-[10.5px] text-stone-400 hover:text-ink flex items-center gap-1 py-0.5 transition-colors cursor-pointer"

@@ -175,7 +175,7 @@ function FlowInner({ onOpenDossier }: { onOpenDossier?: () => void }) {
     }
 
     // 03: Exploration Routes
-    const routesStartX = (positions.direction?.x ?? stateX) + 430;
+    const routesStartX = (positions.direction?.x ?? stateX) + 490;
     if (routes.length > 0) {
       routes.forEach((route, idx) => {
         const routeNodeId = `route-${route.id}`;

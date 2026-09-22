@@ -71,8 +71,6 @@ export function PlatformPlanNode({
   const sourceInteractions = useSiftStore((s) => s.sourceInteractions);
   const rawBrief = useSiftStore((s) => s.rawBrief);
   const state = useSiftStore((s) => s.state);
-  const itemDecisions = useSiftStore((s) => s.itemDecisions);
-  const setItemDecision = useSiftStore((s) => s.setItemDecision);
   const updatePlatformKeyword = useSiftStore((s) => s.updatePlatformKeyword);
   const visualInspirations = useSiftStore((s) => s.visualInspirations || []);
 
@@ -159,26 +157,14 @@ export function PlatformPlanNode({
                 (idx === 0 ? 98 : idx === 1 ? 94 : 90);
 
               const linkUrl = getSearchUrl(source);
-              const linkId = `link_${plan.stepId}_${source.id}`;
-              const linkDecision = itemDecisions[linkId];
-              const linkStatus = linkDecision?.status ?? "uncertain";
-              const nextLinkStatus =
-                linkStatus === "uncertain"
-                  ? "confirmed"
-                  : linkStatus === "confirmed"
-                    ? "discarded"
-                    : "uncertain";
-              const isDiscarded = linkStatus === "discarded";
 
               return (
                 <div
                   key={source.id}
                   className={`rounded-xl border p-3 transition-all ${
-                    isSkipped || isDiscarded
+                    isSkipped
                       ? "border-line/40 bg-mist/20 opacity-40 grayscale-[35%]"
-                      : linkStatus === "confirmed"
-                        ? "border-emerald-300 bg-emerald-50/20 shadow-xs ring-1 ring-emerald-500/10"
-                        : "border-line/80 bg-white/95 shadow-xs"
+                      : "border-line/80 bg-white/95 shadow-xs"
                   }`}
                 >
                   {/* Card Header */}
@@ -197,37 +183,6 @@ export function PlatformPlanNode({
 
                     {/* Actions Group */}
                     <div className="flex items-center gap-1 shrink-0">
-                      {/* 3-State Link Decision Badge */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setItemDecision({
-                            id: linkId,
-                            type: "link",
-                            content: linkUrl,
-                            label: `${source.platform} 灵感源 (${roleTag})`,
-                            status: nextLinkStatus,
-                            sourceNode: "05 搜索",
-                          });
-                        }}
-                        className={`px-1.5 py-0.5 rounded text-[9.5px] font-mono font-medium border transition-all cursor-pointer flex items-center gap-0.5 ${
-                          linkStatus === "confirmed"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-300 font-semibold"
-                            : linkStatus === "discarded"
-                              ? "bg-stone-100 text-stone-400 border-stone-300 line-through"
-                              : "bg-white text-stone-500 border-line hover:border-amber-400 hover:text-amber-800"
-                        }`}
-                        title={`状态：${linkStatus === "confirmed" ? "✓ 已确定参考链接" : linkStatus === "uncertain" ? "? 待定参考链接" : "✕ 已舍弃链接"}，点击切换`}
-                      >
-                        <span>
-                          {linkStatus === "confirmed"
-                            ? "✓"
-                            : linkStatus === "discarded"
-                              ? "✕"
-                              : "?"}
-                        </span>
-                      </button>
-
                       {/* Replace Platform Secondary Button */}
                       <button
                         type="button"
@@ -450,26 +405,11 @@ export function PlatformPlanNode({
                     const altMatch =
                       plan.systemOne?.matchPercentages?.[alt.id] ??
                       Math.max(76, 85 - altIdx * 3);
-                    const altLinkId = `link_${plan.stepId}_${alt.id}`;
-                    const altDecision = itemDecisions[altLinkId];
-                    const altStatus = altDecision?.status ?? "uncertain";
-                    const nextAltStatus =
-                      altStatus === "uncertain"
-                        ? "confirmed"
-                        : altStatus === "confirmed"
-                          ? "discarded"
-                          : "uncertain";
 
                     return (
                       <div
                         key={alt.id}
-                        className={`rounded-lg border px-2.5 py-1.5 flex items-center justify-between text-[11px] transition-all ${
-                          altStatus === "discarded"
-                            ? "border-line/40 bg-mist/20 opacity-40 line-through"
-                            : altStatus === "confirmed"
-                              ? "border-emerald-300 bg-emerald-50/30"
-                              : "border-line/60 bg-cream/30"
-                        }`}
+                        className="rounded-lg border border-line/60 bg-cream/30 px-2.5 py-1.5 flex items-center justify-between text-[11px] transition-all"
                       >
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className="font-medium text-ink truncate">
@@ -480,33 +420,6 @@ export function PlatformPlanNode({
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setItemDecision({
-                                id: altLinkId,
-                                type: "link",
-                                content: getSearchUrl(alt),
-                                label: `${alt.platform} 备选源 (${alt.roleTag})`,
-                                status: nextAltStatus,
-                                sourceNode: "05 搜索",
-                              });
-                            }}
-                            className={`px-1 py-0.2 rounded text-[9px] font-mono cursor-pointer transition-colors ${
-                              altStatus === "confirmed"
-                                ? "bg-emerald-100 text-emerald-800 font-semibold"
-                                : altStatus === "discarded"
-                                  ? "bg-stone-200 text-stone-500"
-                                  : "text-stone-400 hover:text-ink hover:bg-stone-100"
-                            }`}
-                            title={`切换状态：${altStatus === "confirmed" ? "✓ 确定" : altStatus === "uncertain" ? "? 待定" : "✕ 舍弃"}`}
-                          >
-                            {altStatus === "confirmed"
-                              ? "✓"
-                              : altStatus === "discarded"
-                                ? "✕"
-                                : "?"}
-                          </button>
                           <a
                             href={getSearchUrl(alt)}
                             target="_blank"

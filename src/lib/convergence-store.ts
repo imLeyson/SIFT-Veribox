@@ -164,10 +164,13 @@ export type SiftStore = Session & {
   updateStatePriority: (index: number, text: string) => void;
   updateStateAvoid: (index: number, text: string) => void;
   addStatePriority: (text: string) => void;
+  removeStatePriority: (index: number) => void;
   addStateAvoid: (text: string) => void;
+  removeStateAvoid: (index: number) => void;
   updateStateHypothesis: (text: string) => void;
   updateVisualKeyword: (index: number, keyword: string) => void;
   addVisualKeyword: (text: string) => void;
+  removeVisualKeyword: (index: number) => void;
   updateRoute: (routeId: string, partial: Partial<Route>) => void;
   updateRouteStep: (routeId: string, stepId: string, partial: Partial<RouteStep>) => void;
   updatePlatformKeyword: (
@@ -967,6 +970,22 @@ export function createSiftStore(providedStorage?: StateStorage) {
             };
           });
         },
+        removeStatePriority: (index: number) => {
+          set((s) => {
+            if (!s.state) return s;
+            const priorities = s.state.direction.priorities.filter((_, i) => i !== index);
+            const nextDecisions = { ...s.itemDecisions };
+            delete nextDecisions[`priority_${index}`];
+            return {
+              state: {
+                ...s.state,
+                revision: s.state.revision + 1,
+                direction: { ...s.state.direction, priorities },
+              },
+              itemDecisions: nextDecisions,
+            };
+          });
+        },
         addStateAvoid: (text: string) => {
           const trimmed = text.trim();
           if (!trimmed) return;
@@ -995,6 +1014,22 @@ export function createSiftStore(providedStorage?: StateStorage) {
                   updatedAt: Date.now(),
                 },
               },
+            };
+          });
+        },
+        removeStateAvoid: (index: number) => {
+          set((s) => {
+            if (!s.state) return s;
+            const avoid = s.state.direction.avoid.filter((_, i) => i !== index);
+            const nextDecisions = { ...s.itemDecisions };
+            delete nextDecisions[`avoid_${index}`];
+            return {
+              state: {
+                ...s.state,
+                revision: s.state.revision + 1,
+                direction: { ...s.state.direction, avoid },
+              },
+              itemDecisions: nextDecisions,
             };
           });
         },
@@ -1067,6 +1102,22 @@ export function createSiftStore(providedStorage?: StateStorage) {
                   updatedAt: Date.now(),
                 },
               },
+            };
+          });
+        },
+        removeVisualKeyword: (index: number) => {
+          set((s) => {
+            if (!s.state) return s;
+            const visualKeywords = (s.state.visualKeywords ?? []).filter((_, i) => i !== index);
+            const nextDecisions = { ...s.itemDecisions };
+            delete nextDecisions[`kw_${index}`];
+            return {
+              state: {
+                ...s.state,
+                revision: s.state.revision + 1,
+                visualKeywords,
+              },
+              itemDecisions: nextDecisions,
             };
           });
         },

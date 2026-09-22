@@ -15,9 +15,7 @@ import {
   ChevronUp,
   ChevronsDownUp,
   ChevronsUpDown,
-  Target,
 } from "lucide-react";
-import { DecisionDrawer } from "./DecisionDrawer";
 
 export function CanvasNavDock({
   onOpenDossier,
@@ -35,14 +33,6 @@ export function CanvasNavDock({
   const collapseCompletedNodes = useSiftStore((s) => s.collapseCompletedNodes);
   const expandAllNodes = useSiftStore((s) => s.expandAllNodes);
   const hasCollapsed = Object.values(collapsedNodes).some(Boolean);
-
-  const itemDecisions = useSiftStore((s) => s.itemDecisions);
-  const [decisionDrawerOpen, setDecisionDrawerOpen] = useState(false);
-  const decisionValues = Object.values(itemDecisions);
-  const confirmedCount = decisionValues.filter((i) => i.status === "confirmed").length;
-  const uncertainCount = decisionValues.filter((i) => i.status === "uncertain").length;
-  const discardedCount = decisionValues.filter((i) => i.status === "discarded").length;
-  const totalDecisions = decisionValues.length;
 
   const isConfirmed = useSiftStore((s) => s.state?.status === "confirmed");
   const hasStarted = hasState || routes.length > 0;
@@ -65,8 +55,7 @@ export function CanvasNavDock({
   }
 
   return (
-    <>
-      <nav aria-label="流程节点导航" className="flex items-center gap-1 rounded-2xl border border-line/80 bg-cream/95 px-2 py-1.5 shadow-lg backdrop-blur-md max-w-[calc(100vw-2rem)] overflow-x-auto transition-all">
+    <nav aria-label="流程节点导航" className="flex items-center gap-1 rounded-2xl border border-line/80 bg-cream/95 px-2 py-1.5 shadow-lg backdrop-blur-md max-w-[calc(100vw-2rem)] overflow-x-auto transition-all">
       {/* 00 Brief */}
       <button
         type="button"
@@ -294,26 +283,6 @@ export function CanvasNavDock({
         </button>
       )}
 
-      {/* Decision Tracker Dock Button */}
-      {hasStarted && (
-        <button
-          type="button"
-          title="查看与管理确定项、待定想法与已舍弃内容"
-          onClick={() => setDecisionDrawerOpen(true)}
-          className="flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium text-stone-700 hover:text-ink hover:bg-white/80 transition-colors cursor-pointer flex-shrink-0"
-        >
-          <Target className="h-3.5 w-3.5 text-accent" />
-          <span className="hidden sm:inline">决策基石</span>
-          {totalDecisions > 0 && (
-            <span className="flex items-center gap-1 rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-mono font-semibold">
-              {confirmedCount > 0 && <span className="text-emerald-700">{confirmedCount}✓</span>}
-              {uncertainCount > 0 && <span className="text-amber-700">{uncertainCount}?</span>}
-              {discardedCount > 0 && <span className="text-stone-400">{discardedCount}✕</span>}
-            </span>
-          )}
-        </button>
-      )}
-
       {/* Collapse Toggle */}
       <button
         type="button"
@@ -323,13 +292,6 @@ export function CanvasNavDock({
       >
         <ChevronDown className="h-3.5 w-3.5" />
       </button>
-
-      </nav>
-      {/* Global Decision Inspector Drawer */}
-      <DecisionDrawer
-        isOpen={decisionDrawerOpen}
-        onClose={() => setDecisionDrawerOpen(false)}
-      />
-    </>
+    </nav>
   );
 }
