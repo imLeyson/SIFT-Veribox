@@ -48,3 +48,109 @@ export function compressImageFile(
     reader.readAsDataURL(file);
   });
 }
+
+/**
+ * Fast client-side dominant color palette extractor.
+ * Samples colors using HTML5 Canvas and quantizes them into distinct, high-fidelity HEX colors.
+ * Runs in ~3-8ms with zero network overhead.
+ */
+export function extractImagePalette(
+  imageSrc: string,
+  maxColors = 5,
+): Promise<string[]> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined" || !imageSrc) {
+      resolve([]);
+      return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onerror = () => {
+      // Return empty if image cannot be loaded or blocked by CORS
+      resolve([]);
+    };
+
+    img.onload = () => {
+      try {
+        const sampleSize = 48;
+        const canvas = document.createElement("canvas");
+        canvas.width = sampleSize;
+        canvas.height = sampleSize;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!ctx) {
+          resolve([]);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+        const imgData = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
+
+        // Group colors by quantized buckets
+        const bucketCounts = new Map<string, { r: number; g: number; b: number; count: number }>();
+
+        for (let i = 0; i < imgData.length; i += 4) {
+          const a = imgData[i + 3];
+          if (a < 128) continue; // Skip transparent pixels
+
+          const r = imgData[i];
+          const g = imgData[i + 1];
+          const b = imgData[i + 2];
+
+          // Quantize to steps of 32 for clean clustering
+          const qr = Math.min(255, Math.round(r / 32) * 32);
+          const qg = Math.min(255, Math.round(g / 32) * 32);
+          const qb = Math.min(255, Math.round(b / 32) * 32);
+          const key = `${qr},${qg},${qb}`;
+
+          const existing = bucketCounts.get(key);
+          if (existing) {
+            existing.r += r;
+            existing.g += g;
+            existing.b += b;
+            existing.count += 1;
+          } else {
+            bucketCounts.set(key, { r, g, b, count: 1 });
+          }
+        }
+
+        // Convert buckets to average RGB
+        const sorted = Array.from(bucketCounts.values())
+          .map((b) => ({
+            r: Math.round(b.r / b.count),
+            g: Math.round(b.g / b.count),
+            b: Math.round(b.b / b.count),
+            count: b.count,
+          }))
+          .sort((a, b) => b.count - a.count);
+
+        const colorDistance = (c1: { r: number; g: number; b: number }, c2: { r: number; g: number; b: number }) => {
+          return Math.sqrt(
+            Math.pow(c1.r - c2.r, 2) +
+            Math.pow(c1.g - c2.g, 2) +
+            Math.pow(c1.b - c2.b, 2)
+          );
+        };
+
+        const toHex = (n: number) => n.toString(16).padStart(2, "0").toUpperCase();
+
+        const selected: Array<{ r: number; g: number; b: number }> = [];
+        for (const candidate of sorted) {
+          // Check distance against already selected colors to ensure distinct palette
+          const isDistinct = selected.every((s) => colorDistance(s, candidate) > 42);
+          if (isDistinct) {
+            selected.push(candidate);
+            if (selected.length >= maxColors) break;
+          }
+        }
+
+        const hexColors = selected.map((c) => `#${toHex(c.r)}${toHex(c.g)}${toHex(c.b)}`);
+        resolve(hexColors);
+      } catch {
+        resolve([]);
+      }
+    };
+
+    img.src = imageSrc;
+  });
+}

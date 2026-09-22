@@ -439,24 +439,82 @@ export function livePlatformPlan(input: PlatformPlanInput): Promise<unknown> {
 5. 所有搜索平台的角色与关键词，必须严格服务于为「${stepTitle}」收集具体的视觉参考与质感证据！
 6. 严禁出现脱离当前品类与材质的孤立通用词（如不可对实体产品搜 2D 平面名片或茶包装！）。`;
 
+  // Extract confirmed visual images for multimodal vision model
+  const visualImages: string[] = [];
+  if (input.images && Array.isArray(input.images)) {
+    for (const img of input.images) {
+      if (typeof img === "string" && img.trim()) {
+        visualImages.push(img.trim());
+      }
+    }
+  }
+  if (input.decisions?.confirmed) {
+    for (const c of input.decisions.confirmed) {
+      if (c.type === "image" && c.content && !visualImages.includes(c.content)) {
+        visualImages.push(c.content);
+      }
+    }
+  }
+
   if (input.decisions) {
     const { confirmed, uncertain, discarded } = input.decisions;
     if (confirmed.length > 0) {
       promptSystem += `\n\n【⚠️ 设计师已明确确认的内容（强力约束）】：\n${confirmed
-        .map((c) => `- [${c.type}] ${c.label ? `${c.label}: ` : ""}${c.content}`)
+        .map((c) =>
+          c.type === "image"
+            ? `- [视觉参考图] ${c.label || "参考图像"}（已作为多模态视觉图像输入）`
+            : `- [${c.type}] ${c.label ? `${c.label}: ` : ""}${c.content}`,
+        )
         .join("\n")}\n搜索关键词与平台方案应高度贴合这些已确认的核心基石！`;
     }
     if (uncertain.length > 0) {
       promptSystem += `\n\n【待验证的未决点（提供佐证检索）】：\n${uncertain
-        .map((u) => `- [${u.type}] ${u.label ? `${u.label}: ` : ""}${u.content}`)
+        .map((u) =>
+          u.type === "image"
+            ? `- [待定参考图] ${u.label || "待定图像"}`
+            : `- [${u.type}] ${u.label ? `${u.label}: ` : ""}${u.content}`,
+        )
         .join("\n")}\n可通过搜索为这些不确定项收集多方视觉证据。`;
     }
     if (discarded.length > 0) {
       promptSystem += `\n\n【🚫 设计师已明确舍弃的内容（负向排除红线）】：\n${discarded
-        .map((d) => `- [${d.type}] ${d.label ? `${d.label}: ` : ""}${d.content}`)
+        .map((d) =>
+          d.type === "image"
+            ? `- [已舍弃图像] ${d.label || "舍弃参考图"}（必须避开该图的色彩调性、构图与设计风格）`
+            : `- [${d.type}] ${d.label ? `${d.label}: ` : ""}${d.content}`,
+        )
         .join("\n")}\n严禁推荐与上述已舍弃项相关的关键词，且生成的搜索式中可自动加入负向排除语法（如 -keyword）！`;
     }
   }
+
+  if (visualImages.length > 0) {
+    promptSystem += `\n\n【⚠️ 附带视觉参考图像（已作为多模态输入提供）】：\n本次视点探索附带了 ${visualImages.length} 张设计师确认的视觉参考图。\n请在提取搜索关键词与平台推荐时，结合这些图像的实际视觉质感、色系和构图风格，提供能搜到类似质感高级范例的精准专业检索式！`;
+  }
+
+  const sanitizedInput = {
+    ...input,
+    images:
+      visualImages.length > 0
+        ? `[共附带 ${visualImages.length} 张视觉图像]`
+        : undefined,
+    decisions: input.decisions
+      ? {
+          confirmed: input.decisions.confirmed.map((c) =>
+            c.type === "image"
+              ? { ...c, content: "[已作为视觉图像输入]" }
+              : c,
+          ),
+          uncertain: input.decisions.uncertain.map((u) =>
+            u.type === "image" ? { ...u, content: "[待定视觉图像]" } : u,
+          ),
+          discarded: input.decisions.discarded.map((d) =>
+            d.type === "image"
+              ? { ...d, content: "[已舍弃视觉图像]" }
+              : d,
+          ),
+        }
+      : undefined,
+  };
 
   const userPrompt = `【当前需要检索的工位视点与设计上下文】：
 - 设计任务主体：${rawGoal}
@@ -472,9 +530,9 @@ ${deliverables ? `- 期望参考物料：${deliverables}` : ""}
 请为上述工位视点生成正好 3 个主来源平台和 2–4 个备选平台，关键词必须精炼、专业，直接映射到该视点的具体工艺/形态与当前品类载体！
 
 完整输入 JSON：
-${JSON.stringify(input)}`;
+${JSON.stringify(sanitizedInput)}`;
 
-  return completeJson(promptSystem, userPrompt, "none").then((payload) =>
+  return completeJson(promptSystem, userPrompt, "none", visualImages).then((payload) =>
     normalizeLivePlatformPayload(payload, input),
   );
 }

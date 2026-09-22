@@ -6,9 +6,13 @@ import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { copyToClipboard } from "@/lib/clipboard";
 import { hasDirection } from "@/types/convergence";
-import { Check, Sparkles, ArrowRight, RefreshCw, HelpCircle, X } from "lucide-react";
+import { Check, Sparkles, ArrowRight, RefreshCw, HelpCircle, X, Palette, Plus } from "lucide-react";
 import { toInspirationCopy } from "@/lib/exploration-copy";
 import { InlineEditableText } from "../InlineEditableText";
+import { VisualInspirationCard } from "../VisualInspirationCard";
+import { VisualInspirationModal } from "../VisualInspirationModal";
+import { AddInspirationDialog } from "../AddInspirationDialog";
+import { type VisualInspiration } from "@/lib/agent/convergence-schema";
 
 export function StateNode({ id, selected }: NodeProps) {
   const {
@@ -28,8 +32,17 @@ export function StateNode({ id, selected }: NodeProps) {
     updateStateHypothesis,
     updateVisualKeyword,
   } = useSiftStore();
+  const visualInspirations = useSiftStore((s) => s.visualInspirations || []);
   const [editing, setEditing] = useState(false);
   const [copiedKeyword, setCopiedKeyword] = useState<string | null>(null);
+  const [inspectorItem, setInspectorItem] = useState<VisualInspiration | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [copiedColor, setCopiedColor] = useState<string | null>(null);
+
+  const confirmedVisuals = visualInspirations.filter((v) => v.status !== "discarded");
+  const allColors = Array.from(
+    new Set(confirmedVisuals.flatMap((v) => v.palette || [])),
+  ).slice(0, 10);
 
   const handleCopyKeyword = async (keyword: string) => {
     const success = await copyToClipboard(keyword);
@@ -124,6 +137,70 @@ export function StateNode({ id, selected }: NodeProps) {
               label="设计假设"
               showEditIcon
             />
+          </div>
+        )}
+
+        {/* Visual Anchors & Extracted Palettes */}
+        {visualInspirations.length > 0 && (
+          <div className="rounded-xl bg-white/80 p-2.5 border border-line/80 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10.5px] font-semibold text-stone-600 flex items-center gap-1">
+                <Palette className="h-3.5 w-3.5 text-indigo-600" />
+                视觉基石与提取色系（{visualInspirations.length} 单元）
+              </span>
+              <button
+                type="button"
+                onClick={() => setAddDialogOpen(true)}
+                className="text-[10px] text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-0.5 cursor-pointer"
+              >
+                <Plus className="h-3 w-3" />
+                <span>添加</span>
+              </button>
+            </div>
+
+            {/* Thumbnail cards */}
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {visualInspirations.map((vis) => (
+                <VisualInspirationCard
+                  key={vis.id}
+                  inspiration={vis}
+                  compact
+                  onOpenInspector={(item) => setInspectorItem(item)}
+                />
+              ))}
+            </div>
+
+            {/* Consolidated Palette if any */}
+            {allColors.length > 0 && (
+              <div className="pt-1.5 border-t border-line/40">
+                <div className="flex items-center justify-between text-[9.5px] text-stone-400 mb-1">
+                  <span>提取调色板（点击复制色值）</span>
+                  <span>{allColors.length} 色</span>
+                </div>
+                <div className="flex h-4 w-full rounded-md overflow-hidden border border-line/60">
+                  {allColors.map((hex, ci) => (
+                    <button
+                      key={ci}
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(hex);
+                        setCopiedColor(hex);
+                        setTimeout(() => setCopiedColor(null), 1500);
+                      }}
+                      className="flex-1 h-full relative transition-all hover:flex-[1.5] cursor-pointer"
+                      style={{ backgroundColor: hex }}
+                      title={`点击复制: ${hex}`}
+                    >
+                      {copiedColor === hex && (
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-white text-[7.5px] font-mono font-bold">
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -487,6 +564,19 @@ export function StateNode({ id, selected }: NodeProps) {
         )}
       </div>
     </NodeShell>
+
+    {/* Visual Inspector Modal */}
+    <VisualInspirationModal
+      inspiration={inspectorItem}
+      onClose={() => setInspectorItem(null)}
+    />
+
+    {/* Add Inspiration Dialog */}
+    <AddInspirationDialog
+      isOpen={addDialogOpen}
+      onClose={() => setAddDialogOpen(false)}
+      defaultScope="global"
+    />
     </div>
   );
 }

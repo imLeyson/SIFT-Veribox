@@ -23,6 +23,22 @@ export const DecisionContextSchema = z.object({
 });
 export type DecisionContext = z.infer<typeof DecisionContextSchema>;
 
+export const VisualInspirationSchema = z.object({
+  id: text,
+  url: text,
+  title: shortText.optional(),
+  sourceType: z.enum(["upload", "clipboard", "external_url"]).default("upload"),
+  sourceUrl: z.string().optional(),
+  status: DecisionStatusSchema.default("confirmed"),
+  scope: z.enum(["global", "route", "step"]).default("global"),
+  targetId: z.string().optional(),
+  palette: z.array(z.string()).default([]),
+  keywords: z.array(z.string()).default([]),
+  notes: z.string().optional(),
+  createdAt: z.number().int().nonnegative().default(() => Date.now()),
+});
+export type VisualInspiration = z.infer<typeof VisualInspirationSchema>;
+
 export const JudgmentSchema = z.object({
   text: shortText,
   basis: z.enum(["user", "assumption"]),

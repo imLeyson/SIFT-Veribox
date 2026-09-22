@@ -110,6 +110,10 @@ export function createConvergenceActions(
     const ac = new AbortController();
     controller = ac;
     const timer = setTimeout(() => ac.abort(), 50000);
+    const confirmedImages = (s.visualInspirations ?? [])
+      .filter((img) => img.status === "confirmed")
+      .map((img) => img.url);
+
     try {
       const body = {
         sessionId: token.sessionId,
@@ -121,6 +125,7 @@ export function createConvergenceActions(
         excludeThemeNames,
         refreshIndex: options?.refresh ? 1 : 0,
         decisions: s.getDecisionContext(),
+        images: confirmedImages.length > 0 ? confirmedImages : undefined,
       };
       const response = await fetcher("/api/routes", {
         method: "POST",
@@ -173,6 +178,16 @@ export function createConvergenceActions(
     const ac = new AbortController();
     controller = ac;
     const timer = setTimeout(() => ac.abort(), 50000);
+    const stepImages = (s.visualInspirations ?? [])
+      .filter((img) => img.status === "confirmed")
+      .filter(
+        (img) =>
+          img.scope === "global" ||
+          (img.scope === "route" && img.targetId === s.selectedRouteId) ||
+          (img.scope === "step" && img.targetId === targetStepId),
+      )
+      .map((img) => img.url);
+
     try {
       const body = {
         sessionId: token.sessionId,
@@ -182,6 +197,7 @@ export function createConvergenceActions(
         currentStep,
         completedStepIds: s.platformPlans.map((p) => p.stepId),
         decisions: s.getDecisionContext(),
+        images: stepImages.length > 0 ? stepImages : undefined,
       };
       const response = await fetcher("/api/platform-plan", {
         method: "POST",

@@ -758,24 +758,83 @@ export function liveRoutes(input: RoutesInput): Promise<unknown> {
   if (input.excludeThemeNames && input.excludeThemeNames.length > 0) {
     promptSystem += `\n\n【用户更换主题指令】：用户对上一批设计主题（${input.excludeThemeNames.join("、")}）不满意，要求换一批全新的创意领地与设计主题！严禁与上述主题重复或雷同，必须推导截然不同的视觉手法与画面呈象！`;
   }
+
+  // Extract confirmed visual images for multimodal vision model
+  const visualImages: string[] = [];
+  if (input.images && Array.isArray(input.images)) {
+    for (const img of input.images) {
+      if (typeof img === "string" && img.trim()) {
+        visualImages.push(img.trim());
+      }
+    }
+  }
+  if (input.decisions?.confirmed) {
+    for (const c of input.decisions.confirmed) {
+      if (c.type === "image" && c.content && !visualImages.includes(c.content)) {
+        visualImages.push(c.content);
+      }
+    }
+  }
+
   if (input.decisions) {
     const { confirmed, uncertain, discarded } = input.decisions;
     if (confirmed.length > 0) {
       promptSystem += `\n\n【⚠️ 设计师已明确确认的设计基石（绝对硬约束）】：\n${confirmed
-        .map((c) => `- [${c.type}] ${c.label ? `${c.label}: ` : ""}${c.content}`)
+        .map((c) =>
+          c.type === "image"
+            ? `- [视觉参考图] ${c.label || "参考图像"}（已作为多模态视觉图像输入）`
+            : `- [${c.type}] ${c.label ? `${c.label}: ` : ""}${c.content}`,
+        )
         .join("\n")}\n生成的 3 个设计主题必须 100% 贯彻并呼应上述已确认项！`;
     }
     if (uncertain.length > 0) {
       promptSystem += `\n\n【设计师暂定不确定的探索点（3 套主题可围绕此进行差异化发散）】：\n${uncertain
-        .map((u) => `- [${u.type}] ${u.label ? `${u.label}: ` : ""}${u.content}`)
+        .map((u) =>
+          u.type === "image"
+            ? `- [待定参考图] ${u.label || "待定图像"}`
+            : `- [${u.type}] ${u.label ? `${u.label}: ` : ""}${u.content}`,
+        )
         .join("\n")}\n可在不同主题中对上述不确定想法尝试不同的视觉解法。`;
     }
     if (discarded.length > 0) {
       promptSystem += `\n\n【🚫 设计师已明确舍弃的内容（绝对红线，严禁出现）】：\n${discarded
-        .map((d) => `- [${d.type}] ${d.label ? `${d.label}: ` : ""}${d.content}`)
+        .map((d) =>
+          d.type === "image"
+            ? `- [已舍弃图像] ${d.label || "舍弃参考图"}（必须避开该图的色彩调性、构图与设计风格）`
+            : `- [${d.type}] ${d.label ? `${d.label}: ` : ""}${d.content}`,
+        )
         .join("\n")}\n严禁在主题名称、视觉快照、设计哲学与步骤中推荐任何与上述已舍弃项相似的方向！`;
     }
   }
+
+  if (visualImages.length > 0) {
+    promptSystem += `\n\n【⚠️ 附带视觉参考图像（已作为多模态输入提供）】：\n本次输入附带了 ${visualImages.length} 张设计师确认的视觉参考图。\n请你仔细观察并解构这些图像的：\n1. 真实色彩与主辅配色倾向（从视觉中提取色调，并在各个设计主题中体现）；\n2. 表面肌理、材质质感与工艺光影（如哑光纸感、纤维微孔、金属光泽等）；\n3. 构图方式与视觉张力（留白比例、负空间、网格节奏等）。\n在推导 3 个设计主题与切入视点时，必须将这些视觉特征转化为专业具体的设计语言！`;
+  }
+
+  const sanitizedInput = {
+    ...input,
+    images:
+      visualImages.length > 0
+        ? `[共附带 ${visualImages.length} 张视觉图像]`
+        : undefined,
+    decisions: input.decisions
+      ? {
+          confirmed: input.decisions.confirmed.map((c) =>
+            c.type === "image"
+              ? { ...c, content: "[已作为视觉图像输入]" }
+              : c,
+          ),
+          uncertain: input.decisions.uncertain.map((u) =>
+            u.type === "image" ? { ...u, content: "[待定视觉图像]" } : u,
+          ),
+          discarded: input.decisions.discarded.map((d) =>
+            d.type === "image"
+              ? { ...d, content: "[已舍弃视觉图像]" }
+              : d,
+          ),
+        }
+      : undefined,
+  };
 
   const userPrompt = `【任务设计背景与已收敛方向状态 (Design State)】：
 - 原始 Brief 核心目标：${rawGoal}
@@ -803,9 +862,9 @@ ${constraints.length ? `- 已确认设计约束：${constraints.join("；")}` : 
 5. 必须返回单推荐（recommendedRouteId 对应 1 个主题，其余 2 个主题 recommendedReason 严格填 null）。
 
 完整原始输入 JSON（含上下文 ID 与修订版本）：
-${JSON.stringify(input)}`;
+${JSON.stringify(sanitizedInput)}`;
 
-  return completeJson(promptSystem, userPrompt, "none").then((payload) =>
+  return completeJson(promptSystem, userPrompt, "none", visualImages).then((payload) =>
     normalizeLiveRoutesPayload(payload, input),
   );
 }

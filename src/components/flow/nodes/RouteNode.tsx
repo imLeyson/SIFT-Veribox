@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { useSiftStore } from "@/lib/convergence-store";
@@ -23,8 +24,14 @@ import {
   Zap,
   RefreshCw,
   Compass,
+  Plus,
+  ImagePlus,
 } from "lucide-react";
 import { InlineEditableText } from "../InlineEditableText";
+import { VisualInspirationCard } from "../VisualInspirationCard";
+import { VisualInspirationModal } from "../VisualInspirationModal";
+import { AddInspirationDialog } from "../AddInspirationDialog";
+import { type VisualInspiration } from "@/lib/agent/convergence-schema";
 
 export type RouteNodeData = {
   route: Route;
@@ -200,6 +207,19 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
   const dimension = getDimensionInfo(index, route.title, route.themeName, route.focusDimension);
   const DimensionIcon = dimension.icon;
 
+  const visualInspirations = useSiftStore((s) => s.visualInspirations || []);
+  const [inspectorItem, setInspectorItem] = useState<VisualInspiration | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+
+  // Scoped to this route, or fallback to global confirmed visuals
+  const routeVisuals = visualInspirations.filter(
+    (v) => v.scope === "route" && v.targetId === route.id,
+  );
+  const globalVisuals = visualInspirations.filter(
+    (v) => v.status === "confirmed" && (v.scope === "global" || !v.scope),
+  );
+  const displayVisuals = routeVisuals.length > 0 ? routeVisuals : globalVisuals.slice(0, 2);
+
   const collapsedSummary = (
     <div className="flex items-center justify-between gap-1.5 w-full">
       <span className="truncate italic font-serif text-stone-600">
@@ -290,6 +310,53 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
                 showEditIcon
               />
               <span className="font-serif text-stone-400 ml-0.5">”</span>
+            </div>
+
+            {/* Visual Inspiration Units for this Theme */}
+            <div className="pt-2 border-t border-line/40 space-y-1.5">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="font-semibold text-stone-500 flex items-center gap-1">
+                  <ImagePlus className="h-3 w-3 text-indigo-600" />
+                  主题视觉参考（{routeVisuals.length > 0 ? `${routeVisuals.length} 专属` : "共享参考"}）
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAddDialogOpen(true);
+                  }}
+                  className="text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-0.5 cursor-pointer"
+                  title="为此主题上传或绑定灵感图"
+                >
+                  <Plus className="h-2.5 w-2.5" />
+                  <span>添加</span>
+                </button>
+              </div>
+
+              {displayVisuals.length > 0 ? (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {displayVisuals.map((item) => (
+                    <VisualInspirationCard
+                      key={item.id}
+                      inspiration={item}
+                      compact
+                      onOpenInspector={(vis) => setInspectorItem(vis)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAddDialogOpen(true);
+                  }}
+                  className="w-full py-2 rounded-lg border border-dashed border-stone-300 hover:border-indigo-400 bg-stone-50/50 hover:bg-white text-[10.5px] text-stone-500 hover:text-indigo-600 flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>为本主题添加专属视觉参考图</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -489,6 +556,20 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
           </div>
         </div>
       </NodeShell>
+
+      {/* Visual Inspector Modal */}
+      <VisualInspirationModal
+        inspiration={inspectorItem}
+        onClose={() => setInspectorItem(null)}
+      />
+
+      {/* Add Inspiration Dialog */}
+      <AddInspirationDialog
+        isOpen={addDialogOpen}
+        onClose={() => setAddDialogOpen(false)}
+        defaultScope="route"
+        targetId={route.id}
+      />
     </div>
   );
 }

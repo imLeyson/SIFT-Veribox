@@ -19,8 +19,13 @@ import {
   StickyNote,
   ExternalLink,
   RefreshCw,
+  ImagePlus,
 } from "lucide-react";
 import { InlineEditableText } from "../InlineEditableText";
+import { VisualInspirationCard } from "../VisualInspirationCard";
+import { VisualInspirationModal } from "../VisualInspirationModal";
+import { AddInspirationDialog } from "../AddInspirationDialog";
+import { type VisualInspiration } from "@/lib/agent/convergence-schema";
 
 function renderNoteContent(text: string) {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -62,12 +67,20 @@ export function StepNode({ id, selected }: NodeProps) {
   const updateRouteStep = useSiftStore((s) => s.updateRouteStep);
 
   const [noteInput, setNoteInput] = useState("");
+  const visualInspirations = useSiftStore((s) => s.visualInspirations || []);
+  const [inspectorItem, setInspectorItem] = useState<VisualInspiration | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   const route = routes.find((r) => r.id === selectedRouteId);
   if (!route) return null;
 
   const activeIdx = route.steps.findIndex((s) => s.id === activeStepId);
   const currentStep = route.steps[activeIdx] ?? route.steps[0];
+
+  const stepVisuals = visualInspirations.filter(
+    (v) => (v.scope === "step" && v.targetId === currentStep?.id) ||
+           (v.scope === "route" && v.targetId === route.id)
+  );
   const hasPlanForCurrent = platformPlans.some(
     (p) => p.stepId === currentStep.id,
   );
@@ -181,6 +194,46 @@ export function StepNode({ id, selected }: NodeProps) {
                 />
               </div>
             )}
+
+            {/* Step Visual Inspirations */}
+            <div className="pt-2 border-t border-line/40 space-y-1.5">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="font-semibold text-stone-500 flex items-center gap-1">
+                  <ImagePlus className="h-3 w-3 text-indigo-600" />
+                  本视点灵感采集（{stepVisuals.length} 单元）
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAddDialogOpen(true)}
+                  className="text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-0.5 cursor-pointer"
+                  title="为本视点添加灵感图或外部参考"
+                >
+                  <Plus className="h-2.5 w-2.5" />
+                  <span>添加</span>
+                </button>
+              </div>
+              {stepVisuals.length > 0 ? (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {stepVisuals.map((item) => (
+                    <VisualInspirationCard
+                      key={item.id}
+                      inspiration={item}
+                      compact
+                      onOpenInspector={(vis) => setInspectorItem(vis)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddDialogOpen(true)}
+                  className="w-full py-1.5 rounded-lg border border-dashed border-stone-300 hover:border-indigo-400 bg-stone-50/50 hover:bg-white text-[10px] text-stone-500 hover:text-indigo-600 flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>采集此视点的参考图或网络灵感</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -290,6 +343,20 @@ export function StepNode({ id, selected }: NodeProps) {
           </details>
         </div>
       </NodeShell>
+
+      {/* Visual Inspector Modal */}
+      <VisualInspirationModal
+        inspiration={inspectorItem}
+        onClose={() => setInspectorItem(null)}
+      />
+
+      {/* Add Inspiration Dialog */}
+      <AddInspirationDialog
+        isOpen={addDialogOpen}
+        onClose={() => setAddDialogOpen(false)}
+        defaultScope="step"
+        targetId={currentStep.id}
+      />
     </div>
   );
 }

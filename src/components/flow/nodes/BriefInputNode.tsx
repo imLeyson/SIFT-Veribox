@@ -9,6 +9,10 @@ import { compressImageFile } from "@/lib/image-utils";
 import { ImagePlus, Plus, X, Eye, Zap, Sparkles, Check, HelpCircle } from "lucide-react";
 import { evaluateBriefIntentSync } from "@/lib/agent/system-one";
 import { InlineEditableText } from "../InlineEditableText";
+import { VisualInspirationCard } from "../VisualInspirationCard";
+import { VisualInspirationModal } from "../VisualInspirationModal";
+import { AddInspirationDialog } from "../AddInspirationDialog";
+import { type VisualInspiration } from "@/lib/agent/convergence-schema";
 
 export function BriefInputNode({ id, selected }: NodeProps) {
   const {
@@ -24,6 +28,14 @@ export function BriefInputNode({ id, selected }: NodeProps) {
     addBriefImage,
     removeBriefImage,
   } = useSiftStore();
+
+  const visualInspirations = useSiftStore((s) => s.visualInspirations || []);
+  const [inspectorItem, setInspectorItem] = useState<VisualInspiration | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+
+  const globalInspirations = visualInspirations.filter(
+    (v) => v.scope === "global" || !v.scope,
+  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [compressing, setCompressing] = useState(false);
@@ -41,27 +53,37 @@ export function BriefInputNode({ id, selected }: NodeProps) {
         {rawBrief.slice(0, 32)}…
       </span>
       <span className="text-[9.5px] font-mono text-stone-400 shrink-0">
-        {briefImages.length > 0 ? `${briefImages.length} 图 · 已锁定` : "已锁定"}
+        {globalInspirations.length > 0 ? `${globalInspirations.length} 视觉单元 · 已锁定` : "已锁定"}
       </span>
     </div>
   ) : undefined;
 
   const processFiles = async (files: FileList | File[]) => {
-    if (briefImages.length >= 3) return;
-    const remainingSlots = 3 - briefImages.length;
+    if (globalInspirations.length >= 6) return;
+    const remainingSlots = 6 - globalInspirations.length;
     const targetFiles = Array.from(files)
       .filter((f) => f.type.startsWith("image/"))
       .slice(0, remainingSlots);
 
     if (!targetFiles.length) return;
+
     setCompressing(true);
     try {
       for (const file of targetFiles) {
         const compressed = await compressImageFile(file);
-        addBriefImage(compressed);
+        const { extractImagePalette } = await import("@/lib/image-utils");
+        const palette = await extractImagePalette(compressed, 5);
+        useSiftStore.getState().addVisualInspiration({
+          url: compressed,
+          title: file.name.replace(/\.[^/.]+$/, ""),
+          sourceType: "upload",
+          status: "confirmed",
+          scope: "global",
+          palette,
+        });
       }
     } catch {
-      // Ignore individual file parse errors gracefully
+      // ignore
     } finally {
       setCompressing(false);
     }
@@ -126,66 +148,30 @@ export function BriefInputNode({ id, selected }: NodeProps) {
               label="简报需求"
               showEditIcon
             />
-            {briefImages.length > 0 && (
-              <div className="pt-2 border-t border-line/60">
-                <span className="text-[10px] font-semibold text-stone-500 block mb-1.5">
-                  附带参考图（{briefImages.length} 张，提取视觉偏好，点击大图预览）：
-                </span>
-                <div className="flex gap-2 flex-wrap">
-                  {briefImages.map((img, idx) => {
-                    const imgId = `brief_img_${idx}`;
-                    const currentStatus = itemDecisions[imgId]?.status ?? "confirmed";
-                    const nextStatus =
-                      currentStatus === "confirmed"
-                        ? "uncertain"
-                        : currentStatus === "uncertain"
-                          ? "discarded"
-                          : "confirmed";
-                    return (
-                      <div
-                        key={idx}
-                        className={`group relative h-14 w-14 rounded-lg overflow-hidden border transition-all flex-shrink-0 text-left ${
-                          currentStatus === "discarded"
-                            ? "opacity-40 grayscale border-stone-300"
-                            : currentStatus === "uncertain"
-                              ? "border-amber-300 ring-1 ring-amber-300/60"
-                              : "border-emerald-300 ring-1 ring-emerald-300/60"
-                        }`}
-                      >
-                        <img
-                          src={img}
-                          alt={`参考意向图 ${idx + 1}`}
-                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200 cursor-pointer"
-                          onClick={() => setPreviewImage(img)}
-                          title="点击查看高清大图"
-                        />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setItemDecision({
-                              id: imgId,
-                              type: "image",
-                              content: img,
-                              label: `参考图 0${idx + 1}`,
-                              status: nextStatus,
-                              sourceNode: "00 简报",
-                            });
-                          }}
-                          className={`absolute top-0.5 right-0.5 z-10 flex h-4 items-center gap-0.5 rounded px-1 text-[9px] font-mono font-bold shadow-2xs transition-transform hover:scale-105 cursor-pointer ${
-                            currentStatus === "confirmed"
-                              ? "bg-emerald-700 text-white"
-                              : currentStatus === "uncertain"
-                                ? "bg-amber-700 text-white"
-                                : "bg-stone-700 text-white line-through"
-                          }`}
-                          title={`当前状态：${currentStatus === "confirmed" ? "✓ 确定（核心参考）" : currentStatus === "uncertain" ? "? 待定（备选参考）" : "✕ 舍弃（下轮排除）"}，点击切换`}
-                        >
-                          {currentStatus === "confirmed" ? "✓" : currentStatus === "uncertain" ? "?" : "✕"}
-                        </button>
-                      </div>
-                    );
-                  })}
+            {globalInspirations.length > 0 && (
+              <div className="pt-2.5 border-t border-line/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10.5px] font-semibold text-stone-500 flex items-center gap-1">
+                    <Sparkles className="h-3 w-3 text-indigo-600" />
+                    参考视觉基石（{globalInspirations.length} 单元 · 色板与特征）：
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAddDialogOpen(true)}
+                    className="text-[10px] font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <Plus className="h-3 w-3" />
+                    <span>添加灵感</span>
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {globalInspirations.map((item) => (
+                    <VisualInspirationCard
+                      key={item.id}
+                      inspiration={item}
+                      onOpenInspector={(vis) => setInspectorItem(vis)}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -331,86 +317,42 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                 }}
               />
 
-              <div className="flex flex-wrap gap-2 items-center">
-                {briefImages.map((img, idx) => {
-                  const imgId = `brief_img_${idx}`;
-                  const currentStatus = itemDecisions[imgId]?.status ?? "confirmed";
-                  const nextStatus =
-                    currentStatus === "confirmed"
-                      ? "uncertain"
-                      : currentStatus === "uncertain"
-                        ? "discarded"
-                        : "confirmed";
-                  return (
-                    <div
-                      key={idx}
-                      className={`relative group h-14 w-14 rounded-lg overflow-hidden border flex-shrink-0 transition-all ${
-                        currentStatus === "discarded"
-                          ? "opacity-40 grayscale border-stone-300"
-                          : currentStatus === "uncertain"
-                            ? "border-amber-300 ring-1 ring-amber-300/60"
-                            : "border-emerald-300 ring-1 ring-emerald-300/60"
-                      }`}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-ink flex items-center gap-1">
+                    <ImagePlus className="h-3.5 w-3.5 text-indigo-600" />
+                    视觉灵感内容单元（参考图 / 外链图 / 截图）
+                  </span>
+                  <span className="text-[10px] text-stone-400 font-mono">
+                    已添加 {globalInspirations.length} / 6
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {globalInspirations.map((item) => (
+                    <VisualInspirationCard
+                      key={item.id}
+                      inspiration={item}
+                      onOpenInspector={(vis) => setInspectorItem(vis)}
+                    />
+                  ))}
+                  {globalInspirations.length < 6 && (
+                    <button
+                      type="button"
+                      disabled={Boolean(activeRequest) || compressing}
+                      onClick={() => setAddDialogOpen(true)}
+                      className="min-h-[110px] rounded-xl border-2 border-dashed border-stone-300 hover:border-indigo-400 hover:bg-white bg-white/50 flex flex-col items-center justify-center text-stone-500 hover:text-indigo-600 transition-all cursor-pointer p-2"
+                      title="上传参考图或添加外链灵感"
                     >
-                      <img
-                        src={img}
-                        alt={`参考图 ${idx + 1}`}
-                        className="h-full w-full object-cover cursor-pointer"
-                        onClick={() => setPreviewImage(img)}
-                        title="点击放大预览"
-                      />
-                      {/* Decision Status Toggle */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setItemDecision({
-                            id: imgId,
-                            type: "image",
-                            content: img,
-                            label: `参考图 0${idx + 1}`,
-                            status: nextStatus,
-                            sourceNode: "00 简报",
-                          });
-                        }}
-                        className={`absolute top-0.5 left-0.5 z-10 flex h-4 items-center gap-0.5 rounded px-1 text-[9px] font-mono font-bold shadow-2xs transition-transform hover:scale-105 cursor-pointer ${
-                          currentStatus === "confirmed"
-                            ? "bg-emerald-700 text-white"
-                            : currentStatus === "uncertain"
-                              ? "bg-amber-700 text-white"
-                              : "bg-stone-700 text-white line-through"
-                        }`}
-                        title={`状态：${currentStatus === "confirmed" ? "✓ 确定" : currentStatus === "uncertain" ? "? 待定" : "✕ 舍弃"}，点击切换`}
-                      >
-                        {currentStatus === "confirmed" ? "✓" : currentStatus === "uncertain" ? "?" : "✕"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={Boolean(activeRequest)}
-                        onClick={() => removeBriefImage(idx)}
-                        className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-80 hover:opacity-100 hover:scale-110 transition-all cursor-pointer"
-                        title="删除图片"
-                      >
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    </div>
-                  );
-                })}
-
-                {briefImages.length < 3 && (
-                  <button
-                    type="button"
-                    disabled={Boolean(activeRequest) || compressing}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="h-14 w-14 rounded-lg border border-dashed border-stone-300 hover:border-accent hover:bg-white bg-white/50 flex flex-col items-center justify-center text-stone-500 hover:text-accent transition-colors disabled:opacity-50 cursor-pointer"
-                    title="上传或选择参考图"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span className="text-[9px] mt-0.5 font-medium">
-                      {compressing ? "压缩中…" : "添加图"}
-                    </span>
-                  </button>
-                )}
+                      <Plus className="h-5 w-5" />
+                      <span className="text-[10.5px] mt-1 font-medium">
+                        {compressing ? "解析中…" : "添加视觉单元"}
+                      </span>
+                      <span className="text-[9px] text-stone-400">
+                        本地/外链/色板
+                      </span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -435,34 +377,30 @@ export function BriefInputNode({ id, selected }: NodeProps) {
               </button>
               <button
                 type="button"
-                className="btn-ghost w-full text-xs cursor-pointer py-2.5 border border-line/80 text-stone-600 hover:text-ink hover:bg-stone-50 transition-colors"
+                className="btn-ghost w-full text-xs flex items-center justify-center gap-1.5 cursor-pointer py-2.5 border border-line hover:border-ink/40"
                 disabled={Boolean(activeRequest) || !rawBrief.trim()}
                 onClick={() => void siftActions.fastStart()}
-                title="跳过问答：基于当前输入直接收敛方向，生成 3 套探索路线与搜索策略"
+                title="跳过问答，直接生成设计方向与三套设计主题"
               >
-                跳过提问 · 直接规划路线
+                <Zap className="h-3.5 w-3.5 text-accent" />
+                <span>一键直出方向</span>
               </button>
             </div>
-            <div className="mt-1.5 flex items-center justify-between px-1 text-[10px] text-stone-400">
-              <span>✦ 关键提问锁定视觉策略</span>
-              <span>推导 3 套设计主题与检索方向 ↗</span>
-            </div>
-            <div className="mt-3.5 border-t border-line/60 pt-2.5">
-              <div className="flex items-center justify-between mb-1.5">
-                <p className="text-[11px] font-medium text-stone-500">
-                  预设示例（点击载入完整 Brief 结构）：
-                </p>
-                <span className="text-[10px] text-stone-400">
-                  可在此基础上自由修改
-                </span>
-              </div>
+
+            {/* Quick Inspiration Examples */}
+            <div className="pt-2 border-t border-line/40">
+              <span className="text-[10.5px] font-medium text-stone-500 block mb-1">
+                快捷填充灵感示例：
+              </span>
               <div className="flex flex-wrap gap-1.5">
                 {EXAMPLES.map((example) => (
                   <button
-                    key={example.id}
+                    key={example.label}
                     type="button"
                     disabled={Boolean(activeRequest)}
-                    onClick={() => setRawBrief(example.brief)}
+                    onClick={() => {
+                      setRawBrief(example.brief);
+                    }}
                     className="rounded-lg border border-line/70 bg-white/70 px-2 py-0.5 text-[11px] text-ink transition-colors hover:border-ink hover:bg-white active:scale-98 cursor-pointer"
                   >
                     {example.label}
@@ -474,32 +412,18 @@ export function BriefInputNode({ id, selected }: NodeProps) {
         )}
       </NodeShell>
 
-      {/* Lightbox / Preview Modal */}
-      {previewImage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in duration-150"
-          onClick={() => setPreviewImage(null)}
-        >
-          <div
-            className="relative max-w-3xl max-h-[85vh] rounded-2xl overflow-hidden shadow-2xl bg-stone-900 border border-white/20 p-1"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={previewImage}
-              alt="参考图大图预览"
-              className="max-w-full max-h-[80vh] object-contain rounded-xl"
-            />
-            <button
-              type="button"
-              onClick={() => setPreviewImage(null)}
-              className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/90 hover:scale-105 transition-all cursor-pointer shadow-md"
-              title="关闭预览 (ESC)"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Visual Inspector Modal */}
+      <VisualInspirationModal
+        inspiration={inspectorItem}
+        onClose={() => setInspectorItem(null)}
+      />
+
+      {/* Add Inspiration Dialog */}
+      <AddInspirationDialog
+        isOpen={addDialogOpen}
+        onClose={() => setAddDialogOpen(false)}
+        defaultScope="global"
+      />
     </>
   );
 }

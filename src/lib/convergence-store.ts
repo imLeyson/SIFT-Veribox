@@ -18,6 +18,8 @@ import {
   NextSchema,
   TurnPayloadSchema,
   TurnResultSchema,
+  VisualInspiration,
+  VisualInspirationSchema,
 } from "./agent/convergence-schema";
 import {
   RouteSchema,
@@ -48,6 +50,7 @@ const SessionSchema = z
     sessionId: z.string().min(1),
     rawBrief: z.string().max(10000),
     briefImages: z.array(z.string()).default([]),
+    visualInspirations: z.array(VisualInspirationSchema).default([]),
     state: DesignStateSchema.nullable(),
     next: NextSchema.nullable(),
     history: z.array(HistoryEntrySchema),
@@ -103,6 +106,23 @@ export type SiftStore = Session & {
   setBriefImages: (images: string[]) => void;
   addBriefImage: (image: string) => void;
   removeBriefImage: (index: number) => void;
+  addVisualInspiration: (item: {
+    id?: string;
+    url: string;
+    title?: string;
+    sourceType?: "upload" | "clipboard" | "external_url";
+    sourceUrl?: string;
+    status?: DecisionStatus;
+    scope?: "global" | "route" | "step";
+    targetId?: string;
+    palette?: string[];
+    keywords?: string[];
+    notes?: string;
+  }) => string;
+  removeVisualInspiration: (id: string) => void;
+  updateVisualInspiration: (id: string, partial: Partial<VisualInspiration>) => void;
+  setVisualInspirationStatus: (id: string, status: DecisionStatus) => void;
+  assignVisualInspiration: (id: string, scope: "global" | "route" | "step", targetId?: string) => void;
   setDrafts: (answers: Answer[]) => void;
   setCorrectionDraft: (text: string) => void;
   setPosition: (id: string, position: { x: number; y: number }) => void;
@@ -161,6 +181,7 @@ function emptySession(): Session {
     sessionId: crypto.randomUUID(),
     rawBrief: "",
     briefImages: [],
+    visualInspirations: [],
     state: null,
     next: null,
     history: [],
@@ -192,7 +213,31 @@ export function createSiftStore(providedStorage?: StateStorage) {
         const target = providedStorage ?? localStorage;
         const stored = await target.getItem(name);
         if (stored !== null) {
-          JSON.parse(stored); // Recover malformed JSON before Zustand's decoder.
+          try {
+            const parsed = JSON.parse(stored);
+            const session = parsed?.state ?? parsed;
+            if (
+              Array.isArray(session?.briefImages) &&
+              session.briefImages.length > 0 &&
+              (!Array.isArray(session?.visualInspirations) ||
+                session.visualInspirations.length === 0)
+            ) {
+              session.visualInspirations = session.briefImages.map(
+                (img: string, idx: number) => ({
+                  id: `vis_legacy_${idx}`,
+                  url: img,
+                  title: `参考图 0${idx + 1}`,
+                  sourceType: "upload",
+                  status: "confirmed",
+                  scope: "global",
+                  palette: [],
+                  keywords: [],
+                  createdAt: Date.now(),
+                }),
+              );
+              return JSON.stringify(parsed);
+            }
+          } catch {}
           return stored;
         }
 
@@ -272,11 +317,158 @@ export function createSiftStore(providedStorage?: StateStorage) {
         setBriefImages: (briefImages) => set({ briefImages }),
         addBriefImage: (image) => {
           const current = get().briefImages;
-          if (current.length >= 3) return;
-          set({ briefImages: [...current, image] });
+          if (current.length >= 5) return;
+          const nextImages = [...current, image];
+          // Also register as visual inspiration if not present
+          const hasInspiration = (get().visualInspirations || []).some((v) => v.url === image);
+          if (!hasInspiration) {
+            get().addVisualInspiration({
+              url: image,
+              sourceType: "upload",
+              scope: "global",
+              title: `参考图 0${nextImages.length}`,
+            });
+          } else {
+            set({ briefImages: nextImages });
+          }
         },
         removeBriefImage: (index) => {
-          set({ briefImages: get().briefImages.filter((_, i) => i !== index) });
+          const targetUrl = get().briefImages[index];
+          const nextBrief = get().briefImages.filter((_, i) => i !== index);
+          const nextVisual = (get().visualInspirations || []).filter((v) => v.url !== targetUrl);
+          set({ briefImages: nextBrief, visualInspirations: nextVisual });
+        },
+        addVisualInspiration: (item) => {
+          const id = item.id || `vis_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+          const newItem: VisualInspiration = {
+            id,
+            url: item.url,
+            title: item.title ?? "",
+            sourceType: item.sourceType ?? "upload",
+            sourceUrl: item.sourceUrl,
+            status: item.status ?? "confirmed",
+            scope: item.scope ?? "global",
+            targetId: item.targetId,
+            palette: item.palette ?? [],
+            keywords: item.keywords ?? [],
+            notes: item.notes,
+            createdAt: Date.now(),
+          };
+          set((s) => {
+            const nextList = [newItem, ...(s.visualInspirations || [])];
+            // Sync to itemDecisions
+            const nextDecisions = {
+              ...s.itemDecisions,
+              [id]: {
+                id,
+                type: "image" as const,
+                content: newItem.url,
+                label: newItem.title || "视觉灵感",
+                status: newItem.status,
+                sourceNode:
+                  newItem.scope === "route"
+                    ? "03 主题"
+                    : newItem.scope === "step"
+                      ? "04 视点"
+                      : "00 简报",
+                updatedAt: Date.now(),
+              },
+            };
+            // Sync to briefImages if global/brief
+            let nextBrief = s.briefImages;
+            if (newItem.scope === "global" && !s.briefImages.includes(newItem.url)) {
+              nextBrief = [...s.briefImages, newItem.url].slice(0, 5);
+            }
+            return {
+              visualInspirations: nextList,
+              itemDecisions: nextDecisions,
+              briefImages: nextBrief,
+            };
+          });
+          return id;
+        },
+        removeVisualInspiration: (id) => {
+          set((s) => {
+            const item = (s.visualInspirations || []).find((v) => v.id === id);
+            const nextList = (s.visualInspirations || []).filter((v) => v.id !== id);
+            const nextDecisions = { ...s.itemDecisions };
+            delete nextDecisions[id];
+            const nextBrief = item
+              ? s.briefImages.filter((img) => img !== item.url)
+              : s.briefImages;
+            return {
+              visualInspirations: nextList,
+              itemDecisions: nextDecisions,
+              briefImages: nextBrief,
+            };
+          });
+        },
+        updateVisualInspiration: (id, partial) => {
+          set((s) => {
+            const nextList = (s.visualInspirations || []).map((v) => {
+              if (v.id !== id) return v;
+              return { ...v, ...partial };
+            });
+            const updatedItem = nextList.find((v) => v.id === id);
+            const nextDecisions = { ...s.itemDecisions };
+            if (updatedItem && nextDecisions[id]) {
+              nextDecisions[id] = {
+                ...nextDecisions[id],
+                content: updatedItem.url,
+                label: updatedItem.title || nextDecisions[id].label,
+                status: updatedItem.status,
+                updatedAt: Date.now(),
+              };
+            }
+            return {
+              visualInspirations: nextList,
+              itemDecisions: nextDecisions,
+            };
+          });
+        },
+        setVisualInspirationStatus: (id, status) => {
+          set((s) => {
+            const nextList = (s.visualInspirations || []).map((v) =>
+              v.id === id ? { ...v, status } : v,
+            );
+            const nextDecisions = { ...s.itemDecisions };
+            if (nextDecisions[id]) {
+              nextDecisions[id] = {
+                ...nextDecisions[id],
+                status,
+                updatedAt: Date.now(),
+              };
+            }
+            return {
+              visualInspirations: nextList,
+              itemDecisions: nextDecisions,
+            };
+          });
+        },
+        assignVisualInspiration: (id, scope, targetId) => {
+          set((s) => {
+            const nextList = (s.visualInspirations || []).map((v) =>
+              v.id === id ? { ...v, scope, targetId } : v,
+            );
+            const updatedItem = nextList.find((v) => v.id === id);
+            const nextDecisions = { ...s.itemDecisions };
+            if (updatedItem && nextDecisions[id]) {
+              nextDecisions[id] = {
+                ...nextDecisions[id],
+                sourceNode:
+                  scope === "route"
+                    ? "03 主题"
+                    : scope === "step"
+                      ? "04 视点"
+                      : "00 简报",
+                updatedAt: Date.now(),
+              };
+            }
+            return {
+              visualInspirations: nextList,
+              itemDecisions: nextDecisions,
+            };
+          });
         },
         setDrafts: (drafts) => set({ drafts }),
         setCorrectionDraft: (correctionDraft) => set({ correctionDraft }),
@@ -876,6 +1068,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
           sessionId,
           rawBrief,
           briefImages,
+          visualInspirations,
           state,
           next,
           history,
@@ -900,6 +1093,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
           sessionId,
           rawBrief,
           briefImages,
+          visualInspirations,
           state,
           next,
           history,
