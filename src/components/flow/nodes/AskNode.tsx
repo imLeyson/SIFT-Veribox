@@ -7,12 +7,13 @@ import { siftActions } from "@/lib/convergence-client";
 import { answerText } from "@/types/convergence";
 
 export type FlowData = { historyId?: string };
-export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
+export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
   const { history, next, activeRequest } = useSiftStore();
   if (!data.historyId) {
     if (next?.type !== "ask") return null;
     return (
       <NodeShell
+        nodeId={id}
         stage="02"
         kicker="关键视觉提问 · 锁定方向"
         title="关键视觉抉择"
@@ -59,8 +60,23 @@ export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
       })
       .join("\n\n");
   }
+
+  const collapsedSummary = (
+    <div className="flex items-center justify-between gap-1.5 w-full text-stone-600">
+      <span className="truncate">
+        {turn.event.type === "answer" && turn.event.answers.length > 0
+          ? `已确认 ${turn.event.answers.length} 项视觉抉择`
+          : text.slice(0, 30)}
+      </span>
+      <span className="text-[9.5px] font-mono text-stone-400 shrink-0">
+        R{turn.afterRevision}
+      </span>
+    </div>
+  );
+
   return (
     <NodeShell
+      nodeId={id || `turn-${turn.id}`}
       kicker={`RECORD · R${turn.afterRevision}`}
       title={
         turn.event.type === "correct"
@@ -69,6 +85,7 @@ export function AskNode({ data, selected }: NodeProps<Node<FlowData>>) {
             ? "检查点选择"
             : "视觉抉择记录"
       }
+      collapsedSummary={collapsedSummary}
       selected={selected}
     >
       {turn.questions && turn.event.type === "answer" ? (

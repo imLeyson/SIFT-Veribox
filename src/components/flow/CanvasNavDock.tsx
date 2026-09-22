@@ -13,6 +13,8 @@ import {
   FileDown,
   ChevronDown,
   ChevronUp,
+  ChevronsDownUp,
+  ChevronsUpDown,
 } from "lucide-react";
 
 export function CanvasNavDock({
@@ -27,6 +29,10 @@ export function CanvasNavDock({
   const selectedRouteId = useSiftStore((s) => s.selectedRouteId);
   const activeStepId = useSiftStore((s) => s.activeStepId);
   const platformPlans = useSiftStore((s) => s.platformPlans);
+  const collapsedNodes = useSiftStore((s) => s.collapsedNodes);
+  const collapseCompletedNodes = useSiftStore((s) => s.collapseCompletedNodes);
+  const expandAllNodes = useSiftStore((s) => s.expandAllNodes);
+  const hasCollapsed = Object.values(collapsedNodes).some(Boolean);
 
   const isConfirmed = useSiftStore((s) => s.state?.status === "confirmed");
   const hasStarted = hasState || routes.length > 0;
@@ -235,6 +241,34 @@ export function CanvasNavDock({
       >
         <Maximize2 className="h-3.5 w-3.5" />
       </button>
+
+      {/* Global Card Fold Toggle */}
+      {hasStarted && (
+        <button
+          type="button"
+          title={hasCollapsed ? "展开全部卡片" : "一键收起已完成步骤 (减少视觉负担)"}
+          onClick={() => {
+            if (hasCollapsed) {
+              expandAllNodes();
+            } else {
+              collapseCompletedNodes();
+            }
+          }}
+          className="flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium text-stone-600 hover:text-ink hover:bg-white/80 transition-colors cursor-pointer flex-shrink-0"
+        >
+          {hasCollapsed ? (
+            <>
+              <ChevronsUpDown className="h-3.5 w-3.5 text-stone-500" />
+              <span>展开全部</span>
+            </>
+          ) : (
+            <>
+              <ChevronsDownUp className="h-3.5 w-3.5 text-stone-500" />
+              <span>收起已完成</span>
+            </>
+          )}
+        </button>
+      )}
 
       {/* Export Dossier Shortcut (only when proposal available) */}
       {(hasState || routes.length > 0) && (

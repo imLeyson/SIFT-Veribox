@@ -55,6 +55,7 @@ function sanitizeKeyword(raw: string, calibrated?: string): string {
 }
 
 export function PlatformPlanNode({
+  id,
   data,
   selected,
 }: NodeProps<Node<PlatformPlanNodeData>>) {
@@ -72,8 +73,6 @@ export function PlatformPlanNode({
   const route = routes.find((r) => r.id === plan.routeId || r.id === selectedRouteId);
   const step = route?.steps.find((st) => st.id === plan.stepId);
   const stepTitle = step ? step.title : "探索搜索方案";
-  const briefAnchor = getBriefAnchor(rawBrief, state?.brief.goal);
-  const convergenceAnchor = getConvergenceAnchor(state);
 
   const handleCopy = async (sourceId: string, kw: string) => {
     const success = await siftActions.copyKeyword(plan.stepId, sourceId, kw);
@@ -83,12 +82,25 @@ export function PlatformPlanNode({
     }
   };
 
+  const collapsedSummary = (
+    <div className="flex items-center justify-between gap-1.5 w-full">
+      <span className="truncate text-stone-600 font-sans">
+        {plan.primarySources.map((s) => s.platform).join(" · ")} (3 处精选)
+      </span>
+      <span className="text-[9.5px] font-mono text-stone-400 shrink-0">
+        3 平台方案
+      </span>
+    </div>
+  );
+
   return (
-    <div className="w-[390px]">
+    <div className="w-[380px] sm:w-[390px]">
       <NodeShell
+        nodeId={id}
         stage="07"
         kicker={`灵感方案 · ${stepTitle}`}
         title="为视点找图"
+        collapsedSummary={collapsedSummary}
         badge={
           <span className="text-[10px] font-mono text-stone-400">
             System 1 · {plan.systemOne?.latencyMs ?? 18}ms
@@ -96,29 +108,22 @@ export function PlatformPlanNode({
         }
         selected={selected}
       >
-        <div className="space-y-3 text-xs">
-          <div className="rounded-xl border border-amber-200/80 bg-amber-50/55 p-3 space-y-2">
-            <div className="flex items-center justify-between text-[10px] font-semibold text-amber-950">
-              <span>这次搜索要收集什么</span>
-              <span className="font-mono text-[9px] text-amber-700">VIEWPOINT → REFERENCES</span>
+        <div className="space-y-2.5 text-xs">
+          {/* Streamlined Context Hint */}
+          <div className="rounded-xl border border-amber-200/70 bg-amber-50/50 p-2.5 space-y-1">
+            <div className="flex items-center justify-between text-[10.5px] font-semibold text-amber-950">
+              <span className="truncate">围绕「{toInspirationCopy(step?.question || stepTitle)}」</span>
+              <span className="font-mono text-[9px] text-amber-700 shrink-0">已滤除样机噪音</span>
             </div>
-            <div className="text-[11px] leading-relaxed text-amber-950/85">
-              <span className="font-semibold text-amber-950">对应主题：</span>
-              <span className="font-medium text-amber-900">{route?.themeName || route?.title || "当前主题"}</span>
-            </div>
-            <p className="text-[11px] leading-relaxed text-amber-950/80">
-              围绕「{toInspirationCopy(step?.question || stepTitle)}」收集视觉证据，只做灵感对照，不进入执行判断。
+            <p className="text-[10.5px] text-amber-900/80 leading-relaxed truncate">
+              {route?.themeName || route?.title || "当前主题"} · 收集真实物料与视觉线索对照
             </p>
-            <div className="grid gap-1 text-[10px] leading-relaxed text-amber-950/70 pt-1 border-t border-amber-200/60">
-              <p><span className="font-semibold text-amber-950">Brief：</span>{briefAnchor}</p>
-              <p><span className="font-semibold text-amber-950">收敛线索：</span>{convergenceAnchor}</p>
-            </div>
           </div>
 
-          <div className="flex items-center justify-between text-muted text-[11px] pb-0.5">
+          <div className="flex items-center justify-between text-muted text-[10.5px] pb-0.5">
             <span>精选 3 处灵感来源</span>
-            <span className="text-[10px] text-stone-400 font-sans">
-              已过滤样机与模板噪音
+            <span className="text-[9.5px] text-stone-400 font-sans">
+              点击复制纯净搜索词
             </span>
           </div>
 

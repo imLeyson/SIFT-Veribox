@@ -131,4 +131,28 @@ describe("convergence session", () => {
     expect(customPriority).toBeTruthy();
     expect(customPriority?.basis).toBe("user");
   });
+
+  it("handles node collapse, expand all, and collapse completed nodes", () => {
+    const store = createSiftStore(memoryStorage());
+    expect(store.getState().collapsedNodes).toEqual({});
+
+    // Toggle single node
+    store.getState().toggleNodeCollapse("brief");
+    expect(store.getState().collapsedNodes["brief"]).toBe(true);
+    store.getState().toggleNodeCollapse("brief");
+    expect(store.getState().collapsedNodes["brief"]).toBe(false);
+
+    // Explicit set
+    store.getState().setNodeCollapse("direction", true);
+    expect(store.getState().collapsedNodes["direction"]).toBe(true);
+
+    // Commit turn so state exists
+    store.getState().commitTurn(response(store));
+    store.getState().collapseCompletedNodes();
+    expect(store.getState().collapsedNodes["brief"]).toBe(true);
+
+    // Expand all
+    store.getState().expandAllNodes();
+    expect(store.getState().collapsedNodes).toEqual({});
+  });
 });

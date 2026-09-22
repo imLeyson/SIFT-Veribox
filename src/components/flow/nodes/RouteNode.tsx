@@ -138,7 +138,7 @@ function getTerritoryInfo(index: number, title: string, themeName?: string, focu
   };
 }
 
-export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
+export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>) {
   const { route, index } = data;
   const selectedRouteId = useSiftStore((s) => s.selectedRouteId);
   const recommendedRouteId = useSiftStore((s) => s.recommendedRouteId);
@@ -184,20 +184,33 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
   const territory = getTerritoryInfo(index, route.title, route.themeName, route.focusDimension);
   const TerritoryIcon = territory.icon;
 
+  const collapsedSummary = (
+    <div className="flex items-center justify-between gap-1.5 w-full">
+      <span className="truncate italic font-serif text-stone-600">
+        “{snapshotText}”
+      </span>
+      <span className="text-[9.5px] font-mono text-stone-400 shrink-0">
+        {isSelected ? "已激活" : `${route.alignmentScore ?? 90}%`}
+      </span>
+    </div>
+  );
+
   return (
     <div
-      className={`transition-all duration-300 w-[390px] ${
+      className={`transition-all duration-300 w-[380px] sm:w-[390px] ${
         isWeakened
-          ? "opacity-60 hover:opacity-100"
+          ? "opacity-75 hover:opacity-100"
           : isSelected
             ? "ring-2 ring-indigo-600/70 shadow-md"
             : "hover:shadow-md"
       }`}
     >
       <NodeShell
+        nodeId={id}
         stage="03"
         kicker={kicker}
         title={heroTitle}
+        collapsedSummary={collapsedSummary}
         badge={
           isSelected ? (
             <span className="text-[10px] font-medium text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.2 rounded font-sans">
@@ -212,7 +225,7 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
         selected={selected || isSelected}
       >
         <div className="space-y-3 text-xs">
-          {/* Territory archetype and exploration mode */}
+          {/* Territory archetype */}
           <div className="flex items-center justify-between gap-1.5 text-[10.5px]">
             <span
               className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium border ${territory.badgeClass}`}
@@ -226,33 +239,7 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
             </span>
           </div>
 
-          {/* Brief → convergence → theme trace: make the source of this route explicit. */}
-          <div className="rounded-xl border border-indigo-200/70 bg-indigo-50/45 p-3 space-y-2">
-            <div className="flex items-center justify-between text-[10px] font-semibold text-indigo-900">
-              <span>这条主题从哪里来</span>
-              <span className="font-mono text-[9px] text-indigo-500">BRIEF → DIRECTION → THEME</span>
-            </div>
-            <div className="grid gap-1.5 text-[10.5px] text-indigo-950/85 leading-relaxed">
-              <p><span className="font-semibold text-indigo-900">Brief：</span>{briefAnchor}</p>
-              {prioritiesSummary.length > 0 && (
-                <p className="flex items-start gap-1">
-                  <span className="font-semibold text-indigo-900 shrink-0">已锁定坚持：</span>
-                  <span>{prioritiesSummary.join("；")}</span>
-                </p>
-              )}
-              {avoidSummary.length > 0 && (
-                <p className="flex items-start gap-1 text-amber-900/90">
-                  <span className="font-semibold text-amber-900 shrink-0">已避开雷区：</span>
-                  <span>{avoidSummary.join("；")}</span>
-                </p>
-              )}
-              {!prioritiesSummary.length && !avoidSummary.length && (
-                <p><span className="font-semibold text-indigo-900">收敛线索：</span>{convergenceAnchor}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Hero: invite a visual imagination, not a production decision. */}
+          {/* Hero: Visual Snapshot */}
           <div className="rounded-xl border border-stone-200/90 bg-stone-50/60 p-3 shadow-xs space-y-1.5">
             <div className="flex items-center justify-between text-[10.5px] font-bold text-ink">
               <span className="flex items-center gap-1 text-accent">
@@ -268,77 +255,95 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
             </p>
           </div>
 
-          {/* Recommended Reason - ONLY for strictly recommended route */}
+          {/* Concise Style & Method Summary */}
+          <div className="rounded-xl border border-line/70 bg-white/90 px-3 py-2 text-[11.5px] space-y-1">
+            <div className="flex items-center gap-1.5">
+              <span className="shrink-0 px-1.5 py-0.5 rounded bg-stone-100 font-medium text-[10px] text-stone-600">
+                基调
+              </span>
+              <span className="text-ink font-semibold truncate">{route.startingPoint}</span>
+            </div>
+            {visualHook && (
+              <div className="flex items-center gap-1.5">
+                <span className="shrink-0 px-1.5 py-0.5 rounded bg-stone-100 font-medium text-[10px] text-stone-600">
+                  手法
+                </span>
+                <span className="text-stone-700 truncate">{visualHook}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Recommended Reason */}
           {isRecommended && recReason && (
-            <div className="border-l-2 border-accent pl-2.5 py-0.5 text-[11px] text-stone-600 leading-relaxed bg-amber-50/40 rounded-r-md">
+            <div className="border-l-2 border-accent pl-2.5 py-1 text-[11px] text-stone-600 leading-relaxed bg-amber-50/40 rounded-r-md">
               <span className="font-semibold text-ink">推荐考量：</span>
               {recReason}
             </div>
           )}
 
-          {/* 3-Point Structured Design Breakdown (三维速览) */}
-          <div className="rounded-xl border border-line/70 bg-white/90 p-2.5 space-y-2 text-[11.5px]">
-            <div className="flex items-start gap-2">
-              <span className="shrink-0 px-1.5 py-0.5 rounded bg-stone-100 font-medium text-[10px] text-stone-600">
-                视觉基调
+          {/* Progressive Disclosure: Deep Rationale & Traceability */}
+          <details className="group rounded-xl border border-line/60 bg-cream/30 p-2 text-[11px]">
+            <summary className="flex items-center justify-between cursor-pointer font-medium text-stone-500 hover:text-ink select-none px-1">
+              <span>查看推导依据与线索细节</span>
+              <span className="text-[10px] text-stone-400 group-open:text-ink transition-transform duration-150">
+                点击展开 ▼
               </span>
-              <span className="text-ink font-semibold leading-snug">{route.startingPoint}</span>
-            </div>
-            {visualHook && (
-              <div className="flex items-start gap-2">
-                <span className="shrink-0 px-1.5 py-0.5 rounded bg-stone-100 font-medium text-[10px] text-stone-600">
-                  核心手法
-                </span>
-                <span className="text-stone-700 leading-snug">{visualHook}</span>
+            </summary>
+
+            <div className="mt-2.5 space-y-2.5 pt-2 border-t border-line/50 text-[10.5px]">
+              {/* Brief trace */}
+              <div className="rounded-lg bg-indigo-50/50 p-2 border border-indigo-100 text-indigo-950 space-y-1">
+                <p><span className="font-semibold text-indigo-900">Brief：</span>{briefAnchor}</p>
+                {prioritiesSummary.length > 0 && (
+                  <p><span className="font-semibold text-indigo-900">锁定坚持：</span>{prioritiesSummary.join("；")}</p>
+                )}
+                {avoidSummary.length > 0 && (
+                  <p className="text-amber-900"><span className="font-semibold text-amber-900">避开雷区：</span>{avoidSummary.join("；")}</p>
+                )}
               </div>
-            )}
-            <div className="flex items-start gap-2">
-              <span className="shrink-0 px-1.5 py-0.5 rounded bg-stone-100 font-medium text-[10px] text-stone-600">
-                探索张力
-              </span>
-              <span className="text-stone-600 leading-snug">{coreProblemText}</span>
-            </div>
-          </div>
 
-          {/* Visual Highlights & Guardrails */}
-          <div className="grid grid-cols-2 gap-2 text-[11px]">
-            <div className="rounded-lg bg-white/80 p-2.5 border border-line/70 space-y-0.5">
-              <span className="font-semibold text-emerald-800 flex items-center gap-1 text-[10.5px]">
-                <Lightbulb className="h-3 w-3 text-emerald-600" />
-                可收集的视觉线索
-              </span>
-              <p className="leading-relaxed text-stone-700 text-[11px]">{prosText}</p>
-            </div>
-            <div className="rounded-lg bg-white/80 p-2.5 border border-line/70 space-y-0.5">
-              <span className="font-semibold text-amber-800 flex items-center gap-1 text-[10.5px]">
-                <ShieldAlert className="h-3 w-3 text-amber-600" />
-                保持主题纯度
-              </span>
-              <p className="leading-relaxed text-stone-700 text-[11px]">{consText}</p>
-            </div>
-          </div>
+              {/* Pros & Cons */}
+              <div className="grid grid-cols-2 gap-1.5">
+                <div className="rounded-lg bg-white/90 p-2 border border-line/60 space-y-0.5">
+                  <span className="font-semibold text-emerald-800 flex items-center gap-1 text-[10px]">
+                    <Lightbulb className="h-2.5 w-2.5 text-emerald-600" />
+                    可收集线索
+                  </span>
+                  <p className="leading-snug text-stone-700">{prosText}</p>
+                </div>
+                <div className="rounded-lg bg-white/90 p-2 border border-line/60 space-y-0.5">
+                  <span className="font-semibold text-amber-800 flex items-center gap-1 text-[10px]">
+                    <ShieldAlert className="h-2.5 w-2.5 text-amber-600" />
+                    保持纯度
+                  </span>
+                  <p className="leading-snug text-stone-700">{consText}</p>
+                </div>
+              </div>
 
-          {/* Visual Inspiration Angles */}
-          <div className="pt-2 border-t border-line/60 space-y-1.5">
-            <div className="flex items-center justify-between text-[10px] font-semibold text-stone-500 uppercase tracking-wider">
-              <span>由主题继续追问</span>
-              <span className="font-mono text-[9px] text-stone-400">INSPIRATION ANGLES</span>
+              {/* Exploration Angles */}
+              {route.steps.length > 0 && (
+                <div className="pt-1">
+                  <span className="text-[10px] font-semibold text-stone-500 block mb-1">
+                    追问视点切入：
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {route.steps.map((st, i) => (
+                      <span
+                        key={st.id}
+                        className="inline-flex items-center gap-1 rounded bg-white px-1.5 py-0.5 text-[10px] text-stone-600 border border-line/60"
+                      >
+                        <span className="font-mono text-[9px] text-stone-400">0{i + 1}</span>
+                        <span>{cleanStepLabel(st.title)}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {route.steps.map((st, i) => (
-                <span
-                  key={st.id}
-                  className="inline-flex items-center gap-1 rounded-md bg-stone-50 border border-line/70 px-2 py-0.5 text-[10.5px] text-stone-700"
-                >
-                  <span className="font-mono text-[9.5px] text-stone-400">0{i + 1}</span>
-                  <span>{cleanStepLabel(st.title)}</span>
-                </span>
-              ))}
-            </div>
-          </div>
+          </details>
 
           {/* Actions: Select or Swap Themes */}
-          <div className="pt-2 border-t border-line/60 space-y-1.5">
+          <div className="pt-1 border-t border-line/60 space-y-1.5">
             {isSelected ? (
               <div className="flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
@@ -371,7 +376,7 @@ export function RouteNode({ data, selected }: NodeProps<Node<RouteNodeData>>) {
                   type="button"
                   className={`w-full text-xs font-medium py-2 flex items-center justify-center gap-1.5 rounded-xl transition-all ${
                     hasSelection
-                      ? "btn-ghost border border-line hover:border-ink"
+                      ? "btn-ghost border border-line hover:border-ink hover:bg-white"
                       : "btn-primary shadow-sm hover:shadow"
                   }`}
                   disabled={Boolean(activeRequest)}

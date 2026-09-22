@@ -47,7 +47,7 @@ function renderNoteContent(text: string) {
   );
 }
 
-export function StepNode({ selected }: NodeProps) {
+export function StepNode({ id, selected }: NodeProps) {
   const routes = useSiftStore((s) => s.routes);
   const selectedRouteId = useSiftStore((s) => s.selectedRouteId);
   const activeStepId = useSiftStore((s) => s.activeStepId);
@@ -71,8 +71,6 @@ export function StepNode({ selected }: NodeProps) {
   );
   const hasNextStep = activeIdx < route.steps.length - 1;
   const currentNotes = stepNotes[currentStep.id] ?? [];
-  const briefAnchor = getBriefAnchor(rawBrief, state?.brief.goal);
-  const convergenceAnchor = getConvergenceAnchor(state);
 
   const handleAddNote = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,32 +79,28 @@ export function StepNode({ selected }: NodeProps) {
     setNoteInput("");
   };
 
+  const collapsedSummary = (
+    <div className="flex items-center justify-between gap-1.5 w-full">
+      <span className="truncate text-stone-600 font-sans">
+        视点 0{activeIdx + 1}/{route.steps.length} · {cleanStepLabel(currentStep.title)}
+      </span>
+      <span className="text-[9.5px] font-mono text-stone-400 shrink-0">
+        {hasPlanForCurrent ? "方案已就绪" : "待检索"}
+      </span>
+    </div>
+  );
+
   return (
-    <div className="w-[390px]">
+    <div className="w-[380px] sm:w-[390px]">
       <NodeShell
+        nodeId={id || "steps"}
         stage="05"
         kicker={`灵感切入 · 视点 0${activeIdx + 1}/${route.steps.length}`}
         title={route.themeName || route.title}
+        collapsedSummary={collapsedSummary}
         selected={selected}
       >
-        <div className="space-y-3.5 text-xs">
-          <div className="rounded-xl border border-indigo-200/80 bg-indigo-50/50 p-3 space-y-2">
-            <div className="flex items-center justify-between text-[10px] font-semibold text-indigo-950">
-              <span>当前探索主题与视点拆解</span>
-              <span className="font-mono text-[9px] text-indigo-500">THEME → VIEWPOINT</span>
-            </div>
-            <div className="grid gap-1.5 text-[10.5px] leading-relaxed text-indigo-950/85">
-              <p>
-                <span className="font-semibold text-indigo-900">所属主题：</span>
-                <span className="font-medium text-ink">{route.themeName || route.title}</span>
-              </p>
-              {route.visualSnapshot && (
-                <p className="text-[10px] text-stone-600 line-clamp-2 italic bg-white/80 p-1.5 rounded-md border border-indigo-100/80 font-serif">
-                  “{toInspirationCopy(route.visualSnapshot)}”
-                </p>
-              )}
-            </div>
-          </div>
+        <div className="space-y-3 text-xs">
 
           {/* Step Timeline Indicator - All tabs fit evenly, 100% visible, no cut-off */}
           <div className="flex items-center gap-1.5 w-full">
@@ -205,58 +199,63 @@ export function StepNode({ selected }: NodeProps) {
           </div>
 
           {/* Designer Step Notes (灵感速记与参考链接) */}
-          <div className="rounded-xl border border-line/60 bg-cream/40 p-2.5 space-y-2">
-            <div className="flex items-center justify-between text-xs font-semibold text-ink">
-              <span className="flex items-center gap-1 text-[11px]">
+          <details
+            open={currentNotes.length > 0}
+            className="group rounded-xl border border-line/60 bg-cream/40 p-2 text-xs"
+          >
+            <summary className="flex items-center justify-between cursor-pointer font-medium text-stone-600 hover:text-ink select-none px-1 py-0.5">
+              <span className="flex items-center gap-1.5 text-[11px]">
                 <StickyNote className="h-3 w-3 text-amber-600" />
                 灵感速记与参考链接
               </span>
-              <span className="text-[10px] text-muted">
-                {currentNotes.length}
+              <span className="text-[10px] text-stone-400 font-mono">
+                {currentNotes.length > 0 ? `${currentNotes.length} 条记录` : "点击添加 +"}
               </span>
-            </div>
+            </summary>
 
-            {currentNotes.length > 0 && (
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {currentNotes.map((note, nIdx) => (
-                  <div
-                    key={nIdx}
-                    className="flex items-start justify-between gap-1.5 rounded-lg bg-white/80 px-2 py-1 text-[11px] text-ink group"
-                  >
-                    <span className="leading-snug break-all">
-                      {renderNoteContent(note)}
-                    </span>
-                    <button
-                      type="button"
-                      title="删除此记录"
-                      className="text-muted hover:text-red-600 opacity-50 hover:opacity-100 transition-opacity shrink-0 mt-0.5"
-                      onClick={() => removeStepNote(currentStep.id, nIdx)}
+            <div className="pt-2 space-y-2">
+              {currentNotes.length > 0 && (
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {currentNotes.map((note, nIdx) => (
+                    <div
+                      key={nIdx}
+                      className="flex items-start justify-between gap-1.5 rounded-lg bg-white/80 px-2 py-1 text-[11px] text-ink group"
                     >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+                      <span className="leading-snug break-all">
+                        {renderNoteContent(note)}
+                      </span>
+                      <button
+                        type="button"
+                        title="删除此记录"
+                        className="text-muted hover:text-red-600 opacity-50 hover:opacity-100 transition-opacity shrink-0 mt-0.5 cursor-pointer"
+                        onClick={() => removeStepNote(currentStep.id, nIdx)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-            <form onSubmit={handleAddNote} className="flex gap-1.5 pt-0.5">
-              <input
-                type="text"
-                value={noteInput}
-                onChange={(e) => setNoteInput(e.target.value)}
-                placeholder="记录灵感或参考链接…"
-                className="flex-1 rounded-lg border border-line bg-white px-2 py-1 text-[11px] text-ink outline-none focus:border-accent"
-              />
-              <button
-                type="submit"
-                disabled={!noteInput.trim()}
-                className="btn-ghost !py-1 !px-2 text-[11px] flex items-center gap-1 shrink-0"
-              >
-                <Plus className="h-3 w-3" />
-                <span>添加</span>
-              </button>
-            </form>
-          </div>
+              <form onSubmit={handleAddNote} className="flex gap-1.5 pt-0.5">
+                <input
+                  type="text"
+                  value={noteInput}
+                  onChange={(e) => setNoteInput(e.target.value)}
+                  placeholder="记录灵感或参考链接…"
+                  className="flex-1 rounded-lg border border-line bg-white px-2 py-1 text-[11px] text-ink outline-none focus:border-accent"
+                />
+                <button
+                  type="submit"
+                  disabled={!noteInput.trim()}
+                  className="btn-ghost !py-1 !px-2 text-[11px] flex items-center gap-1 shrink-0 cursor-pointer"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>添加</span>
+                </button>
+              </form>
+            </div>
+          </details>
         </div>
       </NodeShell>
     </div>

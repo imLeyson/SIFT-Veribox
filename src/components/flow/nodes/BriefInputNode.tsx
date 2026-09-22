@@ -9,7 +9,7 @@ import { compressImageFile } from "@/lib/image-utils";
 import { ImagePlus, Plus, X, Eye, Zap, Sparkles } from "lucide-react";
 import { evaluateBriefIntentSync } from "@/lib/agent/system-one";
 
-export function BriefInputNode({ selected }: NodeProps) {
+export function BriefInputNode({ id, selected }: NodeProps) {
   const {
     rawBrief,
     briefImages,
@@ -30,6 +30,17 @@ export function BriefInputNode({ selected }: NodeProps) {
     rawBrief.trim().length >= 4 ? evaluateBriefIntentSync(rawBrief) : null;
   const confirmedDiagnostics =
     state && rawBrief ? evaluateBriefIntentSync(rawBrief) : null;
+
+  const collapsedSummary = state ? (
+    <div className="flex items-center justify-between gap-1.5 w-full">
+      <span className="truncate text-stone-600 font-sans">
+        {rawBrief.slice(0, 32)}…
+      </span>
+      <span className="text-[9.5px] font-mono text-stone-400 shrink-0">
+        {briefImages.length > 0 ? `${briefImages.length} 图 · 已锁定` : "已锁定"}
+      </span>
+    </div>
+  ) : undefined;
 
   const processFiles = async (files: FileList | File[]) => {
     if (briefImages.length >= 3) return;
@@ -80,9 +91,11 @@ export function BriefInputNode({ selected }: NodeProps) {
   return (
     <>
       <NodeShell
+        nodeId={id || "brief"}
         stage="00"
         kicker={state ? "简报诊断 · 已锁定" : "00 简报输入 · 视觉策略与方向收敛"}
         title={state ? "设计简报" : "输入设计目标与背景"}
+        collapsedSummary={collapsedSummary}
         badge={
           state && confirmedDiagnostics ? (
             <span className="text-[10px] font-mono text-stone-400">

@@ -73,6 +73,7 @@ const SessionSchema = z
     sourceInteractions: z.record(z.string(), SourceInteractionSchema),
     stepNotes: z.record(z.string(), z.array(z.string())).default({}),
     completedCriteria: z.record(z.string(), z.array(z.string())).default({}),
+    collapsedNodes: z.record(z.string(), z.boolean()).default({}),
   })
   .superRefine((value, ctx) => {
     if (
@@ -124,6 +125,10 @@ export type SiftStore = Session & {
     action: "opened" | "copied",
     keyword?: string,
   ) => void;
+  toggleNodeCollapse: (nodeId: string) => void;
+  setNodeCollapse: (nodeId: string, collapsed: boolean) => void;
+  collapseCompletedNodes: () => void;
+  expandAllNodes: () => void;
   reset: () => void;
 };
 
@@ -150,6 +155,7 @@ function emptySession(): Session {
     sourceInteractions: {},
     stepNotes: {},
     completedCriteria: {},
+    collapsedNodes: {},
   };
 }
 
@@ -518,6 +524,47 @@ export function createSiftStore(providedStorage?: StateStorage) {
             },
           });
         },
+        toggleNodeCollapse: (nodeId) => {
+          const current = get().collapsedNodes[nodeId] ?? false;
+          set({
+            collapsedNodes: {
+              ...get().collapsedNodes,
+              [nodeId]: !current,
+            },
+          });
+        },
+        setNodeCollapse: (nodeId, collapsed) => {
+          set({
+            collapsedNodes: {
+              ...get().collapsedNodes,
+              [nodeId]: collapsed,
+            },
+          });
+        },
+        collapseCompletedNodes: () => {
+          const s = get();
+          const nextCollapsed: Record<string, boolean> = { ...s.collapsedNodes };
+          if (s.state) {
+            nextCollapsed["brief"] = true;
+          }
+          if (s.state?.status === "confirmed" && s.routes.length > 0) {
+            nextCollapsed["direction"] = true;
+          }
+          s.history.forEach((turn) => {
+            nextCollapsed[`turn-${turn.id}`] = true;
+          });
+          if (s.selectedRouteId) {
+            s.routes.forEach((r) => {
+              if (r.id !== s.selectedRouteId) {
+                nextCollapsed[`route-${r.id}`] = true;
+              }
+            });
+          }
+          set({ collapsedNodes: nextCollapsed });
+        },
+        expandAllNodes: () => {
+          set({ collapsedNodes: {} });
+        },
         reset: () =>
           set({ ...emptySession(), activeRequest: null, error: null }),
       }),
@@ -548,6 +595,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
           sourceInteractions,
           stepNotes,
           completedCriteria,
+          collapsedNodes,
         }) => ({
           sessionId,
           rawBrief,
@@ -570,6 +618,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
           sourceInteractions,
           stepNotes,
           completedCriteria,
+          collapsedNodes,
         }),
         merge: (saved, current) => {
           if (!saved) return { ...current, storageWarning: readWarning };

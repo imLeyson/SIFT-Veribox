@@ -8,7 +8,7 @@ import { copyToClipboard } from "@/lib/clipboard";
 import { hasDirection } from "@/types/convergence";
 import { Check, Sparkles, ArrowRight, RefreshCw } from "lucide-react";
 
-export function StateNode({ selected }: NodeProps) {
+export function StateNode({ id, selected }: NodeProps) {
   const {
     state,
     next,
@@ -37,19 +37,33 @@ export function StateNode({ selected }: NodeProps) {
   const checkpoint = next?.type === "checkpoint";
   const confirmed = state.status === "confirmed";
 
+  const collapsedSummary = (
+    <div className="flex items-center justify-between gap-1.5 w-full">
+      <span className="truncate italic font-serif text-stone-700">
+        “{state.direction.intent?.text || "核心主张已锁定"}”
+      </span>
+      <span className="text-[9.5px] font-mono text-emerald-700 font-semibold shrink-0">
+        已确认
+      </span>
+    </div>
+  );
+
   return (
-    <NodeShell
-      stage="01"
-      kicker={
-        confirmed
-          ? "视觉主张 · 已确认"
-          : checkpoint
-            ? "视觉主张 · 检查点"
-            : "01 视觉主张 · 方向收敛"
-      }
-      title="核心视觉方向"
-      selected={selected}
-    >
+    <div className="w-[380px] sm:w-[390px]">
+      <NodeShell
+        nodeId={id || "direction"}
+        stage="01"
+        kicker={
+          confirmed
+            ? "视觉主张 · 已确认"
+            : checkpoint
+              ? "视觉主张 · 检查点"
+              : "01 视觉主张 · 方向收敛"
+        }
+        title="核心视觉方向"
+        collapsedSummary={collapsedSummary}
+        selected={selected}
+      >
       <div className="space-y-3 text-xs leading-relaxed">
         {/* Core Intent Box */}
         {state.direction.intent?.text ? (
@@ -321,5 +335,6 @@ export function StateNode({ selected }: NodeProps) {
         )}
       </div>
     </NodeShell>
+    </div>
   );
 }

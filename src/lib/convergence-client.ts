@@ -330,6 +330,18 @@ export function createConvergenceActions(
     ) => {
       store.getState().recordSourceAction(stepId, sourceId, action, keyword);
     },
+    toggleNodeCollapse: (nodeId: string) => {
+      store.getState().toggleNodeCollapse(nodeId);
+    },
+    setNodeCollapse: (nodeId: string, collapsed: boolean) => {
+      store.getState().setNodeCollapse(nodeId, collapsed);
+    },
+    collapseCompletedNodes: () => {
+      store.getState().collapseCompletedNodes();
+    },
+    expandAllNodes: () => {
+      store.getState().expandAllNodes();
+    },
     reset: () => {
       cancel();
       store.getState().reset();
