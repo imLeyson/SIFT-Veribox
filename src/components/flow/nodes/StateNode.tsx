@@ -8,6 +8,7 @@ import { copyToClipboard } from "@/lib/clipboard";
 import { hasDirection } from "@/types/convergence";
 import { Check, Sparkles, ArrowRight, RefreshCw, HelpCircle, X } from "lucide-react";
 import { toInspirationCopy } from "@/lib/exploration-copy";
+import { InlineEditableText } from "../InlineEditableText";
 
 export function StateNode({ id, selected }: NodeProps) {
   const {
@@ -21,6 +22,11 @@ export function StateNode({ id, selected }: NodeProps) {
     itemDecisions,
     setItemDecision,
     setCorrectionDraft,
+    updateStateIntent,
+    updateStatePriority,
+    updateStateAvoid,
+    updateStateHypothesis,
+    updateVisualKeyword,
   } = useSiftStore();
   const [editing, setEditing] = useState(false);
   const [copiedKeyword, setCopiedKeyword] = useState<string | null>(null);
@@ -74,9 +80,16 @@ export function StateNode({ id, selected }: NodeProps) {
             <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider block">
               视觉主张
             </span>
-            <p className="text-xs sm:text-sm font-medium text-ink leading-relaxed font-serif">
-              {state.direction.intent.text}
-            </p>
+            <InlineEditableText
+              value={state.direction.intent.text}
+              onSave={(newIntent) => updateStateIntent(newIntent)}
+              multiline
+              as="p"
+              className="text-xs sm:text-sm font-medium text-ink leading-relaxed font-serif block w-full"
+              inputClassName="font-serif text-sm leading-relaxed"
+              label="核心视觉主张"
+              showEditIcon
+            />
           </div>
         ) : (
           <p className="text-muted">方向推导中…</p>
@@ -100,9 +113,15 @@ export function StateNode({ id, selected }: NodeProps) {
             <span className="text-[10px] font-semibold text-stone-500 block mb-0.5">
               设计假设
             </span>
-            <p className="text-stone-800 leading-snug">
-              {state.currentHypothesis}
-            </p>
+            <InlineEditableText
+              value={state.currentHypothesis}
+              onSave={(newHyp) => updateStateHypothesis(newHyp)}
+              multiline
+              as="p"
+              className="text-stone-800 leading-snug block w-full"
+              label="设计假设"
+              showEditIcon
+            />
           </div>
         )}
 
@@ -141,19 +160,26 @@ export function StateNode({ id, selected }: NodeProps) {
                           : "bg-white text-stone-800 border-line hover:border-ink/50 hover:text-ink"
                     }`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => handleCopyKeyword(keyword)}
-                      className="inline-flex items-center px-1.5 py-0.5 cursor-pointer"
-                      title="点击复制关键词"
-                    >
+                    <div className="inline-flex items-center px-1.5 py-0.5">
                       {copiedKeyword === keyword ? (
                         <Check className="h-2.5 w-2.5 text-emerald-600 mr-1" />
                       ) : (
-                        <span className="text-stone-400 mr-0.5 font-mono">#</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyKeyword(keyword)}
+                          className="text-stone-400 mr-0.5 font-mono hover:text-ink cursor-pointer"
+                          title="点击复制关键词"
+                        >
+                          #
+                        </button>
                       )}
-                      <span>{copiedKeyword === keyword ? "已复制" : keyword}</span>
-                    </button>
+                      <InlineEditableText
+                        value={keyword}
+                        onSave={(newKw) => updateVisualKeyword(idx, newKw)}
+                        as="span"
+                        label="视觉关键词"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={(e) => {
@@ -206,29 +232,38 @@ export function StateNode({ id, selected }: NodeProps) {
                   return (
                     <span
                       key={i}
-                      onClick={() => {
-                        setItemDecision({
-                          id: pId,
-                          type: "text",
-                          content: p.text,
-                          label: "视觉坚持",
-                          status: nextPStatus,
-                          sourceNode: "02 方向",
-                        });
-                      }}
-                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10.5px] mr-1 mb-1 border transition-all cursor-pointer select-none ${
+                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10.5px] mr-1 mb-1 border transition-all select-none ${
                         pStatus === "discarded"
                           ? "bg-stone-100 text-stone-400 border-line/50 line-through opacity-60"
                           : pStatus === "uncertain"
                             ? "bg-amber-50 text-amber-900 border-amber-300 border-dashed"
                             : "bg-mist/60 text-stone-800 border-line/50 hover:border-ink/40"
                       }`}
-                      title={`状态：${pStatus === "confirmed" ? "✓ 确定" : pStatus === "uncertain" ? "? 待定" : "✕ 舍弃"}，点击切换`}
                     >
-                      <span>{p.text}</span>
-                      <span className="text-[9px] font-mono text-stone-400">
+                      <InlineEditableText
+                        value={p.text}
+                        onSave={(newText) => updateStatePriority(i, newText)}
+                        as="span"
+                        label="视觉坚持"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setItemDecision({
+                            id: pId,
+                            type: "text",
+                            content: p.text,
+                            label: "视觉坚持",
+                            status: nextPStatus,
+                            sourceNode: "02 方向",
+                          });
+                        }}
+                        className="text-[9px] font-mono text-stone-400 hover:text-ink cursor-pointer p-0.5"
+                        title={`状态：${pStatus === "confirmed" ? "✓ 确定" : pStatus === "uncertain" ? "? 待定" : "✕ 舍弃"}，点击切换`}
+                      >
                         {pStatus === "confirmed" ? "✓" : pStatus === "uncertain" ? "?" : "✕"}
-                      </span>
+                      </button>
                     </span>
                   );
                 })}
@@ -241,7 +276,7 @@ export function StateNode({ id, selected }: NodeProps) {
           {/* Avoid */}
           <div className="rounded-xl bg-white/70 p-2.5 border border-line/70">
             <span className="text-[10px] font-semibold text-stone-600 block mb-1">
-              视觉红线 (点击可标记)
+              视觉红线 (点击标记 · 双击修改)
             </span>
             {state.direction.avoid.length > 0 ? (
               <div className="space-y-1">
@@ -257,29 +292,38 @@ export function StateNode({ id, selected }: NodeProps) {
                   return (
                     <span
                       key={i}
-                      onClick={() => {
-                        setItemDecision({
-                          id: aId,
-                          type: "text",
-                          content: a.text,
-                          label: "视觉红线",
-                          status: nextAStatus,
-                          sourceNode: "02 方向",
-                        });
-                      }}
-                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10.5px] mr-1 mb-1 border transition-all cursor-pointer select-none ${
+                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10.5px] mr-1 mb-1 border transition-all select-none ${
                         aStatus === "discarded"
                           ? "bg-stone-100 text-stone-400 border-line/50 line-through opacity-60"
                           : aStatus === "uncertain"
                             ? "bg-amber-50 text-amber-900 border-amber-300 border-dashed"
                             : "bg-stone-100/80 text-stone-700 border-stone-200/60 hover:border-ink/40"
                       }`}
-                      title={`状态：${aStatus === "confirmed" ? "✓ 确定" : aStatus === "uncertain" ? "? 待定" : "✕ 舍弃"}，点击切换`}
                     >
-                      <span>{a.text}</span>
-                      <span className="text-[9px] font-mono text-stone-400">
+                      <InlineEditableText
+                        value={a.text}
+                        onSave={(newText) => updateStateAvoid(i, newText)}
+                        as="span"
+                        label="视觉红线"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setItemDecision({
+                            id: aId,
+                            type: "text",
+                            content: a.text,
+                            label: "视觉红线",
+                            status: nextAStatus,
+                            sourceNode: "02 方向",
+                          });
+                        }}
+                        className="text-[9px] font-mono text-stone-400 hover:text-ink cursor-pointer p-0.5"
+                        title={`状态：${aStatus === "confirmed" ? "✓ 确定" : aStatus === "uncertain" ? "? 待定" : "✕ 舍弃"}，点击切换`}
+                      >
                         {aStatus === "confirmed" ? "✓" : aStatus === "uncertain" ? "?" : "✕"}
-                      </span>
+                      </button>
                     </span>
                   );
                 })}

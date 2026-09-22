@@ -20,6 +20,7 @@ import {
   ExternalLink,
   RefreshCw,
 } from "lucide-react";
+import { InlineEditableText } from "../InlineEditableText";
 
 function renderNoteContent(text: string) {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -58,6 +59,7 @@ export function StepNode({ id, selected }: NodeProps) {
   const activeRequest = useSiftStore((s) => s.activeRequest);
   const rawBrief = useSiftStore((s) => s.rawBrief);
   const state = useSiftStore((s) => s.state);
+  const updateRouteStep = useSiftStore((s) => s.updateRouteStep);
 
   const [noteInput, setNoteInput] = useState("");
 
@@ -135,18 +137,46 @@ export function StepNode({ id, selected }: NodeProps) {
           <div className="rounded-xl border border-line/80 bg-white/95 p-3.5 shadow-xs space-y-2.5">
             <div>
               <div className="flex items-center justify-between text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-1">
-                <span>视点 0{activeIdx + 1} · {cleanStepLabel(currentStep.title)}</span>
+                <div className="flex items-center gap-1">
+                  <span>视点 0{activeIdx + 1} ·</span>
+                  <InlineEditableText
+                    value={cleanStepLabel(currentStep.title)}
+                    onSave={(newTitle) =>
+                      updateRouteStep(route.id, currentStep.id, { title: newTitle })
+                    }
+                    as="span"
+                    className="font-semibold text-stone-700"
+                    label="视点标题"
+                  />
+                </div>
                 <span className="font-mono text-[9px] text-stone-400">VISUAL FOCUS</span>
               </div>
-              <p className="text-xs sm:text-[13px] font-semibold text-ink leading-snug">
-                {toInspirationCopy(currentStep.question)}
-              </p>
+              <InlineEditableText
+                value={toInspirationCopy(currentStep.question)}
+                onSave={(newQuestion) =>
+                  updateRouteStep(route.id, currentStep.id, { question: newQuestion })
+                }
+                multiline
+                as="p"
+                className="text-xs sm:text-[13px] font-semibold text-ink leading-snug block w-full"
+                label="视点设问"
+                showEditIcon
+              />
             </div>
 
             {currentStep.purpose && (
-              <div className="pt-2 border-t border-line/40 text-[11px] text-stone-600 leading-relaxed">
-                <span className="font-medium text-stone-700">这一步要观察：</span>
-                {toInspirationCopy(currentStep.purpose)}
+              <div className="pt-2 border-t border-line/40 text-[11px] text-stone-600 leading-relaxed flex items-start gap-1">
+                <span className="font-medium text-stone-700 shrink-0">这一步要观察：</span>
+                <InlineEditableText
+                  value={toInspirationCopy(currentStep.purpose)}
+                  onSave={(newPurpose) =>
+                    updateRouteStep(route.id, currentStep.id, { purpose: newPurpose })
+                  }
+                  multiline
+                  as="span"
+                  className="text-stone-600 block flex-1"
+                  label="观察重点"
+                />
               </div>
             )}
           </div>

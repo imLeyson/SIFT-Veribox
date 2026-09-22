@@ -24,6 +24,7 @@ import {
   RefreshCw,
   Compass,
 } from "lucide-react";
+import { InlineEditableText } from "../InlineEditableText";
 
 export type RouteNodeData = {
   route: Route;
@@ -153,6 +154,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
   const activeRequest = useSiftStore((s) => s.activeRequest);
   const rawBrief = useSiftStore((s) => s.rawBrief);
   const state = useSiftStore((s) => s.state);
+  const updateRoute = useSiftStore((s) => s.updateRoute);
 
   const isSelected = selectedRouteId === route.id;
   const hasSelection = Boolean(selectedRouteId);
@@ -241,17 +243,23 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
         selected={selected || isSelected}
       >
         <div className="space-y-3 text-xs">
-          {/* Dimension archetype */}
-          <div className="flex items-center justify-between gap-1.5 text-[10.5px]">
+          {/* Theme Title & Archetype Header */}
+          <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-line/50">
+            <InlineEditableText
+              value={heroTitle}
+              onSave={(newTitle) =>
+                updateRoute(route.id, { themeName: newTitle })
+              }
+              as="h4"
+              className="text-xs font-bold text-ink"
+              label="主题大名"
+              showEditIcon
+            />
             <span
-              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium border ${dimension.badgeClass}`}
+              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium border text-[10px] shrink-0 ${dimension.badgeClass}`}
             >
               <DimensionIcon className="h-3 w-3" />
               <span>{dimension.tag}</span>
-            </span>
-
-            <span className="rounded-md bg-white/80 px-2 py-0.5 text-[10px] text-stone-500 border border-line/60">
-              开放式视觉探索
             </span>
           </div>
 
@@ -266,9 +274,21 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
                 VISUAL SNAPSHOT
               </span>
             </div>
-            <p className="text-xs sm:text-[12.5px] text-ink font-medium leading-relaxed font-serif bg-white/95 p-2.5 rounded-lg border border-line/60 shadow-2xs">
-              “{snapshotText}”
-            </p>
+            <div className="text-xs sm:text-[12.5px] text-ink font-medium leading-relaxed font-serif bg-white/95 p-2.5 rounded-lg border border-line/60 shadow-2xs">
+              <span className="font-serif text-stone-400 mr-0.5">“</span>
+              <InlineEditableText
+                value={snapshotText}
+                onSave={(newSnapshot) =>
+                  updateRoute(route.id, { visualSnapshot: newSnapshot })
+                }
+                multiline
+                as="span"
+                className="text-ink font-serif"
+                label="灵感画面快照"
+                showEditIcon
+              />
+              <span className="font-serif text-stone-400 ml-0.5">”</span>
+            </div>
           </div>
 
           {/* Concise Style & Method Summary */}
@@ -277,14 +297,30 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
               <span className="shrink-0 px-1.5 py-0.5 rounded bg-stone-100 font-medium text-[10px] text-stone-600">
                 基调
               </span>
-              <span className="text-ink font-semibold truncate">{route.startingPoint}</span>
+              <InlineEditableText
+                value={route.startingPoint}
+                onSave={(newPoint) =>
+                  updateRoute(route.id, { startingPoint: newPoint })
+                }
+                as="span"
+                className="text-ink font-semibold truncate"
+                label="设计基调"
+              />
             </div>
             {visualHook && (
               <div className="flex items-center gap-1.5">
                 <span className="shrink-0 px-1.5 py-0.5 rounded bg-stone-100 font-medium text-[10px] text-stone-600">
                   手法
                 </span>
-                <span className="text-stone-700 truncate">{visualHook}</span>
+                <InlineEditableText
+                  value={visualHook}
+                  onSave={(newHook) =>
+                    updateRoute(route.id, { focusDimension: newHook })
+                  }
+                  as="span"
+                  className="text-stone-700 truncate"
+                  label="视觉手法"
+                />
               </div>
             )}
           </div>

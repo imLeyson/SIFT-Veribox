@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
+import { InlineEditableText } from "../InlineEditableText";
 
 export type PlatformPlanNodeData = {
   plan: PlatformPlan;
@@ -67,6 +68,7 @@ export function PlatformPlanNode({
   const state = useSiftStore((s) => s.state);
   const itemDecisions = useSiftStore((s) => s.itemDecisions);
   const setItemDecision = useSiftStore((s) => s.setItemDecision);
+  const updatePlatformKeyword = useSiftStore((s) => s.updatePlatformKeyword);
 
   const [replacingSourceId, setReplacingSourceId] = useState<string | null>(null);
   const [copiedKw, setCopiedKw] = useState<string | null>(null);
@@ -339,23 +341,28 @@ export function PlatformPlanNode({
                             <button
                               type="button"
                               onClick={() => handleCopy(source.id, effectiveCopyKw)}
-                              className="font-medium hover:text-accent flex items-center gap-1 cursor-pointer"
+                              className="font-medium hover:text-accent flex items-center gap-0.5 cursor-pointer shrink-0"
                               title={
                                 isCopied
                                   ? `已复制纯净搜索词：${effectiveCopyKw}`
                                   : `点击复制纯净搜索词：${effectiveCopyKw}`
                               }
                             >
-                              <span>{displayKw}</span>
                               {isCopied ? (
-                                <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium font-sans">
-                                  <Check className="h-2.5 w-2.5" />
-                                  <span>已复制</span>
-                                </span>
+                                <Check className="h-2.5 w-2.5 text-emerald-600 mr-0.5" />
                               ) : (
-                                <Copy className="h-2.5 w-2.5 opacity-30 group-hover:opacity-80" />
+                                <Copy className="h-2.5 w-2.5 opacity-30 group-hover:opacity-80 mr-0.5" />
                               )}
                             </button>
+                            <InlineEditableText
+                              value={displayKw}
+                              onSave={(newKw) =>
+                                updatePlatformKeyword(plan.stepId, source.id, ki, newKw)
+                              }
+                              as="span"
+                              className="font-medium"
+                              label="搜索关键词"
+                            />
                             <a
                               href={getSearchUrl(source, displayKw)}
                               target="_blank"

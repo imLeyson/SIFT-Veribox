@@ -30,6 +30,7 @@ import {
 } from "@/types/convergence";
 import type {
   Route,
+  RouteStep,
   PlatformPlan,
 } from "@/types/routes";
 
@@ -138,6 +139,20 @@ export type SiftStore = Session & {
   toggleItemStatus: (id: string, nextStatus: DecisionStatus) => void;
   removeItemDecision: (id: string) => void;
   getDecisionContext: () => DecisionContext;
+  updateRawBrief: (text: string) => void;
+  updateStateIntent: (text: string) => void;
+  updateStatePriority: (index: number, text: string) => void;
+  updateStateAvoid: (index: number, text: string) => void;
+  updateStateHypothesis: (text: string) => void;
+  updateVisualKeyword: (index: number, keyword: string) => void;
+  updateRoute: (routeId: string, partial: Partial<Route>) => void;
+  updateRouteStep: (routeId: string, stepId: string, partial: Partial<RouteStep>) => void;
+  updatePlatformKeyword: (
+    stepId: string,
+    sourceId: string,
+    kwIndex: number,
+    newKw: string,
+  ) => void;
   reset: () => void;
 };
 
@@ -620,6 +635,234 @@ export function createSiftStore(providedStorage?: StateStorage) {
             else if (item.status === "discarded") discarded.push(item);
           }
           return { confirmed, uncertain, discarded };
+        },
+        updateRawBrief: (text: string) => {
+          set((s) => ({
+            rawBrief: text,
+            itemDecisions: {
+              ...s.itemDecisions,
+              brief_text: {
+                id: "brief_text",
+                type: "text",
+                content: text,
+                label: "简报需求 (已自定义)",
+                status: "confirmed",
+                sourceNode: "00 简报",
+                updatedAt: Date.now(),
+              },
+            },
+          }));
+        },
+        updateStateIntent: (text: string) => {
+          set((s) => {
+            if (!s.state) return s;
+            const updatedDirection = {
+              ...s.state.direction,
+              intent: { text, basis: "user" as const, sourceIds: ["user_edit"] },
+            };
+            return {
+              state: {
+                ...s.state,
+                revision: s.state.revision + 1,
+                direction: updatedDirection,
+              },
+              itemDecisions: {
+                ...s.itemDecisions,
+                state_intent: {
+                  id: "state_intent",
+                  type: "text",
+                  content: text,
+                  label: "视觉主张 (已自定义)",
+                  status: "confirmed",
+                  sourceNode: "02 方向",
+                  updatedAt: Date.now(),
+                },
+              },
+            };
+          });
+        },
+        updateStatePriority: (index: number, text: string) => {
+          set((s) => {
+            if (!s.state) return s;
+            const priorities = [...s.state.direction.priorities];
+            if (index >= 0 && index < priorities.length) {
+              priorities[index] = { text, basis: "user" as const, sourceIds: ["user_edit"] };
+            } else if (text.trim()) {
+              priorities.push({ text, basis: "user" as const, sourceIds: ["user_edit"] });
+            }
+            return {
+              state: {
+                ...s.state,
+                revision: s.state.revision + 1,
+                direction: { ...s.state.direction, priorities },
+              },
+              itemDecisions: {
+                ...s.itemDecisions,
+                [`priority_${index}`]: {
+                  id: `priority_${index}`,
+                  type: "text",
+                  content: text,
+                  label: "视觉坚持 (已自定义)",
+                  status: "confirmed",
+                  sourceNode: "02 方向",
+                  updatedAt: Date.now(),
+                },
+              },
+            };
+          });
+        },
+        updateStateAvoid: (index: number, text: string) => {
+          set((s) => {
+            if (!s.state) return s;
+            const avoid = [...s.state.direction.avoid];
+            if (index >= 0 && index < avoid.length) {
+              avoid[index] = { text, basis: "user" as const, sourceIds: ["user_edit"] };
+            } else if (text.trim()) {
+              avoid.push({ text, basis: "user" as const, sourceIds: ["user_edit"] });
+            }
+            return {
+              state: {
+                ...s.state,
+                revision: s.state.revision + 1,
+                direction: { ...s.state.direction, avoid },
+              },
+              itemDecisions: {
+                ...s.itemDecisions,
+                [`avoid_${index}`]: {
+                  id: `avoid_${index}`,
+                  type: "text",
+                  content: text,
+                  label: "视觉红线 (已自定义)",
+                  status: "confirmed",
+                  sourceNode: "02 方向",
+                  updatedAt: Date.now(),
+                },
+              },
+            };
+          });
+        },
+        updateStateHypothesis: (text: string) => {
+          set((s) => {
+            if (!s.state) return s;
+            return {
+              state: {
+                ...s.state,
+                revision: s.state.revision + 1,
+                currentHypothesis: text,
+              },
+            };
+          });
+        },
+        updateVisualKeyword: (index: number, keyword: string) => {
+          set((s) => {
+            if (!s.state) return s;
+            const visualKeywords = [...(s.state.visualKeywords ?? [])];
+            if (index >= 0 && index < visualKeywords.length) {
+              visualKeywords[index] = keyword;
+            } else if (keyword.trim()) {
+              visualKeywords.push(keyword);
+            }
+            return {
+              state: {
+                ...s.state,
+                revision: s.state.revision + 1,
+                visualKeywords,
+              },
+              itemDecisions: {
+                ...s.itemDecisions,
+                [`kw_${keyword}`]: {
+                  id: `kw_${keyword}`,
+                  type: "text",
+                  content: keyword,
+                  label: "视觉关键词 (已自定义)",
+                  status: "confirmed",
+                  sourceNode: "02 方向",
+                  updatedAt: Date.now(),
+                },
+              },
+            };
+          });
+        },
+        updateRoute: (routeId: string, partial: Partial<Route>) => {
+          set((s) => {
+            const routes = s.routes.map((r) =>
+              r.id === routeId ? { ...r, ...partial } : r,
+            );
+            const target = routes.find((r) => r.id === routeId);
+            const extraDecisions: Record<string, ItemDecision> = {};
+            if (target && (partial.themeName || partial.visualSnapshot)) {
+              extraDecisions[`theme_${routeId}`] = {
+                id: `theme_${routeId}`,
+                type: "theme",
+                content: `${target.themeName || target.title}${target.visualSnapshot ? ` · ${target.visualSnapshot}` : ""}`,
+                label: "设计主题 (已自定义)",
+                status: "confirmed",
+                sourceNode: "03 主题",
+                updatedAt: Date.now(),
+              };
+            }
+            return {
+              routes,
+              itemDecisions: { ...s.itemDecisions, ...extraDecisions },
+            };
+          });
+        },
+        updateRouteStep: (
+          routeId: string,
+          stepId: string,
+          partial: Partial<RouteStep>,
+        ) => {
+          set((s) => {
+            const routes = s.routes.map((r) => {
+              if (r.id !== routeId) return r;
+              const steps = r.steps.map((st) =>
+                st.id === stepId ? { ...st, ...partial } : st,
+              );
+              return { ...r, steps };
+            });
+            return { routes };
+          });
+        },
+        updatePlatformKeyword: (
+          stepId: string,
+          sourceId: string,
+          kwIndex: number,
+          newKw: string,
+        ) => {
+          set((s) => {
+            const platformPlans = s.platformPlans.map((plan) => {
+              if (plan.stepId !== stepId) return plan;
+              const primarySources = plan.primarySources.map((source) => {
+                if (source.id !== sourceId) return source;
+                const keywords = [...source.keywords];
+                if (kwIndex >= 0 && kwIndex < keywords.length) {
+                  keywords[kwIndex] = {
+                    ...keywords[kwIndex],
+                    keyword: newKw,
+                    calibratedQuery: newKw,
+                    advancedQuery: newKw,
+                  };
+                }
+                return { ...source, keywords };
+              });
+              return { ...plan, primarySources };
+            });
+            return {
+              platformPlans,
+              itemDecisions: {
+                ...s.itemDecisions,
+                [`kw_${newKw}`]: {
+                  id: `kw_${newKw}`,
+                  type: "text",
+                  content: newKw,
+                  label: "搜索词 (已自定义)",
+                  status: "confirmed",
+                  sourceNode: "05 搜索",
+                  updatedAt: Date.now(),
+                },
+              },
+            };
+          });
         },
         reset: () =>
           set({ ...emptySession(), activeRequest: null, error: null }),

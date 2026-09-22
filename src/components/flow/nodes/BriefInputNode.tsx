@@ -8,6 +8,7 @@ import { EXAMPLES } from "@/lib/agent/examples";
 import { compressImageFile } from "@/lib/image-utils";
 import { ImagePlus, Plus, X, Eye, Zap, Sparkles, Check, HelpCircle } from "lucide-react";
 import { evaluateBriefIntentSync } from "@/lib/agent/system-one";
+import { InlineEditableText } from "../InlineEditableText";
 
 export function BriefInputNode({ id, selected }: NodeProps) {
   const {
@@ -19,6 +20,7 @@ export function BriefInputNode({ id, selected }: NodeProps) {
     itemDecisions,
     setItemDecision,
     setRawBrief,
+    updateRawBrief,
     addBriefImage,
     removeBriefImage,
   } = useSiftStore();
@@ -113,9 +115,16 @@ export function BriefInputNode({ id, selected }: NodeProps) {
       >
         {state ? (
           <div className="space-y-3">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink font-serif">
-              {rawBrief}
-            </p>
+            <InlineEditableText
+              value={rawBrief}
+              onSave={(newBrief) => updateRawBrief(newBrief)}
+              multiline
+              as="p"
+              className="whitespace-pre-wrap text-sm leading-relaxed text-ink font-serif w-full block"
+              inputClassName="font-serif text-sm leading-relaxed"
+              label="简报需求"
+              showEditIcon
+            />
             {briefImages.length > 0 && (
               <div className="pt-2 border-t border-line/60">
                 <span className="text-[10px] font-semibold text-stone-500 block mb-1.5">
