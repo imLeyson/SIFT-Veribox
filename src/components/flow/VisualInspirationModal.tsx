@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   Check,
@@ -33,13 +34,18 @@ export function VisualInspirationModal({
   const routes = useSiftStore((s) => s.routes);
   const setItemDecision = useSiftStore((s) => s.setItemDecision);
 
+  const [mounted, setMounted] = useState(false);
   const [copiedHex, setCopiedHex] = useState<string | null>(null);
   const [newKeyword, setNewKeyword] = useState("");
   const [justAddedKw, setJustAddedKw] = useState<string | null>(null);
   const [addingColor, setAddingColor] = useState(false);
   const [customHex, setCustomHex] = useState("#2B3A42");
 
-  if (!inspiration) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!inspiration || !mounted) return null;
 
   const handleAddColorSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,9 +118,9 @@ export function VisualInspirationModal({
     setTimeout(() => setJustAddedKw(null), 1500);
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
@@ -456,6 +462,7 @@ export function VisualInspirationModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

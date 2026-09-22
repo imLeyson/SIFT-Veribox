@@ -65,7 +65,8 @@ export function CanvasNavDock({
   }
 
   return (
-    <nav aria-label="流程节点导航" className="flex items-center gap-1 rounded-2xl border border-line/80 bg-cream/95 px-2 py-1.5 shadow-lg backdrop-blur-md max-w-[calc(100vw-2rem)] overflow-x-auto transition-all">
+    <>
+      <nav aria-label="流程节点导航" className="flex items-center gap-1 rounded-2xl border border-line/80 bg-cream/95 px-2 py-1.5 shadow-lg backdrop-blur-md max-w-[calc(100vw-2rem)] overflow-x-auto transition-all">
       {/* 00 Brief */}
       <button
         type="button"
@@ -323,11 +324,12 @@ export function CanvasNavDock({
         <ChevronDown className="h-3.5 w-3.5" />
       </button>
 
+      </nav>
       {/* Global Decision Inspector Drawer */}
       <DecisionDrawer
         isOpen={decisionDrawerOpen}
         onClose={() => setDecisionDrawerOpen(false)}
       />
-    </nav>
+    </>
   );
 }

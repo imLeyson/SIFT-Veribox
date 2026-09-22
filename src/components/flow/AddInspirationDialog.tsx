@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Upload, Link2, Sparkles, ImagePlus, Loader2 } from "lucide-react";
 import { useSiftStore } from "@/lib/convergence-store";
 import { compressImageFile, extractImagePalette } from "@/lib/image-utils";
@@ -22,6 +23,7 @@ export function AddInspirationDialog({
 }: AddInspirationDialogProps) {
   const addVisualInspiration = useSiftStore((s) => s.addVisualInspiration);
 
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"upload" | "url">("upload");
   const [externalUrl, setExternalUrl] = useState("");
   const [title, setTitle] = useState("");
@@ -31,7 +33,11 @@ export function AddInspirationDialog({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
 
   const handleProcessFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -90,9 +96,9 @@ export function AddInspirationDialog({
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
@@ -264,6 +270,7 @@ export function AddInspirationDialog({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

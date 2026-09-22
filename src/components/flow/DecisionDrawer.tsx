@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSiftStore } from "@/lib/convergence-store";
 import type { DecisionStatus, ItemDecision } from "@/lib/agent/convergence-schema";
 import {
@@ -28,9 +29,14 @@ export function DecisionDrawer({
   const removeItemDecision = useSiftStore((s) => s.removeItemDecision);
   const setItemDecision = useSiftStore((s) => s.setItemDecision);
 
+  const [mounted, setMounted] = useState(false);
   const [filterTab, setFilterTab] = useState<"all" | DecisionStatus>("all");
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
 
   const items = Object.values(itemDecisions);
   const confirmedItems = items.filter((i) => i.status === "confirmed");
@@ -66,9 +72,15 @@ export function DecisionDrawer({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/25 backdrop-blur-[2px] transition-all animate-in fade-in duration-200">
-      <div className="relative flex h-full w-full max-w-md flex-col bg-white shadow-2xl border-l border-line/80 animate-in slide-in-from-right duration-250 sm:max-w-lg">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex justify-end bg-black/40 backdrop-blur-xs transition-all animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="relative flex h-full w-full max-w-md sm:max-w-lg flex-col bg-white shadow-2xl border-l border-line/80 animate-in slide-in-from-right duration-250"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-line/70 px-5 py-4 bg-stone-50/50">
           <div className="flex items-center gap-2">
@@ -286,6 +298,7 @@ export function DecisionDrawer({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
