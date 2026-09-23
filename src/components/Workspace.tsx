@@ -43,11 +43,11 @@ export function Workspace() {
           <div className="flex items-center gap-2">
             <h1 className="text-sm font-semibold tracking-wide text-ink">SIFT</h1>
             <span className="hidden md:inline-block rounded-md bg-stone-100 border border-stone-200 px-1.5 py-0.5 text-[10px] font-medium text-stone-600">
-              视觉策略与方向收敛智能体
+              视觉策略工作台
             </span>
           </div>
           <p className="mt-0.5 text-xs text-muted">
-            收敛清晰有画面感的设计主题与检索方向 · 避免前期盲目试错
+            设计前期策略收敛、风格主题推导与跨平台灵感检索
           </p>
         </div>
         <div className="flex items-center gap-2">

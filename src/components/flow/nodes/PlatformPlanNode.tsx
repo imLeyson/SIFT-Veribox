@@ -124,8 +124,28 @@ export function PlatformPlanNode({
 
   const [replacingSourceId, setReplacingSourceId] = useState<string | null>(null);
   const [copiedKw, setCopiedKw] = useState<string | null>(null);
+  const [copiedAllKw, setCopiedAllKw] = useState(false);
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [showSearchTrace, setShowSearchTrace] = useState(false);
+
+  const handleCopyAllKeywords = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentPlan = data?.plan ?? DEFAULT_FALLBACK_PLAN;
+    const lines = currentPlan.primarySources
+      .filter((s) => !sourceInteractions[`${currentPlan.stepId}_${s.id}`]?.skipped)
+      .map((s) => {
+        const topKw = s.keywords[0]?.calibratedQuery || s.keywords[0]?.keyword || "";
+        return `[${s.platform}] ${topKw}`;
+      })
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(lines);
+      setCopiedAllKw(true);
+      setTimeout(() => setCopiedAllKw(false), 1800);
+    } catch {
+      // fallback
+    }
+  };
 
   const isEmpty = Boolean((data as any)?.isEmpty) || !data?.plan;
 
@@ -252,7 +272,7 @@ export function PlatformPlanNode({
         onRegenerate={upstream.count > 0 ? () => synthesizeCard(id) : undefined}
         badge={
           <span className="text-[10px] font-mono text-stone-400">
-            System 1 · {plan.systemOne?.latencyMs ?? 18}ms
+            {plan.primarySources.length} 处检索渠道
           </span>
         }
         selected={selected}
@@ -342,10 +362,25 @@ export function PlatformPlanNode({
           </div>
 
           <div className="flex items-center justify-between text-muted text-[11px] pb-0.5">
-            <span>精选 3 处灵感来源</span>
-            <span className="text-[10px] text-stone-400 font-sans">
-              已过滤样机与模板噪音
-            </span>
+            <span>精选 3 处灵感渠道</span>
+            <button
+              type="button"
+              onClick={handleCopyAllKeywords}
+              className="text-[10.5px] text-stone-500 hover:text-amber-800 transition-colors flex items-center gap-1 cursor-pointer font-medium"
+              title="一键复制全部渠道精选检索词"
+            >
+              {copiedAllKw ? (
+                <>
+                  <Check className="h-3 w-3 text-emerald-600" />
+                  <span className="text-emerald-700 font-semibold">已复制检索词</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3 w-3 text-stone-400" />
+                  <span>复制全部检索词</span>
+                </>
+              )}
+            </button>
           </div>
 
           {/* Primary Sources List */}
@@ -358,9 +393,6 @@ export function PlatformPlanNode({
                 source.inspirationClues || getPlatformInspirationClues(source.platform);
               const sourceReason = toInspirationCopy(source.reason);
               const roleTag = toInspirationCopy(source.roleTag);
-              const matchPct =
-                plan.systemOne?.matchPercentages?.[source.id] ??
-                (idx === 0 ? 98 : idx === 1 ? 94 : 90);
 
               return (
                 <div
@@ -387,12 +419,6 @@ export function PlatformPlanNode({
 
                     {/* Actions */}
                     <div className="flex items-center gap-1 shrink-0">
-                      <span
-                        className="text-[9.5px] font-mono text-stone-400"
-                        title={`匹配度：${matchPct}%`}
-                      >
-                        {matchPct}%
-                      </span>
                       <button
                         type="button"
                         title={isSkipped ? "恢复" : "跳过"}

@@ -27,7 +27,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
   // Header
   lines.push(`# 🎨 SIFT 设计探索与收敛提案简报`);
   lines.push(`> 项目：**${goalTitle}**  `);
-  lines.push(`> 生成时间：${now} · 智能体：SIFT 视觉策略与方向收敛智能体\n`);
+  lines.push(`> 生成时间：${now} · 工具：SIFT 视觉策略工作台\n`);
 
   // Section 00: Brief & System 1 Diagnostics
   lines.push(`## 00 原始设计任务 (Brief)`);
@@ -192,7 +192,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     });
   }
 
-  lines.push(`\n---\n*由 SIFT 生成 · 面向设计师的视觉策略与方向收敛智能体 · 快速收敛清晰有画面感的设计主题与检索方向，避免前期漫无目的地试错*`);
+  lines.push(`\n---\n*由 SIFT 视觉策略工作台生成 · 前期策略与灵感方案提案*`);
 
   return lines.join("\n");
 }

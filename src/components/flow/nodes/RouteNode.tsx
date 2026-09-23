@@ -13,6 +13,8 @@ import {
   ShieldAlert,
   RefreshCw,
   Compass,
+  Copy,
+  StickyNote,
 } from "lucide-react";
 
 export type RouteNodeData = {
@@ -86,9 +88,9 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
   const index = data?.index ?? 0;
 
   const [showTrace, setShowTrace] = useState(false);
+  const [copiedSpec, setCopiedSpec] = useState(false);
   const selectedRouteId = useSiftStore((s) => s.selectedRouteId);
   const exploredRouteIds = useSiftStore((s) => s.exploredRouteIds ?? []);
-  const recommendedRouteId = useSiftStore((s) => s.recommendedRouteId);
   const activeRequest = useSiftStore((s) => s.activeRequest);
   const customEdges = useSiftStore((s) => s.customEdges);
   const customCards = useSiftStore((s) => s.customCards);
@@ -232,20 +234,13 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
     selectedRouteId === route.id ||
     (id ? selectedRouteId === id : false);
 
-  // Strict single-recommendation rule
-  const isRecommended = recommendedRouteId
-    ? route.id === recommendedRouteId
-    : Boolean(route.recommendedReason);
-
   const kicker = isBlended
     ? "跨界融合"
     : isEvolved
       ? "衍生变奏"
       : isDerived
         ? "策略推导"
-        : isRecommended
-          ? "推荐方向"
-          : `主题方向 0${index + 1}`;
+        : `主题方向 0${index + 1}`;
 
   // Clean, instantly recognizable theme title
   const heroTitle = useMemo(() => {
@@ -263,7 +258,6 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
   }, [route.themeName, route.title]);
 
   const snapshotText = toInspirationCopy(cleanText(route.visualSnapshot || route.purpose));
-  const recReason = toInspirationCopy(cleanText(route.recommendedReason));
   const coreProblemText = toInspirationCopy(cleanText(route.coreProblem));
   const consText = toInspirationCopy(cleanText(route.cons));
 
@@ -272,6 +266,48 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
     const rawCraft = route.focusDimension || route.startingPoint || route.pros;
     return toInspirationCopy(cleanText(rawCraft));
   }, [route.focusDimension, route.startingPoint, route.pros]);
+
+  // Designer Tool: Copy theme spec to clipboard
+  const handleCopySpec = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const text = [
+      `【风格主题】${heroTitle}`,
+      `画面意向：“${snapshotText}”`,
+      `核心视觉手法：${visualCraftText}`,
+      `设计取舍与权衡：${coreProblemText}`,
+      `防跑偏提醒：${consText}`,
+      `后续探索视点：\n${route.steps.map((st, i) => `  0${i + 1} ${cleanStepLabel(st.title)}：${st.question}`).join("\n")}`,
+    ].join("\n\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedSpec(true);
+      setTimeout(() => setCopiedSpec(false), 1800);
+    } catch {
+      // fallback gracefully
+    }
+  };
+
+  // Designer Tool: Spawn linked note card
+  const handleAddLinkedNote = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const store = useSiftStore.getState();
+    const pos = store.positions[id] ?? { x: 800, y: 300 };
+    const noteId = `card-note-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    store.addCustomCard({
+      id: noteId,
+      type: "note",
+      title: `${heroTitle} · 备忘`,
+      content: `针对【${heroTitle}】的设计批注与落地考量：\n`,
+      color: "amber",
+      position: { x: pos.x + 420, y: pos.y },
+      data: { isEmpty: false },
+    });
+    store.addCustomEdge({
+      id: `edge-${id}-${noteId}`,
+      source: id,
+      target: noteId,
+    });
+  };
 
   return (
     <div
@@ -306,11 +342,6 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
           ) : isExplored ? (
             <span className="text-[10px] font-medium text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.2 rounded">
               ✓ 视点展开中
-            </span>
-          ) : isRecommended ? (
-            <span className="text-[10px] font-medium text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.2 rounded flex items-center gap-1">
-              <Sparkles className="h-2.5 w-2.5 text-amber-600" />
-              首选推荐
             </span>
           ) : undefined
         }
@@ -356,14 +387,6 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
               “{snapshotText}”
             </p>
           </div>
-
-          {/* 推荐理由 - 仅推荐主题显示 */}
-          {isRecommended && recReason && (
-            <div className="flex items-start gap-1.5 rounded-lg bg-amber-50/80 border border-amber-200/70 px-2.5 py-1.5 text-[11px] text-amber-900 leading-relaxed">
-              <span className="font-semibold shrink-0">💡 推荐考量：</span>
-              <span>{recReason}</span>
-            </div>
-          )}
 
           {/* 2. 设计思考与权衡 (3-Point Essential Thinking: 手法 / 取舍 / 避坑) */}
           <div className="rounded-xl border border-line/70 bg-white/90 p-3 space-y-2.5 text-[11.5px]">
@@ -419,10 +442,41 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
             </div>
           </div>
 
-          {/* 4. Actions: 展开/深入探索 */}
-          <div className="pt-2 border-t border-line/60">
+          {/* 4. Designer Tools & Actions */}
+          <div className="pt-2 border-t border-line/60 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleCopySpec}
+                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-stone-50 hover:bg-stone-100 border border-line/70 text-[11px] font-medium text-stone-600 hover:text-ink transition-colors cursor-pointer"
+                title="一键复制主题全案参数到剪贴板（支持粘贴至 Figma 或提案文档）"
+              >
+                {copiedSpec ? (
+                  <>
+                    <Check className="h-3 w-3 text-emerald-600" />
+                    <span className="text-emerald-700 font-semibold">已复制参数</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3 text-stone-500" />
+                    <span>复制参数</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleAddLinkedNote}
+                className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-amber-50/80 hover:bg-amber-100/90 border border-amber-200/80 text-[11px] font-medium text-amber-900 transition-colors cursor-pointer"
+                title="在画布上以此主题生成关联的设计备忘便签"
+              >
+                <StickyNote className="h-3 w-3 text-amber-600" />
+                <span>+ 备忘便签</span>
+              </button>
+            </div>
+
             {isExplored ? (
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 pt-0.5">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700">
                   <Check className="h-3.5 w-3.5" />
                   已展开视点推进 (04)

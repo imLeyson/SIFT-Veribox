@@ -7,7 +7,7 @@ import { useSiftStore, getUpstreamSummary } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { cleanStepLabel, type Route, type RouteStep } from "@/types/routes";
 import { toInspirationCopy } from "@/lib/exploration-copy";
-import { Sparkles, ArrowRight, Compass, RefreshCw } from "lucide-react";
+import { Sparkles, ArrowRight, Compass, RefreshCw, Copy, Check } from "lucide-react";
 
 const DEFAULT_FALLBACK_ROUTE: Route = {
   id: "custom-route",
@@ -180,6 +180,29 @@ export function StepNode({ id, data, selected }: NodeProps) {
   );
   const hasNextStep = activeIdx < steps.length - 1;
 
+  const [copiedStep, setCopiedStep] = useState(false);
+
+  const handleCopyStep = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const text = [
+      `【视点 0${activeIdx + 1}】${cleanStepLabel(currentStep.title)}`,
+      `聚焦问题：${currentStep.question}`,
+      currentStep.purpose ? `观察重点：${currentStep.purpose}` : null,
+      currentStep.acceptanceCriteria?.length
+        ? `检验准则：\n${currentStep.acceptanceCriteria.map((c: string) => `  • ${c}`).join("\n")}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedStep(true);
+      setTimeout(() => setCopiedStep(false), 1800);
+    } catch {
+      // fallback gracefully
+    }
+  };
+
   return (
     <div className="w-[390px]">
       <NodeShell
@@ -282,7 +305,6 @@ export function StepNode({ id, data, selected }: NodeProps) {
             <div className="rounded-xl border border-indigo-200/80 bg-indigo-50/50 p-2.5 space-y-1.5 animate-in fade-in duration-150">
               <div className="flex items-center justify-between text-[10px] font-semibold text-indigo-950">
                 <span>所属主题：{route.themeName || route.title}</span>
-                <span className="font-mono text-[9px] text-indigo-500">THEME SNAPSHOT</span>
               </div>
               {route.visualSnapshot && (
                 <p className="text-[11px] text-stone-700 leading-relaxed italic bg-white/90 p-2.5 rounded-lg border border-indigo-100 font-serif">
@@ -327,7 +349,24 @@ export function StepNode({ id, data, selected }: NodeProps) {
             <div>
               <div className="flex items-center justify-between text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-1">
                 <span>视点 0{activeIdx + 1} · {cleanStepLabel(currentStep.title)}</span>
-                <span className="font-mono text-[9px] text-stone-400">VISUAL FOCUS</span>
+                <button
+                  type="button"
+                  onClick={handleCopyStep}
+                  className="text-[10px] text-stone-400 hover:text-ink transition-colors flex items-center gap-1 cursor-pointer font-medium normal-case"
+                  title="复制当前视点探索参数"
+                >
+                  {copiedStep ? (
+                    <>
+                      <Check className="h-3 w-3 text-emerald-600" />
+                      <span className="text-emerald-700 font-semibold">已复制</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3 text-stone-400" />
+                      <span>复制视点</span>
+                    </>
+                  )}
+                </button>
               </div>
               <p className="text-xs sm:text-[13px] font-semibold text-ink leading-snug">
                 {toInspirationCopy(currentStep.question)}
