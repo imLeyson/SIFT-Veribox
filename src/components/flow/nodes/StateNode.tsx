@@ -5,7 +5,7 @@ import { NodeShell } from "../NodeShell";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { hasDirection } from "@/types/convergence";
-import { Check, Sparkles, ArrowRight, RefreshCw } from "lucide-react";
+import { Check, Sparkles, ArrowRight, RefreshCw, RotateCcw } from "lucide-react";
 
 export function StateNode({ id, selected }: NodeProps) {
   const {
@@ -15,9 +15,22 @@ export function StateNode({ id, selected }: NodeProps) {
     activeRequest,
     storageWarning,
     routes,
+    customCards,
+    deletedNodeIds,
     setCorrectionDraft,
+    restoreRoutes,
   } = useSiftStore();
   const [editing, setEditing] = useState(false);
+
+  const visibleRoutes = routes.filter(
+    (r) => !deletedNodeIds.includes(`route-${r.id}`) && !deletedNodeIds.includes(r.id),
+  );
+  const visibleCustomRoutes = customCards.filter(
+    (c) => c.type === "route" && !deletedNodeIds.includes(c.id),
+  );
+  const totalVisibleThemes = visibleRoutes.length + visibleCustomRoutes.length;
+  const deletedThemeCount = routes.length - visibleRoutes.length;
+  const hasDeletedThemes = deletedThemeCount > 0;
 
   if (!state) {
     return (
@@ -262,36 +275,79 @@ export function StateNode({ id, selected }: NodeProps) {
         {/* Confirmed State Actions */}
         {confirmed && (
           <div className="border-t border-line/60 pt-2.5">
-            {routes.length === 0 ? (
-              <button
-                type="button"
-                className="btn-primary w-full text-xs py-2 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-                disabled={Boolean(activeRequest)}
-                onClick={() => void siftActions.generateRoutes()}
-                title="基于已锁定的策略基准，快速推导 3 套清晰、有画面感的设计主题与检索方向"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>{activeRequest ? "正在推导风格主题…" : "推导 3 套风格主题与检索方向"}</span>
-              </button>
+            {totalVisibleThemes === 0 ? (
+              <div className="space-y-2">
+                {hasDeletedThemes && (
+                  <div className="flex items-center justify-between text-[11px] text-stone-600 bg-stone-50 rounded-lg px-2.5 py-1.5 border border-stone-200">
+                    <span className="font-medium text-stone-500">
+                      所有风格主题已被移除
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => restoreRoutes()}
+                      className="text-accent hover:underline cursor-pointer flex items-center gap-1 font-semibold"
+                      title="恢复先前生成的风格主题卡片"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      <span>恢复已删主题 ({deletedThemeCount})</span>
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="btn-primary w-full text-xs py-2 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                  disabled={Boolean(activeRequest)}
+                  onClick={() => void siftActions.regenerateRoutes()}
+                  title="基于已锁定的策略基准，推导 3 套全新的风格主题与检索方向"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>
+                    {activeRequest
+                      ? "正在推导风格主题…"
+                      : hasDeletedThemes
+                        ? "重新推导 3 套风格主题与检索方向"
+                        : "推导 3 套风格主题与检索方向"}
+                  </span>
+                </button>
+              </div>
             ) : (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] text-emerald-800 bg-emerald-50 rounded-lg px-2.5 py-1.5 border border-emerald-200">
                   <span className="flex items-center gap-1 font-medium">
                     <Check className="h-3.5 w-3.5 text-emerald-600" />
-                    风格主题已就绪，于右侧选择画面切入点
+                    {totalVisibleThemes === routes.length
+                      ? "风格主题已就绪，于右侧选择画面切入点"
+                      : `已保留 ${totalVisibleThemes} 套风格主题，于右侧选择画面切入点`}
                   </span>
                   <ArrowRight className="h-3 w-3 text-emerald-600" />
                 </div>
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-center gap-1.5 text-[11px] font-medium text-stone-600 hover:text-ink bg-stone-50 hover:bg-stone-100/80 border border-line/70 rounded-lg py-1.5 transition-colors cursor-pointer"
-                  disabled={Boolean(activeRequest)}
-                  onClick={() => void siftActions.regenerateRoutes()}
-                  title="都不满意？重新推导一组互不相同的全新风格主题与检索方向"
-                >
-                  <RefreshCw className={`h-3 w-3 text-stone-500 ${activeRequest ? "animate-spin" : ""}`} />
-                  <span>{activeRequest ? "正在推导全新主题…" : "换一批风格主题与检索方向"}</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    className="flex-1 flex items-center justify-center gap-1.5 text-[11px] font-medium text-stone-600 hover:text-ink bg-stone-50 hover:bg-stone-100/80 border border-line/70 rounded-lg py-1.5 transition-colors cursor-pointer"
+                    disabled={Boolean(activeRequest)}
+                    onClick={() => void siftActions.regenerateRoutes()}
+                    title="重新推导一组互不相同的全新风格主题与检索方向"
+                  >
+                    <RefreshCw
+                      className={`h-3 w-3 text-stone-500 ${activeRequest ? "animate-spin" : ""}`}
+                    />
+                    <span>
+                      {activeRequest ? "正在推导全新主题…" : "换一批风格主题与检索方向"}
+                    </span>
+                  </button>
+                  {hasDeletedThemes && (
+                    <button
+                      type="button"
+                      onClick={() => restoreRoutes()}
+                      className="px-2.5 py-1.5 text-[11px] font-medium text-stone-500 hover:text-stone-800 bg-stone-50 hover:bg-stone-100 border border-line/70 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                      title="恢复先前删除的主题卡片"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      <span>恢复 ({deletedThemeCount})</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>

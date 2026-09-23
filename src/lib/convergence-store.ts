@@ -160,6 +160,8 @@ export type SiftStore = Session & {
   addCustomCard: (card: Omit<CustomCard, "id"> & { id?: string }) => string;
   updateCustomCard: (id: string, patch: Partial<CustomCard>) => void;
   deleteNodeById: (id: string) => void;
+  restoreNodeById: (id: string) => void;
+  restoreRoutes: () => void;
   addCustomEdge: (edge: CustomEdgeInput) => void;
   deleteCustomEdge: (id: string) => void;
   synthesizeCard: (id: string) => boolean;
@@ -396,6 +398,9 @@ export function createSiftStore(providedStorage?: StateStorage) {
             recommendedRouteId,
             exploredRouteIds: [],
             explorationStage: "routes",
+            deletedNodeIds: get().deletedNodeIds.filter(
+              (id) => !id.startsWith("route-"),
+            ),
             activeRequest: null,
             error: null,
           });
@@ -689,6 +694,18 @@ export function createSiftStore(providedStorage?: StateStorage) {
             customCards: get().customCards.filter((c) => c.id !== id),
             customEdges: get().customEdges.filter(
               (e) => e.source !== id && e.target !== id
+            ),
+          });
+        },
+        restoreNodeById: (id) => {
+          set({
+            deletedNodeIds: get().deletedNodeIds.filter((delId) => delId !== id),
+          });
+        },
+        restoreRoutes: () => {
+          set({
+            deletedNodeIds: get().deletedNodeIds.filter(
+              (delId) => !delId.startsWith("route-"),
             ),
           });
         },
