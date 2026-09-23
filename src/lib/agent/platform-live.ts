@@ -22,7 +22,7 @@ const SYSTEM = `你是 SIFT 搜索计划与专业设计关键词 Agent。
    - BP&O（角色：品牌识别与微工艺档案，专注特种纸原浆肌理、无墨深压凹、烫印光影与极简材质微细节）
    - Packaging of the World（角色：全球包装形态与结构库，海量多品类真实成品结构与材质展示）
 2. 字体排印与网格法则类（适合双栏网格、中西文字阶对比、信息骨架、标签排版）：
-   - Fonts In Use（角色：真实排印与字阶档案，全球商业设计案中的字体搭配、字阶层级与排印学范例）
+   - Fonts In Use（角色：真实排印与字阶档案，全球商业落地案中的字体搭配、字阶层级与排印学范例）
    - Typewolf（角色：字体搭配与排版风向，流行西文排版搭配、字重微调与独立字型实践）
 3. 全案系统与品牌重塑类（适合视觉锤、符号化、Logo 记忆点、多介质延展）：
    - Behance（角色：完整全案与系统推演，成套品牌案例、设计推演过程、实物打样与完整视觉识别）
@@ -31,9 +31,9 @@ const SYSTEM = `你是 SIFT 搜索计划与专业设计关键词 Agent。
    - Are.na（角色：总监级视觉调研与溯源，资深创意人灵感溯源，无低质套版贴图的高质调研平台）
    - Pinterest（角色：意象发散与色彩情绪板，色彩基调、负空间氛围、跨品类灵感扩散）
    - Instagram（角色：生活方式与场景切片，主理人生活美学、先锋小众品牌社媒动态）
-5. 本土消费心智与工艺质感类（适合中文消费反馈、货架盲测、实物质感）：
+5. 本土消费心智与落地工艺类（适合中文消费反馈、货架盲测、国内打样）：
    - 小红书（角色：本土消费真实晒单，真实货架陈列、开箱体验、买点评价与用户真实心智）
-   - 站酷 (ZCOOL)（角色：本土商业设计与工艺案例，本土优秀团队设计案、印刷工艺实拍与材质细节）
+   - 站酷 (ZCOOL)（角色：本土商业落地与工艺案，本土优秀团队落地案例、印刷厂实际打样工艺）
    - 花瓣 (Huaban)（角色：国内电商与灵感采集，本土电商、线下陈列与国人消费视觉）
 6. 数字产品与交互系统类（适合 SaaS、工作台、高密度数据、暗黑科技）：
    - Mobbin（角色：真实生产界面与交互流，收录全球顶级真实 iOS、Web 与 SaaS 产品完整页面截图）
@@ -82,14 +82,14 @@ const SYSTEM = `你是 SIFT 搜索计划与专业设计关键词 Agent。
       "keywords": [
         {
           "keyword": "sustainable recycled fiber product",
-          "meaning": "再生纤维在实体产品设计中的成套设计案例与表面质感",
+          "meaning": "再生纤维在实体产品设计中的成套落地案例与表面质感",
           "language": "en",
           "searchType": "benchmark",
           "advancedQuery": "sustainable recycled fiber product -mockup -template"
         },
         {
           "keyword": "再生纤维 可持续产品",
-          "meaning": "国内高品质环保材料创新产品与实物设计案例",
+          "meaning": "国内高品质环保材料创新产品与实物落地案例",
           "language": "zh",
           "searchType": "detail",
           "advancedQuery": "再生纤维 可持续产品 实物打样 -素材"
@@ -439,83 +439,6 @@ export function livePlatformPlan(input: PlatformPlanInput): Promise<unknown> {
 5. 所有搜索平台的角色与关键词，必须严格服务于为「${stepTitle}」收集具体的视觉参考与质感证据！
 6. 严禁出现脱离当前品类与材质的孤立通用词（如不可对实体产品搜 2D 平面名片或茶包装！）。`;
 
-  // Extract confirmed visual images for multimodal vision model
-  const visualImages: string[] = [];
-  if (input.images && Array.isArray(input.images)) {
-    for (const img of input.images) {
-      if (typeof img === "string" && img.trim()) {
-        visualImages.push(img.trim());
-      }
-    }
-  }
-  if (input.decisions?.confirmed) {
-    for (const c of input.decisions.confirmed) {
-      if (c.type === "image" && c.content && !visualImages.includes(c.content)) {
-        visualImages.push(c.content);
-      }
-    }
-  }
-
-  if (input.decisions) {
-    const { confirmed, uncertain, discarded } = input.decisions;
-    if (confirmed.length > 0) {
-      promptSystem += `\n\n【⚠️ 设计师已明确确认的内容（强力约束）】：\n${confirmed
-        .map((c) =>
-          c.type === "image"
-            ? `- [视觉参考图] ${c.label || "参考图像"}（已作为多模态视觉图像输入）`
-            : `- [${c.type}] ${c.label ? `${c.label}: ` : ""}${c.content}`,
-        )
-        .join("\n")}\n搜索关键词与平台方案应高度贴合这些已确认的核心基石！`;
-    }
-    if (uncertain.length > 0) {
-      promptSystem += `\n\n【待验证的未决点（提供佐证检索）】：\n${uncertain
-        .map((u) =>
-          u.type === "image"
-            ? `- [待定参考图] ${u.label || "待定图像"}`
-            : `- [${u.type}] ${u.label ? `${u.label}: ` : ""}${u.content}`,
-        )
-        .join("\n")}\n可通过搜索为这些不确定项收集多方视觉证据。`;
-    }
-    if (discarded.length > 0) {
-      promptSystem += `\n\n【🚫 设计师已明确舍弃的内容（负向排除红线）】：\n${discarded
-        .map((d) =>
-          d.type === "image"
-            ? `- [已舍弃图像] ${d.label || "舍弃参考图"}（必须避开该图的色彩调性、构图与设计风格）`
-            : `- [${d.type}] ${d.label ? `${d.label}: ` : ""}${d.content}`,
-        )
-        .join("\n")}\n严禁推荐与上述已舍弃项相关的关键词，且生成的搜索式中可自动加入负向排除语法（如 -keyword）！`;
-    }
-  }
-
-  if (visualImages.length > 0) {
-    promptSystem += `\n\n【⚠️ 附带视觉参考图像（已作为多模态输入提供）】：\n本次视点探索附带了 ${visualImages.length} 张设计师确认的视觉参考图。\n请在提取搜索关键词与平台推荐时，结合这些图像的实际视觉质感、色系和构图风格，提供能搜到类似质感高级范例的精准专业检索式！`;
-  }
-
-  const sanitizedInput = {
-    ...input,
-    images:
-      visualImages.length > 0
-        ? `[共附带 ${visualImages.length} 张视觉图像]`
-        : undefined,
-    decisions: input.decisions
-      ? {
-          confirmed: input.decisions.confirmed.map((c) =>
-            c.type === "image"
-              ? { ...c, content: "[已作为视觉图像输入]" }
-              : c,
-          ),
-          uncertain: input.decisions.uncertain.map((u) =>
-            u.type === "image" ? { ...u, content: "[待定视觉图像]" } : u,
-          ),
-          discarded: input.decisions.discarded.map((d) =>
-            d.type === "image"
-              ? { ...d, content: "[已舍弃视觉图像]" }
-              : d,
-          ),
-        }
-      : undefined,
-  };
-
   const userPrompt = `【当前需要检索的工位视点与设计上下文】：
 - 设计任务主体：${rawGoal}
 ${deliverable ? `- 交付形态：${deliverable}` : ""}
@@ -530,9 +453,9 @@ ${deliverables ? `- 期望参考物料：${deliverables}` : ""}
 请为上述工位视点生成正好 3 个主来源平台和 2–4 个备选平台，关键词必须精炼、专业，直接映射到该视点的具体工艺/形态与当前品类载体！
 
 完整输入 JSON：
-${JSON.stringify(sanitizedInput)}`;
+${JSON.stringify(input)}`;
 
-  return completeJson(promptSystem, userPrompt, "none", visualImages).then((payload) =>
+  return completeJson(promptSystem, userPrompt, "none").then((payload) =>
     normalizeLivePlatformPayload(payload, input),
   );
 }

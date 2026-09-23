@@ -9,35 +9,16 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
 当前设计任务的方向（Design State）已经收敛并由用户正式确认。
 你的任务是基于设计界成熟的 Creative Territories（创意领地）提案模型（借鉴 Pentagram / Wolff Olins 的商业提案实践），为该任务生成正好 3 条互不相同、正交互补、画面感极强的【设计主题（Design Themes）】。
 
-【核心定位与绝对红线 · 绝非落地施工工具，纯做视觉灵感与头脑风暴（铁律）】：
-1. 我们的智能体【绝对不帮设计师落地】，不提供工厂生产制造规范，不写施工打样说明书！
-2. 我们的唯一使命：【前期视觉参考、头脑风暴、审美意境描摹与设计灵感激发】！
-3. 严禁出现任何“落地”字眼与生产交付话术：
-   - 严禁输出“落地”、“落地法”、“落地案”、“商业落地”、“工程落地”、“易于量产”等词汇！
-   - 一律转换为“视觉参考”、“设计灵感”、“美学表现”、“创意演绎”！
-4. 严禁包含任何具体的工业制造与印刷工程参数：
-   - 绝对禁止输出具体克重（如“300g”、“400克重”、“157g”等）！一律使用“特种棉纸”、“细腻质感纸”、“原浆纸板”等纯审美感官词汇！
-   - 绝对禁止输出印刷车间施工质检术语（如“压凹压力需精确匹配”、“导致纸面破裂”、“刀模走线”、“模切公差”等）！
-5. 【保持纯度 / 注意边界 (cons) 必须是美学调性与风格防跑偏，绝非工程质检避坑】：
-   - cons 必须且只能从【画面构图、留白节奏、风格纯粹度、色彩干扰、符号抽象度】等审美角度提出防跑偏建议！
-   - 正例：“大面积留白在自然光下若无微肌理支撑易显得苍白空洞，需保持纸张微絮光泽与阴影层次”、“几何剪影需控制抽象程度，避免意象过度模糊失去品类特征”。
-   - 严禁写成工厂师傅质检避坑指南（绝对禁止写“压凹过深破裂”、“压力克重匹配”等工业施工警告）！
-6. 【视觉快照 (visualSnapshot) 必须是纯粹的画面意境描摹】：
-   - 描绘最终成品在光影与真实场景下的视觉质感、构图、比例与情绪感受。
-   - 绝对禁止包含克重（如“300g”）、厚度毫米数、工程参数等！
-
-【最高准则 · 核心品类与设计载体绝对锁死，深度契合最初 Brief 与全部问答决策】：
-1. 必须 100% 严格锚定用户在初始 Brief 中输入的具体任务与设计品类主体（如“冷泡茶包装”、“可持续材料器物”、“UI/SaaS”等）！
-2. 必须深度融入问答环节（Q&A Rounds）用户所做出的每一个选择和自定义输入！
-   - 仔细审视【问答收敛环节用户的核心取舍】中记录的每道题用户答案（包括选项和自定义输入文本）。
-   - 3 个主题必须分别从不同角度把用户在问答中锁定的核心偏好（如“日式克制”、“日常仪式感”、“微触感”等）贯彻到视觉快照、基调手法与切入视点中！
-   - 严禁品类错位，严禁脱离用户的问答决策自说自话！
+【最高准则 · 核心品类与设计载体绝对锁死（严禁上下文漂移）】：
+1. 绝对锚定用户需求的核心品类主体与交付载体（如“可持续材料产品”、“生活器物”、“实体包装”、“UI/SaaS”、“品牌全案”等）！收敛问答中确认的调性（如“白色”、“极简”、“高级”）只是修饰词，绝不能篡位成核心主体！
+2. 严禁品类错位：严禁将“可持续材料与实体器物”做成“平面品牌纸厂打样”或“瑞士网格排版标签”，严禁将“UI界面”做成“实体包装盒”！
+3. 所有 3 个设计主题（Theme）、快照（Snapshot）和切入视点（Steps），必须全部深度服务于【该设计任务的具体载体】。
 
 关键原则与语言风格（杜绝伪需求，彻底摒弃假大空套话与AI味）：
 1. 绝对禁词：严禁使用“赋能、多维共鸣、叙事解构、心流体验、空间重构、生态感知、交融升华、高级感、轻奢风、自然简约、一眼看懂、一目了然”等任何空洞浮夸的公关大词或轻佻AI套话。
 2. 严禁泄漏代码变量名与刻板模板：绝对禁止在任何输出文本中包含任何英文代码变量名或系统字段词（严禁输出 uncertainties、quality_source、confirmedDimensions、id、state、payload 等！）。严禁机械套用“针对前期对于想要...的纠结”等模板句式，必须直接、中肯地陈述设计与审美依据！
 3. 通俗易懂、体现懂行的专业感，且【画面呈象第一】：
-   - 必须使用设计师在工位上真实沟通与商业提案中的大白话与专业词汇（如：“纤维质感”、“哑光漫反射”、“有机握持弧度”、“双栏模块化网格”、“中西文字阶对比”、“负空间呼吸感”、“桌面静物感”）。
+   - 必须使用设计师在工位上真实沟通与商业提案中的大白话与专业词汇（如：“纤维压合密度”、“哑光漫反射”、“有机握持弧度”、“双栏模块化网格”、“中西文字阶对比”、“负空间呼吸感”、“桌面静物感”）。
    - 必须提供 themeName：4–8 字响亮直观的大主题名（紧扣任务与载体，如可持续产品中「原生纤维 · 触感转化」、「情感器物 · 陪伴隐喻」、「现代机能 · 日常共生」；包装案中「素纸微白 · 原生触觉」等）。
    - 必须提供 visualSnapshot：用 1–2 句具象大白话描绘“最终画面长什么样”，画面感极强且紧扣当前品类主体与材质。严禁脱离主体、严禁使用“一眼看懂”、“让人一目了然”等轻佻AI套话！
 4. 严格单推荐规则：
@@ -46,7 +27,7 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
 跨设计品类自适应的三条正交创意领地（Creative Territories · 严禁生搬硬套）：
 必须严格根据当前任务的【核心载体与设计领域】自适应演绎 3 条正交路径：
 1. 【实体产品 / 可持续材料 / 生活器物类】（如宠物毛发回收再生新材料、家居生活器物、硬件产品等）：
-   - 领地一【原生质感与物性转化】：聚焦材料本身的真实转化、原生肌理、微气孔触感、原生杂色与自然漫反射光泽，拒绝塑料假感；
+   - 领地一【原生质感与物性转化】：聚焦材料本身的真实转化、再生纤维压合肌理、微气孔触感、原生杂色与自然漫反射光泽，拒绝塑料假感；
    - 领地二【情感隐喻与器物形态】：聚焦三维造型语言、柔和有机曲线、微握持触觉弧度、日常陪伴感与抚慰心理语义；
    - 领地三【现代机能与日常共生】：聚焦功能性构件、精妙微卡扣/结合部、克制线条比例，与现代家居/办公环境和谐共生。
 2. 【实体包装与容器类】（如茶叶包装、美妆瓶盒、食品礼盒等）：
@@ -65,16 +46,16 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
 严格字段契约：
 - themeName: 4–8 字响亮直观的大主题名（紧扣品类主体与手法）。
 - title: 必须采用【视觉抓手/工艺手法】具体手法名 格式。
-- visualSnapshot: 1–2 句具象大白话描绘“最终画面/实物长什么样”，画面感极强且紧扣当前品类主体与材质。绝不夹带克重参数（严禁写“300g”等）。
+- visualSnapshot: 1–2 句具象大白话描绘“最终画面/实物长什么样”，画面感极强且紧扣当前品类主体与材质。
 - focusDimension: 视觉核心切入点。
 - startingPoint: 独特的探索起点（简短精炼）。
 - coreProblem: 核心设计抉择（说明主动放弃了什么、押注了什么，必须呼应用户收敛确立的 Priorities 与 Avoid）。
-- purpose: 具象的视觉美学手法。
+- purpose: 具象的视觉执行手法。
 - pros: 视觉亮点 / 灵感抓手（画面、构图、色彩或材质上最出彩的审美特质）。
-- cons: 调性纯度与风格防跑偏建议（纯审美维度，如留白比例、对比度控制、符号抽象度等，绝对严禁写成印刷质检参数如“压凹过深纸面破裂”）。
+- cons: 防跑偏提示 / 注意边界（探索该方向时需警惕的调性陷阱或审美红线）。
 - feasibility: "high" | "medium" | "challenging"。
 - timeframe: 探索打样周期（如"0.5–1 天"、"1–2 天"）。
-- recommendedReason: 仅在推荐主题填写自然中肯的美学解题理由（直接陈述为什么该方案在美学上最能启发灵感并契合用户偏好，严禁使用“针对前期对于...的纠结”或出现“落地”字眼！），其余两个探索主题严格填 null。
+- recommendedReason: 仅在推荐主题填写自然中肯的设计解题理由（直接陈述为什么该方案最能达成设计意图并平衡落地，严禁使用“针对前期对于...的纠结”等模板套话！），其余两个探索主题严格填 null。
 - steps: 恰好 3 个前期灵感切入视点（Visual Inspiration Angles，紧扣品类与主题）：
   * 核心定位：SIFT 只做【前期视觉灵感探索与审美收敛】，不做后期落地生产工程！
   * title: 4–8 字纯视觉切入视点。
@@ -130,27 +111,6 @@ export function sanitizeLeakedVariables(text: string): string {
     .replace(/\bquality_source\b/gi, "品质与工艺")
     .replace(/\bconfirmedDimensions\b/gi, "已确认维度")
     .replace(/\bdesign_state\b/gi, "设计方向")
-    // Remove specific grammage numbers like 300g, 400g, 157g
-    .replace(/(\b|\D)\d{2,4}\s*g(?=[^\w]|$)/gi, "$1")
-    .replace(/\b\d{2,4}克(?:重)?/g, "")
-    // Remove manufacturing factory phrases & QC warnings
-    .replace(/需警惕压凹过深导致纸面破裂或过浅失去触感[，,、]?\s*/g, "需避免压凹过重破坏视觉平整度，")
-    .replace(/压凹过深导致纸面破裂[，,、]?\s*/g, "压凹过重破坏整体雅致，")
-    .replace(/(?:棉纸|特种纸|纸张)?克重与(?:压凹)?压力需精确匹配[，,、]?\s*/g, "")
-    .replace(/否则易显廉价[。.]?/g, "否则易削弱整体高级感。")
-    .replace(/，，/g, "，")
-    .replace(/、、/g, "、")
-    // Replace landing and production terms with visual inspiration language
-    .replace(/视觉转译与落地法/g, "视觉表现与灵感演绎")
-    .replace(/商业落地/g, "商业案例")
-    .replace(/落地法/g, "灵感演绎")
-    .replace(/落地案/g, "完整案例")
-    .replace(/落地性/g, "表现力")
-    .replace(/工程落地/g, "视觉探索")
-    .replace(/平衡落地/g, "兼顾美感")
-    .replace(/落地/g, "参考")
-    .replace(/生产级/g, "成熟")
-    .replace(/打样/g, "质感实拍")
     .trim();
 }
 
@@ -263,7 +223,7 @@ export function normalizeLiveRoutesPayload(
     defaultPurposes = [
       "以回收纤维本身的物性转化与微气孔触感构建真实耐看的产品肌理体验",
       "以符合人体抚触习惯的有机器物形态传递情感疗愈与陪伴温度",
-      "以现代极简机能结构与精致收口呈现可持续新材料在日常器物中的美感",
+      "以现代极简机能结构与精致收口实现可持续新材料在日常产品中的优雅落地",
     ];
     defaultPros = [
       "材料原生肌理独特且具辨识度，自然光下呈现温润微光泽，环保与品质感兼具",
@@ -530,15 +490,15 @@ export function normalizeLiveRoutesPayload(
 
   const routes: Route[] = rawRoutes.slice(0, 3).map((r, i) => {
     const routeId = nonEmpty(r.id, `route_${i + 1}`);
-    let starting = nonEmpty(r.startingPoint, defaultStarts[i] ?? `探索切入 ${i + 1}`);
+    let starting = nonEmpty(r.startingPoint, defaultStarts[i] ?? `探索领地 ${i + 1}`);
     if (seenStarting.has(starting)) {
-      starting = `${starting}（切入点 ${i + 1}）`;
+      starting = `${starting}（领地 ${i + 1}）`;
     }
     seenStarting.add(starting);
 
     let title = nonEmpty(r.title, defaultTitles[i] ?? `设计主题 ${i + 1}`);
     if (/^(自然|极简|高级|复古|现代|轻奢|科技感|温暖|可爱|优雅|大气|高端|简约|清新|质感|时尚|酷炫|潮流)$/.test(title)) {
-      title = `【${title}】视觉表现与灵感演绎`;
+      title = `【${title}】视觉转译与落地法`;
     }
 
     let themeName = typeof r.themeName === "string" && r.themeName.trim()
@@ -663,7 +623,7 @@ export function normalizeLiveRoutesPayload(
       title: defaultTitles[i] ?? `【视觉策略与探索】实战方案 0${i + 1}`,
       themeName: defaultThemeNames[i] ?? `设计主题 0${i + 1}`,
       visualSnapshot: defaultSnapshots[i] ?? "大面积纯净留白，依靠材质微肌理与清晰字阶呈现克制现代美感。",
-      startingPoint: defaultStarts[i] ?? `切入维度 0${i + 1}`,
+      startingPoint: defaultStarts[i] ?? `领地 0${i + 1}`,
       focusDimension: defaultDimensions[i] ?? "综合美学表现",
       coreProblem: defaultCoreProblems[i] ?? defaultCoreProblems[0],
       purpose: defaultPurposes[i] ?? defaultPurposes[0],
@@ -759,83 +719,6 @@ export function liveRoutes(input: RoutesInput): Promise<unknown> {
     promptSystem += `\n\n【用户更换主题指令】：用户对上一批设计主题（${input.excludeThemeNames.join("、")}）不满意，要求换一批全新的创意领地与设计主题！严禁与上述主题重复或雷同，必须推导截然不同的视觉手法与画面呈象！`;
   }
 
-  // Extract confirmed visual images for multimodal vision model
-  const visualImages: string[] = [];
-  if (input.images && Array.isArray(input.images)) {
-    for (const img of input.images) {
-      if (typeof img === "string" && img.trim()) {
-        visualImages.push(img.trim());
-      }
-    }
-  }
-  if (input.decisions?.confirmed) {
-    for (const c of input.decisions.confirmed) {
-      if (c.type === "image" && c.content && !visualImages.includes(c.content)) {
-        visualImages.push(c.content);
-      }
-    }
-  }
-
-  if (input.decisions) {
-    const { confirmed, uncertain, discarded } = input.decisions;
-    if (confirmed.length > 0) {
-      promptSystem += `\n\n【⚠️ 设计师已明确确认的设计基石（绝对硬约束）】：\n${confirmed
-        .map((c) =>
-          c.type === "image"
-            ? `- [视觉参考图] ${c.label || "参考图像"}（已作为多模态视觉图像输入）`
-            : `- [${c.type}] ${c.label ? `${c.label}: ` : ""}${c.content}`,
-        )
-        .join("\n")}\n生成的 3 个设计主题必须 100% 贯彻并呼应上述已确认项！`;
-    }
-    if (uncertain.length > 0) {
-      promptSystem += `\n\n【设计师暂定不确定的探索点（3 套主题可围绕此进行差异化发散）】：\n${uncertain
-        .map((u) =>
-          u.type === "image"
-            ? `- [待定参考图] ${u.label || "待定图像"}`
-            : `- [${u.type}] ${u.label ? `${u.label}: ` : ""}${u.content}`,
-        )
-        .join("\n")}\n可在不同主题中对上述不确定想法尝试不同的视觉解法。`;
-    }
-    if (discarded.length > 0) {
-      promptSystem += `\n\n【🚫 设计师已明确舍弃的内容（绝对红线，严禁出现）】：\n${discarded
-        .map((d) =>
-          d.type === "image"
-            ? `- [已舍弃图像] ${d.label || "舍弃参考图"}（必须避开该图的色彩调性、构图与设计风格）`
-            : `- [${d.type}] ${d.label ? `${d.label}: ` : ""}${d.content}`,
-        )
-        .join("\n")}\n严禁在主题名称、视觉快照、设计哲学与步骤中推荐任何与上述已舍弃项相似的方向！`;
-    }
-  }
-
-  if (visualImages.length > 0) {
-    promptSystem += `\n\n【⚠️ 附带视觉参考图像（已作为多模态输入提供）】：\n本次输入附带了 ${visualImages.length} 张设计师确认的视觉参考图。\n请你仔细观察并解构这些图像的：\n1. 真实色彩与主辅配色倾向（从视觉中提取色调，并在各个设计主题中体现）；\n2. 表面肌理、材质质感与工艺光影（如哑光纸感、纤维微孔、金属光泽等）；\n3. 构图方式与视觉张力（留白比例、负空间、网格节奏等）。\n在推导 3 个设计主题与切入视点时，必须将这些视觉特征转化为专业具体的设计语言！`;
-  }
-
-  const sanitizedInput = {
-    ...input,
-    images:
-      visualImages.length > 0
-        ? `[共附带 ${visualImages.length} 张视觉图像]`
-        : undefined,
-    decisions: input.decisions
-      ? {
-          confirmed: input.decisions.confirmed.map((c) =>
-            c.type === "image"
-              ? { ...c, content: "[已作为视觉图像输入]" }
-              : c,
-          ),
-          uncertain: input.decisions.uncertain.map((u) =>
-            u.type === "image" ? { ...u, content: "[待定视觉图像]" } : u,
-          ),
-          discarded: input.decisions.discarded.map((d) =>
-            d.type === "image"
-              ? { ...d, content: "[已舍弃视觉图像]" }
-              : d,
-          ),
-        }
-      : undefined,
-  };
-
   const userPrompt = `【任务设计背景与已收敛方向状态 (Design State)】：
 - 原始 Brief 核心目标：${rawGoal}
 ${deliverable ? `- 交付载体与媒介：${deliverable}` : ""}
@@ -848,23 +731,17 @@ ${criteria.length ? `- 视觉评价标准 (Criteria)：\n${criteria.map((c, i) =
 ${visualKeywords.length ? `- 已沉淀专业视觉参数 (Visual Keywords)：${visualKeywords.join("、")}` : ""}
 ${constraints.length ? `- 已确认设计约束：${constraints.join("；")}` : ""}
 
-【主题生成铁律（必须全部满足）】：
-1. 深度契合最初 Brief 与全部问答收敛决策：
-   - 3 个主题必须紧扣【${rawGoal}】${deliverable ? `（载体：${deliverable}）` : ""}，严禁品类漂移！
-   - 必须深入且全面地响应上述【问答收敛环节用户的核心取舍】（特别注意用户在问答中明确选定或填写的每一个关键偏好），3 个主题必须分别从不同切入点将用户的问答意向转化为鲜明的视觉启发！
-2. 【纯视觉灵感与头脑风暴，严禁任何落地/生产制造话术】：
-   - SIFT 只为设计师提供前期视觉参考与灵感启发！绝对不帮设计师落地施工，绝不写打样说明书！
-   - 严禁出现“落地”、“落地法”、“落地案”、“商业落地”、“工程落地”等词汇！
-   - 绝对禁止包含具体纸张克重（如“300g”、“400g”等数字参数，请改用“棉纸”、“特种质感纸”等感官词）！
-   - 绝对禁止写出任何印刷施工/机械制造质检参数（严禁写“压凹过深纸面破裂”、“克重与压力需精确匹配”、“模切公差”等车间质检话术）！
-3. 保持纯度 (cons) 必须是纯美学调性防跑偏（画面构图、留白节奏、色彩纯度、符号抽象度），严禁写成印刷施工质检避坑！
-4. visualSnapshot 必须用生动具体的艺术画面大白话描绘出成品在光影与真实空间下的视觉美感。
+【主题生成铁律】：
+1. 3 个设计主题必须严格围绕【${rawGoal}】${deliverable ? `（交付载体：${deliverable}）` : ""}展开，严禁品类漂移！
+2. 必须自适应选择适合【${deliverable || rawGoal}】门类的 3 条创意领地，严禁生搬硬套不相干的 2D 瑞士排版或 Logo 视觉锤！
+3. 3 个主题必须各自从不同侧面积极响应上述已确认的【优先达成维度】，并坚决杜绝上述【严厉杜绝避开的雷区】！
+4. 每一条主题的 visualSnapshot 必须用生动具体的画面大白话描绘出成品在光影与真实场景下的视觉质感。
 5. 必须返回单推荐（recommendedRouteId 对应 1 个主题，其余 2 个主题 recommendedReason 严格填 null）。
 
 完整原始输入 JSON（含上下文 ID 与修订版本）：
-${JSON.stringify(sanitizedInput)}`;
+${JSON.stringify(input)}`;
 
-  return completeJson(promptSystem, userPrompt, "none", visualImages).then((payload) =>
+  return completeJson(promptSystem, userPrompt, "none").then((payload) =>
     normalizeLiveRoutesPayload(payload, input),
   );
 }

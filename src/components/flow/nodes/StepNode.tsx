@@ -1,125 +1,300 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
-import { useSiftStore } from "@/lib/convergence-store";
+import { useSiftStore, getUpstreamSummary } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
-import { cleanStepLabel } from "@/types/routes";
-import {
-  getBriefAnchor,
-  getConvergenceAnchor,
-  toInspirationCopy,
-} from "@/lib/exploration-copy";
-import {
-  Sparkles,
-  ArrowRight,
-  Plus,
-  Trash2,
-  StickyNote,
-  ExternalLink,
-  RefreshCw,
-  ImagePlus,
-} from "lucide-react";
-import { InlineEditableText } from "../InlineEditableText";
-import { VisualInspirationCard } from "../VisualInspirationCard";
-import { VisualInspirationModal } from "../VisualInspirationModal";
-import { AddInspirationDialog } from "../AddInspirationDialog";
-import { type VisualInspiration } from "@/lib/agent/convergence-schema";
+import { cleanStepLabel, type Route, type RouteStep } from "@/types/routes";
+import { toInspirationCopy } from "@/lib/exploration-copy";
+import { Sparkles, ArrowRight, Compass, RefreshCw } from "lucide-react";
 
-function renderNoteContent(text: string) {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = text.split(urlRegex);
-  return (
-    <>
-      {parts.map((part, i) =>
-        urlRegex.test(part) ? (
-          <a
-            key={i}
-            href={part}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[10px] text-accent underline hover:bg-stone-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span>{part.replace(/^https?:\/\/(www\.)?/, "").slice(0, 22)}…</span>
-            <ExternalLink className="h-2.5 w-2.5 shrink-0" />
-          </a>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
-    </>
-  );
-}
+const DEFAULT_FALLBACK_ROUTE: Route = {
+  id: "custom-route",
+  title: "【自定义风格探索】",
+  themeName: "自定义风格探索",
+  focusDimension: "核心材质与视觉调性",
+  startingPoint: "基于自由探索假设切入",
+  coreProblem: "建立独具画面辨识度的视觉语言",
+  purpose: "构建连贯的视觉策略与设计母题",
+  pros: "探索自由度高、可灵活微调",
+  cons: "需自行验证与评估落地可行性",
+  recommendedReason: null,
+  alignmentScore: 90,
+  steps: [
+    {
+      id: "s1",
+      title: "核心母题与造型骨架试验",
+      question: "如何确立第一眼视觉辨识度？",
+      purpose: "提炼核心视觉母题",
+      acceptanceCriteria: ["具备清晰的视觉记忆点", "与整体品牌调性呼应"],
+    },
+    {
+      id: "s2",
+      title: "物料工艺与表面触感试验",
+      question: "选用何种材质与表面处理？",
+      purpose: "深化细节与高级质感",
+      acceptanceCriteria: ["明确主材质与辅助材质搭配", "表面微纹理具可实现性"],
+    },
+    {
+      id: "s3",
+      title: "场景交互与整体系统试验",
+      question: "在真实场景中如何落地共生？",
+      purpose: "验证全案完整度",
+      acceptanceCriteria: ["延展至全系列包装或器物", "受众体验触点连贯一致"],
+    },
+  ],
+};
 
-export function StepNode({ id, selected }: NodeProps) {
+export function StepNode({ id, data, selected }: NodeProps) {
   const routes = useSiftStore((s) => s.routes);
+  const customCards = useSiftStore((s) => s.customCards);
+  const customEdges = useSiftStore((s) => s.customEdges);
+  const synthesizeCard = useSiftStore((s) => s.synthesizeCard);
   const selectedRouteId = useSiftStore((s) => s.selectedRouteId);
   const activeStepId = useSiftStore((s) => s.activeStepId);
   const platformPlans = useSiftStore((s) => s.platformPlans);
-  const stepNotes = useSiftStore((s) => s.stepNotes);
-  const addStepNote = useSiftStore((s) => s.addStepNote);
-  const removeStepNote = useSiftStore((s) => s.removeStepNote);
   const activeRequest = useSiftStore((s) => s.activeRequest);
-  const rawBrief = useSiftStore((s) => s.rawBrief);
-  const state = useSiftStore((s) => s.state);
-  const updateRouteStep = useSiftStore((s) => s.updateRouteStep);
 
-  const [noteInput, setNoteInput] = useState("");
-  const visualInspirations = useSiftStore((s) => s.visualInspirations || []);
-  const [inspectorItem, setInspectorItem] = useState<VisualInspiration | null>(null);
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [showThemeTrace, setShowThemeTrace] = useState(false);
+  const [localStepId, setLocalStepId] = useState<string | null>(null);
 
-  const route = routes.find((r) => r.id === selectedRouteId);
-  if (!route) return null;
+  const isEmpty = Boolean((data as any)?.isEmpty);
 
-  const activeIdx = route.steps.findIndex((s) => s.id === activeStepId);
-  const currentStep = route.steps[activeIdx] ?? route.steps[0];
-
-  const stepVisuals = visualInspirations.filter(
-    (v) => (v.scope === "step" && v.targetId === currentStep?.id) ||
-           (v.scope === "route" && v.targetId === route.id)
+  const upstream = useMemo(
+    () => getUpstreamSummary(id, { customEdges, routes, customCards }),
+    [id, customEdges, routes, customCards],
   );
+
+  if (isEmpty) {
+    const hasUpstream = upstream.count > 0;
+    return (
+      <div className="w-[390px] transition-all duration-300 hover:shadow-md">
+        <NodeShell
+          nodeId={id}
+          stage="04"
+          kicker="04 视点推进 · 空白视点待推导"
+          title={hasUpstream ? `已连接 ${upstream.count} 个上游，等待生成` : "等待连线导入设计主题"}
+          badge={
+            <span className="text-[10px] font-mono text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
+              空白卡片
+            </span>
+          }
+          selected={selected}
+          collapsedContent={
+            <div className="text-xs text-stone-500 py-1 flex items-center gap-1.5">
+              <ArrowRight className="h-3.5 w-3.5 text-indigo-400" />
+              <span>{hasUpstream ? `已连 ${upstream.count} 个上游，点击展开生成` : "未关联设计主题，从「03 风格主题」引线连接"}</span>
+            </div>
+          }
+        >
+          <div className="space-y-3 py-1">
+            {hasUpstream ? (
+              <div className="rounded-xl border border-purple-200/90 bg-purple-50/60 p-4 text-center space-y-3">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-700 shadow-xs">
+                  <Sparkles className="h-5 w-5 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-stone-800">
+                    已关联 {upstream.count} 个设计上下文
+                  </h4>
+                  <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
+                    {upstream.labels.map((lbl, i) => (
+                      <span
+                        key={i}
+                        className="rounded-md bg-white px-2 py-0.5 text-[10px] font-medium text-purple-700 border border-purple-100 shadow-2xs"
+                      >
+                        {lbl}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => synthesizeCard(id)}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-[0.99] text-white text-xs font-semibold shadow-md shadow-purple-200 transition-all cursor-pointer"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-purple-200" />
+                  <span>点击根据已连主题生成视点试验</span>
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-indigo-200/90 bg-indigo-50/40 p-4 text-center space-y-2">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100/80 text-indigo-600 shadow-xs">
+                  <ArrowRight className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-stone-800">
+                    尚未关联设计主题
+                  </h4>
+                  <p className="mt-0.5 text-[11px] text-stone-500 leading-relaxed">
+                    从任意「03 风格主题」卡片拖动引线至此卡片，然后点击下方按钮生成
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  disabled
+                  className="w-full py-2.5 px-3 rounded-xl bg-stone-100 text-stone-400 text-xs font-medium cursor-not-allowed border border-stone-200/60"
+                >
+                  等待连线导入设计主题
+                </button>
+              </div>
+            )}
+
+            <div className="rounded-xl bg-stone-50/80 border border-line/60 p-3 space-y-1.5 text-[11px] text-stone-600">
+              <div className="font-semibold text-stone-700 flex items-center gap-1.5">
+                <Compass className="h-3.5 w-3.5 text-indigo-500" />
+                <span>支持的引线连接与生成模式：</span>
+              </div>
+              <p className="leading-relaxed pl-1 text-stone-600">
+                自动将该主题的三阶段视点（01 核心母题骨架试验、02 物料工艺微触感试验、03 场景交互系统试验）导入推进工作台，展开多视点平行试验。
+              </p>
+            </div>
+          </div>
+        </NodeShell>
+      </div>
+    );
+  }
+
+  const routeFromData = (data as any)?.route as Route | undefined;
+  const route =
+    routeFromData ??
+    routes.find((r) => r.id === selectedRouteId) ??
+    customCards.find((c) => c.data?.route?.id === selectedRouteId || c.id === selectedRouteId)?.data?.route ??
+    routes[0] ??
+    DEFAULT_FALLBACK_ROUTE;
+
+  const steps = route.steps && route.steps.length > 0 ? route.steps : DEFAULT_FALLBACK_ROUTE.steps;
+  const targetStepId =
+    localStepId ??
+    (data as any)?.stepId ??
+    (route.steps?.some((st: RouteStep) => st.id === activeStepId)
+      ? activeStepId
+      : route.steps?.[0]?.id);
+  const activeIdx = Math.max(0, steps.findIndex((s: RouteStep) => s.id === targetStepId));
+  const currentStep = steps[activeIdx] ?? steps[0];
   const hasPlanForCurrent = platformPlans.some(
     (p) => p.stepId === currentStep.id,
   );
-  const hasNextStep = activeIdx < route.steps.length - 1;
-  const currentNotes = stepNotes[currentStep.id] ?? [];
-
-  const handleAddNote = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!noteInput.trim()) return;
-    addStepNote(currentStep.id, noteInput);
-    setNoteInput("");
-  };
-
-  const collapsedSummary = (
-    <div className="flex items-center justify-between gap-1.5 w-full">
-      <span className="truncate text-stone-600 font-sans">
-        视点 0{activeIdx + 1}/{route.steps.length} · {cleanStepLabel(currentStep.title)}
-      </span>
-      <span className="text-[9.5px] font-mono text-stone-400 shrink-0">
-        {hasPlanForCurrent ? "方案已就绪" : "待检索"}
-      </span>
-    </div>
-  );
+  const hasNextStep = activeIdx < steps.length - 1;
 
   return (
-    <div className="w-[380px] sm:w-[390px]">
+    <div className="w-[390px]">
       <NodeShell
-        nodeId={id || "steps"}
+        nodeId={id}
         stage="04"
-        kicker={`灵感切入 · 视点 0${activeIdx + 1}/${route.steps.length}`}
-        title={route.themeName || route.title}
-        collapsedSummary={collapsedSummary}
+        kicker={`04 视点推进 · ${route.themeName || route.title}`}
+        title={`视点试验推进 (0${activeIdx + 1}/${steps.length})`}
+        onRegenerate={upstream.count > 0 ? () => synthesizeCard(id) : undefined}
         selected={selected}
+        collapsedContent={
+          <div className="space-y-2 text-xs">
+            {/* Clickable 3 experiment tabs even when collapsed */}
+            <div className="flex items-center gap-1.5 w-full">
+              {steps.map((st: RouteStep, i: number) => {
+                const isCurrent = st.id === currentStep.id;
+                const isCompleted = i < activeIdx;
+                return (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLocalStepId(st.id);
+                      siftActions.activateStep(st.id);
+                    }}
+                    className={`flex-1 min-w-0 flex items-center justify-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors cursor-pointer ${
+                      isCurrent
+                        ? "bg-ink text-white font-semibold shadow-xs"
+                        : isCompleted
+                          ? "bg-stone-100 text-stone-700 hover:text-ink hover:bg-stone-200"
+                          : "bg-stone-50 text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+                    }`}
+                    title={`切换到视点 0${i + 1}：${st.title}`}
+                  >
+                    <span className="text-[10px] font-mono shrink-0">
+                      {isCompleted ? "✓" : `0${i + 1}`}
+                    </span>
+                    <span className="whitespace-nowrap shrink-0">{cleanStepLabel(st.title)}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Current Active Experiment Key View */}
+            <div className="bg-stone-50/80 p-2.5 rounded-lg border border-line/60 space-y-1">
+              <div className="flex items-center justify-between text-[10px] text-stone-500 font-semibold">
+                <span>视点 0{activeIdx + 1} · {cleanStepLabel(currentStep.title)} 探索焦点</span>
+                <span className="font-mono text-[9px] text-stone-400">FOCUS</span>
+              </div>
+              <p className="text-xs sm:text-[12.5px] font-semibold text-ink leading-snug">
+                {toInspirationCopy(currentStep.question)}
+              </p>
+              {currentStep.purpose && (
+                <p className="text-[11px] text-stone-500 leading-snug pt-0.5 border-t border-line/40">
+                  <span className="font-medium text-stone-600">观察：</span>
+                  {toInspirationCopy(currentStep.purpose)}
+                </p>
+              )}
+            </div>
+          </div>
+        }
       >
         <div className="space-y-3 text-xs">
+          {/* Upstream context indicator and re-generate button */}
+          {upstream.count > 0 && (
+            <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-purple-50/80 border border-purple-200/80 text-[11px] text-purple-900">
+              <div className="flex items-center gap-1.5 font-medium truncate min-w-0 pr-2">
+                <Sparkles className="h-3 w-3 text-purple-600 shrink-0" />
+                <span className="truncate">已连 {upstream.count} 个上游：{upstream.labels.join(" + ")}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => synthesizeCard(id)}
+                className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-md bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-semibold transition-colors cursor-pointer shadow-xs"
+                title="根据当前连线上游重新生成视点试验"
+              >
+                <RefreshCw className="h-3 w-3" />
+                <span>重新生成</span>
+              </button>
+            </div>
+          )}
+          {/* Foldable Theme Trace Header */}
+          <div className="flex items-center justify-between text-[11px] pb-0.5">
+            <span className="font-semibold text-stone-700">
+              视点切入试验 ({activeIdx + 1}/{steps.length})
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowThemeTrace(!showThemeTrace)}
+              className="text-[10.5px] text-stone-400 hover:text-indigo-600 transition-colors flex items-center gap-1 cursor-pointer font-medium"
+              title="展开查看所属主题与灵感画面"
+            >
+              <Compass className="h-3 w-3" />
+              <span>{showThemeTrace ? "收起主题画面" : "主题灵感画面"}</span>
+            </button>
+          </div>
+
+          {/* Foldable Theme & Visual Snapshot Trace */}
+          {showThemeTrace && (
+            <div className="rounded-xl border border-indigo-200/80 bg-indigo-50/50 p-2.5 space-y-1.5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between text-[10px] font-semibold text-indigo-950">
+                <span>所属主题：{route.themeName || route.title}</span>
+                <span className="font-mono text-[9px] text-indigo-500">THEME SNAPSHOT</span>
+              </div>
+              {route.visualSnapshot && (
+                <p className="text-[11px] text-stone-700 leading-relaxed italic bg-white/90 p-2.5 rounded-lg border border-indigo-100 font-serif">
+                  “{toInspirationCopy(route.visualSnapshot)}”
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Step Timeline Indicator - All tabs fit evenly, 100% visible, no cut-off */}
           <div className="flex items-center gap-1.5 w-full">
-            {route.steps.map((st, i) => {
+            {steps.map((st: RouteStep, i: number) => {
               const isCurrent = st.id === currentStep.id;
               const isCompleted = i < activeIdx;
               return (
@@ -127,7 +302,8 @@ export function StepNode({ id, selected }: NodeProps) {
                   key={st.id}
                   type="button"
                   onClick={() => {
-                    if (i !== activeIdx) siftActions.activateStep(st.id);
+                    setLocalStepId(st.id);
+                    siftActions.activateStep(st.id);
                   }}
                   className={`flex-1 min-w-0 flex items-center justify-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors ${
                     isCurrent
@@ -140,7 +316,7 @@ export function StepNode({ id, selected }: NodeProps) {
                   <span className="text-[10px] font-mono shrink-0">
                     {isCompleted ? "✓" : `0${i + 1}`}
                   </span>
-                  <span className="truncate">{cleanStepLabel(st.title)}</span>
+                  <span className="whitespace-nowrap shrink-0">{cleanStepLabel(st.title)}</span>
                 </button>
               );
             })}
@@ -149,90 +325,35 @@ export function StepNode({ id, selected }: NodeProps) {
           {/* Current Step Focus Box - Pure Visual Inspiration */}
           <div className="rounded-xl border border-line/80 bg-white/95 p-3.5 shadow-xs space-y-2.5">
             <div>
-              <div className="flex items-center justify-between text-[10.5px] font-semibold text-stone-600 mb-1">
-                <div className="flex items-center gap-1">
-                  <span>视点 0{activeIdx + 1} ·</span>
-                  <InlineEditableText
-                    value={cleanStepLabel(currentStep.title)}
-                    onSave={(newTitle) =>
-                      updateRouteStep(route.id, currentStep.id, { title: newTitle })
-                    }
-                    as="span"
-                    className="font-semibold text-stone-700"
-                    label="视点标题"
-                  />
-                </div>
+              <div className="flex items-center justify-between text-[10px] font-semibold text-stone-500 uppercase tracking-wider mb-1">
+                <span>视点 0{activeIdx + 1} · {cleanStepLabel(currentStep.title)}</span>
+                <span className="font-mono text-[9px] text-stone-400">VISUAL FOCUS</span>
               </div>
-              <InlineEditableText
-                value={toInspirationCopy(currentStep.question)}
-                onSave={(newQuestion) =>
-                  updateRouteStep(route.id, currentStep.id, { question: newQuestion })
-                }
-                multiline
-                minRows={3}
-                as="p"
-                className="text-xs sm:text-[13px] font-semibold text-ink leading-snug block w-full"
-                label="视点设问"
-                showEditIcon
-              />
+              <p className="text-xs sm:text-[13px] font-semibold text-ink leading-snug">
+                {toInspirationCopy(currentStep.question)}
+              </p>
             </div>
 
             {currentStep.purpose && (
-              <div className="pt-2 border-t border-line/40 text-[11px] text-stone-600 leading-relaxed flex items-start gap-1">
-                <span className="font-medium text-stone-700 shrink-0">这一步要观察：</span>
-                <InlineEditableText
-                  value={toInspirationCopy(currentStep.purpose)}
-                  onSave={(newPurpose) =>
-                    updateRouteStep(route.id, currentStep.id, { purpose: newPurpose })
-                  }
-                  multiline
-                  minRows={3}
-                  as="span"
-                  className="text-stone-600 block flex-1"
-                  label="观察重点"
-                />
+              <div className="pt-2 border-t border-line/40 text-[11px] text-stone-600 leading-relaxed">
+                <span className="font-medium text-stone-700">这一步要观察：</span>
+                {toInspirationCopy(currentStep.purpose)}
               </div>
             )}
 
-            {/* Step Visual Inspirations */}
-            <div className="pt-2 border-t border-line/40 space-y-1.5">
-              <div className="flex items-center justify-between text-[10px]">
-                <span className="font-semibold text-stone-500 flex items-center gap-1">
-                  <ImagePlus className="h-3 w-3 text-indigo-600" />
-                  本视点灵感采集（{stepVisuals.length} 单元）
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setAddDialogOpen(true)}
-                  className="text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-0.5 cursor-pointer"
-                  title="为本视点添加灵感图或外部参考"
-                >
-                  <Plus className="h-2.5 w-2.5" />
-                  <span>添加</span>
-                </button>
-              </div>
-              {stepVisuals.length > 0 ? (
-                <div className="grid grid-cols-2 gap-1.5">
-                  {stepVisuals.map((item) => (
-                    <VisualInspirationCard
-                      key={item.id}
-                      inspiration={item}
-                      compact
-                      onOpenInspector={(vis) => setInspectorItem(vis)}
-                    />
+            {currentStep.acceptanceCriteria && currentStep.acceptanceCriteria.length > 0 && (
+              <div className="pt-2 border-t border-line/40 space-y-1.5 text-[11px]">
+                <span className="font-medium text-stone-700 block text-[10.5px]">观察与检验焦点：</span>
+                <div className="space-y-1">
+                  {currentStep.acceptanceCriteria.map((criterion: string, cIdx: number) => (
+                    <div key={cIdx} className="flex items-start gap-1.5 text-stone-600 leading-relaxed">
+                      <span className="text-accent text-[10px] mt-0.5">•</span>
+                      <span>{toInspirationCopy(criterion)}</span>
+                    </div>
                   ))}
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setAddDialogOpen(true)}
-                  className="w-full py-1.5 rounded-lg border border-dashed border-stone-300 hover:border-indigo-400 bg-stone-50/50 hover:bg-white text-[10px] text-stone-500 hover:text-indigo-600 flex items-center justify-center gap-1 cursor-pointer transition-colors"
-                >
-                  <Plus className="h-3 w-3" />
-                  <span>采集此视点的参考图或网络灵感</span>
-                </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -243,11 +364,11 @@ export function StepNode({ id, selected }: NodeProps) {
                 className="btn-primary w-full text-xs flex items-center justify-center gap-1.5 py-2.5 shadow-xs"
                 disabled={Boolean(activeRequest)}
                 onClick={() =>
-                  void siftActions.generatePlatformPlan(currentStep.id)
+                  void siftActions.generatePlatformPlan(currentStep.id, route.id)
                 }
               >
                 <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-                <span className="font-medium">为这个视点找灵感 (05) →</span>
+                <span className="font-medium">读取视点，规划灵感检索 (05) →</span>
               </button>
             ) : (
               hasNextStep && (
@@ -255,107 +376,22 @@ export function StepNode({ id, selected }: NodeProps) {
                   type="button"
                   className="btn-primary w-full text-xs flex items-center justify-center gap-1.5 py-2.5 shadow-xs"
                   disabled={Boolean(activeRequest)}
-                  onClick={() => void siftActions.nextStep()}
+                  onClick={() => {
+                    const next = steps[activeIdx + 1];
+                    if (next) {
+                      setLocalStepId(next.id);
+                      siftActions.activateStep(next.id);
+                    }
+                  }}
                 >
-                  <span>下一个切入视点：{cleanStepLabel(route.steps[activeIdx + 1]?.title)}</span>
+                  <span>下一个切入视点：{cleanStepLabel(steps[activeIdx + 1]?.title)}</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               )
             )}
-            <div className="flex items-center justify-between gap-2 pt-0.5">
-              <button
-                type="button"
-                className="btn-ghost flex-1 !py-1 text-[11px] text-muted hover:text-ink"
-                onClick={() => siftActions.reselectRoute()}
-              >
-                重选设计主题
-              </button>
-              <button
-                type="button"
-                className="btn-ghost flex-1 !py-1 text-[11px] text-muted hover:text-ink flex items-center justify-center gap-1"
-                onClick={() => void siftActions.regenerateRoutes()}
-                title="重新构思一组全新主题"
-              >
-                <RefreshCw className="h-2.5 w-2.5" />
-                <span>换一批主题</span>
-              </button>
-            </div>
           </div>
-
-          {/* Designer Step Notes (灵感速记与参考链接) */}
-          <details
-            open={currentNotes.length > 0}
-            className="group rounded-xl border border-line/60 bg-cream/40 p-2 text-xs"
-          >
-            <summary className="flex items-center justify-between cursor-pointer font-medium text-stone-600 hover:text-ink select-none px-1 py-0.5">
-              <span className="flex items-center gap-1.5 text-[11px]">
-                <StickyNote className="h-3 w-3 text-amber-600" />
-                灵感速记与参考链接
-              </span>
-              <span className="text-[10px] text-stone-400 font-mono">
-                {currentNotes.length > 0 ? `${currentNotes.length} 条记录` : "点击添加 +"}
-              </span>
-            </summary>
-
-            <div className="pt-2 space-y-2">
-              {currentNotes.length > 0 && (
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {currentNotes.map((note, nIdx) => (
-                    <div
-                      key={nIdx}
-                      className="flex items-start justify-between gap-1.5 rounded-lg bg-white/80 px-2 py-1 text-[11px] text-ink group"
-                    >
-                      <span className="leading-snug break-all">
-                        {renderNoteContent(note)}
-                      </span>
-                      <button
-                        type="button"
-                        title="删除此记录"
-                        className="text-muted hover:text-red-600 opacity-50 hover:opacity-100 transition-opacity shrink-0 mt-0.5 cursor-pointer"
-                        onClick={() => removeStepNote(currentStep.id, nIdx)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <form onSubmit={handleAddNote} className="flex gap-1.5 pt-0.5">
-                <input
-                  type="text"
-                  value={noteInput}
-                  onChange={(e) => setNoteInput(e.target.value)}
-                  placeholder="记录灵感或参考链接…"
-                  className="flex-1 rounded-lg border border-line bg-white px-2 py-1 text-[11px] text-ink outline-none focus:border-accent"
-                />
-                <button
-                  type="submit"
-                  disabled={!noteInput.trim()}
-                  className="btn-ghost !py-1 !px-2 text-[11px] flex items-center gap-1 shrink-0 cursor-pointer"
-                >
-                  <Plus className="h-3 w-3" />
-                  <span>添加</span>
-                </button>
-              </form>
-            </div>
-          </details>
         </div>
       </NodeShell>
-
-      {/* Visual Inspector Modal */}
-      <VisualInspirationModal
-        inspiration={inspectorItem}
-        onClose={() => setInspectorItem(null)}
-      />
-
-      {/* Add Inspiration Dialog */}
-      <AddInspirationDialog
-        isOpen={addDialogOpen}
-        onClose={() => setAddDialogOpen(false)}
-        defaultScope="step"
-        targetId={currentStep.id}
-      />
     </div>
   );
 }

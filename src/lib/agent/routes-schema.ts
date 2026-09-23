@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  DecisionContextSchema,
   DesignStateSchema,
   HistoryEntrySchema,
   parseContract,
@@ -143,8 +142,6 @@ export const RoutesInputSchema = z
     history: z.array(HistoryEntrySchema).optional(),
     excludeThemeNames: z.array(text).optional(),
     refreshIndex: z.number().int().nonnegative().optional(),
-    decisions: DecisionContextSchema.optional(),
-    images: z.array(z.string()).optional(),
   })
   .superRefine((input, ctx) => {
     if (input.state.status !== "confirmed") {
@@ -196,8 +193,6 @@ export const PlatformPlanInputSchema = z
     selectedRoute: RouteSchema,
     currentStep: RouteStepSchema,
     completedStepIds: z.array(text).default([]),
-    decisions: DecisionContextSchema.optional(),
-    images: z.array(z.string()).optional(),
   })
   .superRefine((input, ctx) => {
     if (input.state.status !== "confirmed") {

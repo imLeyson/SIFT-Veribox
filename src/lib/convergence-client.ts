@@ -12,6 +12,7 @@ import {
 } from "./agent/routes-schema";
 import { copyToClipboard } from "./clipboard";
 import type { Answer, ConvergenceInput, TurnEvent } from "@/types/convergence";
+import type { Route } from "@/types/routes";
 
 export function createConvergenceActions(
   store: ReturnType<typeof createSiftStore>,
@@ -45,7 +46,6 @@ export function createConvergenceActions(
         history: s.history,
         pendingQuestions: s.next?.type === "ask" ? s.next.questions : null,
         event,
-        decisions: s.getDecisionContext(),
       });
       const response = await fetcher(
         event.type === "start" || event.type === "fast_start"
@@ -110,10 +110,6 @@ export function createConvergenceActions(
     const ac = new AbortController();
     controller = ac;
     const timer = setTimeout(() => ac.abort(), 50000);
-    const confirmedImages = (s.visualInspirations ?? [])
-      .filter((img) => img.status === "confirmed")
-      .map((img) => img.url);
-
     try {
       const body = {
         sessionId: token.sessionId,
@@ -124,8 +120,6 @@ export function createConvergenceActions(
         history: s.history,
         excludeThemeNames,
         refreshIndex: options?.refresh ? 1 : 0,
-        decisions: s.getDecisionContext(),
-        images: confirmedImages.length > 0 ? confirmedImages : undefined,
       };
       const response = await fetcher("/api/routes", {
         method: "POST",
@@ -164,13 +158,36 @@ export function createConvergenceActions(
     }
   }
 
-  async function generatePlatformPlan(stepId?: string) {
+  async function generatePlatformPlan(stepId?: string, routeId?: string) {
     const s = store.getState();
-    if (!s.state || s.state.status !== "confirmed" || !s.selectedRouteId) return;
-    const selectedRoute = s.routes.find((r) => r.id === s.selectedRouteId);
-    if (!selectedRoute) return;
+    if (!s.state || s.state.status !== "confirmed") return;
+
+    let targetRoute = routeId
+      ? (s.routes.find((r) => r.id === routeId) ??
+         (s.customCards.find((c) => c.id === routeId || c.data?.route?.id === routeId)?.data?.route as Route | undefined))
+      : undefined;
+
+    if (!targetRoute && stepId) {
+      targetRoute =
+        s.routes.find((r) => r.steps.some((st) => st.id === stepId)) ??
+        (s.customCards.find((c) => c.data?.route?.steps?.some((st: any) => st.id === stepId))?.data?.route as Route | undefined);
+    }
+
+    if (!targetRoute && s.selectedRouteId) {
+      targetRoute =
+        s.routes.find((r) => r.id === s.selectedRouteId) ??
+        (s.customCards.find((c) => c.id === s.selectedRouteId || c.data?.route?.id === s.selectedRouteId)?.data?.route as Route | undefined);
+    }
+
+    if (!targetRoute) {
+      targetRoute = s.routes[0];
+    }
+    if (!targetRoute) return;
+
+    const selectedRoute = targetRoute;
     const targetStepId = stepId ?? s.activeStepId ?? selectedRoute.steps[0]?.id;
-    const currentStep = selectedRoute.steps.find((st) => st.id === targetStepId);
+    const currentStep =
+      selectedRoute.steps.find((st) => st.id === targetStepId) ?? selectedRoute.steps[0];
     if (!currentStep) return;
 
     const token = s.beginRequest();
@@ -178,16 +195,6 @@ export function createConvergenceActions(
     const ac = new AbortController();
     controller = ac;
     const timer = setTimeout(() => ac.abort(), 50000);
-    const stepImages = (s.visualInspirations ?? [])
-      .filter((img) => img.status === "confirmed")
-      .filter(
-        (img) =>
-          img.scope === "global" ||
-          (img.scope === "route" && img.targetId === s.selectedRouteId) ||
-          (img.scope === "step" && img.targetId === targetStepId),
-      )
-      .map((img) => img.url);
-
     try {
       const body = {
         sessionId: token.sessionId,
@@ -196,8 +203,6 @@ export function createConvergenceActions(
         selectedRoute,
         currentStep,
         completedStepIds: s.platformPlans.map((p) => p.stepId),
-        decisions: s.getDecisionContext(),
-        images: stepImages.length > 0 ? stepImages : undefined,
       };
       const response = await fetcher("/api/platform-plan", {
         method: "POST",
@@ -287,6 +292,12 @@ export function createConvergenceActions(
     selectRoute: (routeId: string) => {
       store.getState().selectRoute(routeId);
     },
+    unexploreRoute: (routeId: string) => {
+      store.getState().unexploreRoute(routeId);
+    },
+    toggleExploreRoute: (routeId: string) => {
+      store.getState().toggleExploreRoute(routeId);
+    },
     reselectRoute: () => {
       store.getState().reselectRoute();
     },
@@ -348,18 +359,6 @@ export function createConvergenceActions(
       keyword?: string,
     ) => {
       store.getState().recordSourceAction(stepId, sourceId, action, keyword);
-    },
-    toggleNodeCollapse: (nodeId: string) => {
-      store.getState().toggleNodeCollapse(nodeId);
-    },
-    setNodeCollapse: (nodeId: string, collapsed: boolean) => {
-      store.getState().setNodeCollapse(nodeId, collapsed);
-    },
-    collapseCompletedNodes: () => {
-      store.getState().collapseCompletedNodes();
-    },
-    expandAllNodes: () => {
-      store.getState().expandAllNodes();
     },
     reset: () => {
       cancel();

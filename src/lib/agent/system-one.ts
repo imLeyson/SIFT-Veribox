@@ -894,7 +894,7 @@ export function calibratePlatformQuery(
       }
       advancedQuery = `${calibratedQuery} 实物打样 -素材`;
       hitConfidence = 98;
-      jevJudgement = `⚡️ Jev 裁决：提纯为站酷高权重双词分词 [${calibratedQuery}]，直达国内成熟案例与工艺实拍`;
+      jevJudgement = `⚡️ Jev 裁决：提纯为站酷高权重双词分词 [${calibratedQuery}]，直达国内成熟落地与打样案`;
       break;
     }
 
@@ -1076,7 +1076,7 @@ export function getPlatformInspirationClues(
     return {
       lensRole: "benchmark",
       lookFor: "关注真实生产环境下深色背景与 1px 冷灰描边卡片的层级关系，以及多态组件（hover/disabled）的 8px 栅格流线",
-      avoid: "避开概念设计图中的无逻辑悬浮投影与失真的虚假数据图表",
+      avoid: "避开概念设计图中的无逻辑悬浮投影与不可落地的虚假数据图表",
     };
   }
   if (normId.includes("godly")) {
@@ -1089,14 +1089,14 @@ export function getPlatformInspirationClues(
   if (normId.includes("bpando")) {
     return {
       lensRole: "proofing",
-      lookFor: "关注原浆棉纸在 45° 侧光下的无墨深压凹阴影斜率与纸张原生态微孔肌理",
-      avoid: "避开缺乏材质质感的平面假图与大面积高反光浮夸烫金",
+      lookFor: "关注 350g+ 原浆棉纸在 45° 侧光下的无墨深压凹阴影斜率与纸张原生态微孔肌理",
+      avoid: "避开缺乏克重支撑的平面假图与大面积高反光浮夸烫金",
     };
   }
   if (normId.includes("fontsinuse")) {
     return {
       lensRole: "avant_garde",
-      lookFor: "关注真实商业项目中中西文字阶对比（1.8~2.5x 视觉落差）、紧凑字距与标尺网格骨架",
+      lookFor: "关注真实商业落地中中西文字阶对比（1.8~2.5x 视觉落差）、紧凑字距与标尺网格骨架",
       avoid: "避开无字重节奏、通篇默认字体扁平排版的视觉疲劳",
     };
   }
@@ -1104,7 +1104,7 @@ export function getPlatformInspirationClues(
     return {
       lensRole: "benchmark",
       lookFor: "关注国际前沿包装的成套瓶型结构、阻尼感开启方式与环保包材的结构自锁设计",
-      avoid: "避开套用通用样机模板导致的比例畸变与浮夸结构",
+      avoid: "避开套用通用样机模板导致的比例畸变与无法量产结构",
     };
   }
   if (normId.includes("packagingoftheworld")) {
@@ -1180,7 +1180,7 @@ export function getPlatformInspirationClues(
 
   return {
     lensRole: "benchmark",
-    lookFor: "关注官方设计规范与行业头部品牌的成熟实践范例",
+    lookFor: "关注官方设计规范与行业头部品牌的落地实践范例",
     avoid: "避开非官方的二次解读与过时规范",
   };
 }

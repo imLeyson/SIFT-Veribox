@@ -153,4 +153,42 @@ describe("convergence store routes and external search", () => {
     expect(state.routes).toEqual([]);
     expect(state.selectedRouteId).toBeNull();
   });
+
+  it("supports multiple themes explored in parallel without wiping other themes' plans", () => {
+    const store = createSiftStore(memoryStorage());
+    const r1 = mockRoutesData.routes[0];
+    const r2 = mockRoutesData.routes[1];
+
+    store.setState({
+      state: confirmedState,
+      routes: mockRoutesData.routes,
+    });
+
+    // 1. Explore Theme 1
+    store.getState().selectRoute(r1.id);
+    expect(store.getState().exploredRouteIds).toContain(r1.id);
+    expect(store.getState().selectedRouteId).toBe(r1.id);
+
+    // Generate plan for Theme 1 step 0
+    const plan1 = getMockPlatformPlan(confirmedState, r1, r1.steps[0]);
+    store.getState().setPlatformPlan(plan1);
+    expect(store.getState().platformPlans).toHaveLength(1);
+
+    // 2. Explore Theme 2 in parallel
+    store.getState().selectRoute(r2.id);
+    expect(store.getState().exploredRouteIds).toContain(r1.id);
+    expect(store.getState().exploredRouteIds).toContain(r2.id);
+    // Crucial: Theme 1's plan was NOT wiped!
+    expect(store.getState().platformPlans).toHaveLength(1);
+
+    // Generate plan for Theme 2 step 0
+    const plan2 = getMockPlatformPlan(confirmedState, r2, r2.steps[0]);
+    store.getState().setPlatformPlan(plan2);
+    expect(store.getState().platformPlans).toHaveLength(2);
+
+    // 3. Unexplore Theme 1: Theme 2 remains explored
+    store.getState().unexploreRoute(r1.id);
+    expect(store.getState().exploredRouteIds).not.toContain(r1.id);
+    expect(store.getState().exploredRouteIds).toContain(r2.id);
+  });
 });

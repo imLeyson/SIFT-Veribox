@@ -20,22 +20,6 @@ export function Workspace() {
   );
   const [runtimeMode, setRuntimeMode] = useState<"live" | "mock" | null>(null);
   const [dossierOpen, setDossierOpen] = useState(false);
-  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
-
-  const rawBrief = useSiftStore((s) => s.rawBrief);
-  const routes = useSiftStore((s) => s.routes);
-  const visualInspirations = useSiftStore((s) => s.visualInspirations || []);
-
-  const handleResetClick = () => {
-    const hasContent = Boolean(
-      rawBrief.trim() || state || routes.length > 0 || visualInspirations.length > 0,
-    );
-    if (!hasContent) {
-      siftActions.reset();
-    } else {
-      setResetConfirmOpen(true);
-    }
-  };
 
   useEffect(() => {
     void useSiftStore.persist.rehydrate();
@@ -61,11 +45,6 @@ export function Workspace() {
             <span className="hidden md:inline-block rounded-md bg-stone-100 border border-stone-200 px-1.5 py-0.5 text-[10px] font-medium text-stone-600">
               视觉策略与方向收敛智能体
             </span>
-            {(runtimeMode ?? mode) === "mock" && (
-              <span className="rounded-md bg-amber-50 text-amber-800 border border-amber-200/80 px-1.5 py-0.5 text-[10px] font-mono">
-                Mock 示例
-              </span>
-            )}
           </div>
           <p className="mt-0.5 text-xs text-muted">
             收敛清晰有画面感的设计主题与检索方向 · 避免前期盲目试错
@@ -91,18 +70,23 @@ export function Workspace() {
               快速收敛
             </button>
           )}
-          <button className="btn-ghost text-xs" onClick={handleResetClick}>
+          <button className="btn-ghost text-xs" onClick={siftActions.reset}>
             新建
           </button>
         </div>
       </header>
+      {(runtimeMode ?? mode) === "mock" && (
+        <p className="border-b border-line/60 bg-mist/60 px-4 py-2 text-xs text-muted">
+          Mock 示例模式；配置 API 密钥后可启用实时模型。
+        </p>
+      )}
       {storageWarning && (
-        <div
+        <p
           role="status"
-          className="border-b border-amber-200/80 bg-amber-50/70 px-4 py-1.5 text-xs text-amber-900"
+          className="border-b border-line px-4 py-2 text-xs text-muted"
         >
           {storageWarning}
-        </div>
+        </p>
       )}
       {error && (
         <div
@@ -134,61 +118,6 @@ export function Workspace() {
         isOpen={dossierOpen}
         onClose={() => setDossierOpen(false)}
       />
-
-      {/* Safe Reset Confirmation Modal */}
-      {resetConfirmOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150"
-          onClick={() => setResetConfirmOpen(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl border border-line space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="space-y-1.5">
-              <h3 className="text-base font-semibold text-ink">
-                开启全新设计项目？
-              </h3>
-              <p className="text-xs leading-relaxed text-stone-500">
-                当前项目已沉淀了设计简报、视觉坚持与红线、参考图与探索路线。开启新项目将清空当前画布上的全部内容。
-              </p>
-            </div>
-
-            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 pt-2 border-t border-line/60">
-              {Boolean(state) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResetConfirmOpen(false);
-                    setDossierOpen(true);
-                  }}
-                  className="w-full sm:w-auto btn-ghost text-xs text-accent hover:text-accent font-medium flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  <FileDown className="h-3.5 w-3.5" />
-                  <span>先备份导出提案</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setResetConfirmOpen(false)}
-                className="w-full sm:w-auto btn-ghost text-xs cursor-pointer"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setResetConfirmOpen(false);
-                  siftActions.reset();
-                }}
-                className="w-full sm:w-auto rounded-xl bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer"
-              >
-                确认清空并新建
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

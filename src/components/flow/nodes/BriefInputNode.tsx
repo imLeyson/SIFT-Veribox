@@ -4,14 +4,10 @@ import type { NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
+import { EXAMPLES } from "@/lib/agent/examples";
 import { compressImageFile } from "@/lib/image-utils";
-import { ImagePlus, Plus, Zap, Sparkles } from "lucide-react";
+import { ImagePlus, Plus, X, Eye, Zap, Sparkles } from "lucide-react";
 import { evaluateBriefIntentSync } from "@/lib/agent/system-one";
-import { InlineEditableText } from "../InlineEditableText";
-import { VisualInspirationCard } from "../VisualInspirationCard";
-import { VisualInspirationModal } from "../VisualInspirationModal";
-import { AddInspirationDialog } from "../AddInspirationDialog";
-import { type VisualInspiration } from "@/lib/agent/convergence-schema";
 
 export function BriefInputNode({ id, selected }: NodeProps) {
   const {
@@ -19,21 +15,11 @@ export function BriefInputNode({ id, selected }: NodeProps) {
     briefImages,
     state,
     activeRequest,
-    itemDecisions,
-    setItemDecision,
+    importedBrief,
     setRawBrief,
-    updateRawBrief,
     addBriefImage,
     removeBriefImage,
   } = useSiftStore();
-
-  const visualInspirations = useSiftStore((s) => s.visualInspirations || []);
-  const [inspectorItem, setInspectorItem] = useState<VisualInspiration | null>(null);
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-
-  const globalInspirations = visualInspirations.filter(
-    (v) => v.scope === "global" || !v.scope,
-  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [compressing, setCompressing] = useState(false);
@@ -45,43 +31,22 @@ export function BriefInputNode({ id, selected }: NodeProps) {
   const confirmedDiagnostics =
     state && rawBrief ? evaluateBriefIntentSync(rawBrief) : null;
 
-  const collapsedSummary = state ? (
-    <div className="flex items-center justify-between gap-1.5 w-full">
-      <span className="truncate text-stone-600 font-sans">
-        {rawBrief.slice(0, 32)}…
-      </span>
-      <span className="text-[9.5px] font-mono text-stone-400 shrink-0">
-        {globalInspirations.length > 0 ? `${globalInspirations.length} 视觉单元 · 已锁定` : "已锁定"}
-      </span>
-    </div>
-  ) : undefined;
-
   const processFiles = async (files: FileList | File[]) => {
-    if (globalInspirations.length >= 6) return;
-    const remainingSlots = 6 - globalInspirations.length;
+    if (briefImages.length >= 3) return;
+    const remainingSlots = 3 - briefImages.length;
     const targetFiles = Array.from(files)
       .filter((f) => f.type.startsWith("image/"))
       .slice(0, remainingSlots);
 
     if (!targetFiles.length) return;
-
     setCompressing(true);
     try {
       for (const file of targetFiles) {
         const compressed = await compressImageFile(file);
-        const { extractImagePalette } = await import("@/lib/image-utils");
-        const palette = await extractImagePalette(compressed, 5);
-        useSiftStore.getState().addVisualInspiration({
-          url: compressed,
-          title: file.name.replace(/\.[^/.]+$/, ""),
-          sourceType: "upload",
-          status: "confirmed",
-          scope: "global",
-          palette,
-        });
+        addBriefImage(compressed);
       }
     } catch {
-      // ignore
+      // Ignore individual file parse errors gracefully
     } finally {
       setCompressing(false);
     }
@@ -115,11 +80,10 @@ export function BriefInputNode({ id, selected }: NodeProps) {
   return (
     <>
       <NodeShell
-        nodeId={id || "brief"}
+        nodeId={id}
         stage="00"
-        kicker={state ? "简报诊断 · 已锁定" : "00 简报输入 · 视觉策略与方向收敛"}
+        kicker={state ? "简报解析 · 已锁定" : "00 简报解析 · 视觉意图输入"}
         title={state ? "设计简报" : "输入设计目标与背景"}
-        collapsedSummary={collapsedSummary}
         badge={
           state && confirmedDiagnostics ? (
             <span className="text-[10px] font-mono text-stone-400">
@@ -132,43 +96,53 @@ export function BriefInputNode({ id, selected }: NodeProps) {
           ) : undefined
         }
         selected={selected}
+        collapsedContent={
+          <div className="space-y-1.5 text-xs">
+            <div className="flex items-center justify-between text-[10.5px]">
+              <span className="font-semibold text-stone-700 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-stone-600" />
+                设计任务核心
+              </span>
+              {confirmedDiagnostics?.domainLabel && (
+                <span className="font-mono text-[9.5px] bg-stone-100 text-stone-600 px-1.5 py-0.2 rounded">
+                  {confirmedDiagnostics.domainLabel}
+                </span>
+              )}
+            </div>
+            <p className="text-xs font-serif leading-relaxed text-ink line-clamp-3">
+              {rawBrief.trim() || "尚未输入设计意图…"}
+            </p>
+          </div>
+        }
       >
         {state ? (
           <div className="space-y-3">
-            <InlineEditableText
-              value={rawBrief}
-              onSave={(newBrief) => updateRawBrief(newBrief)}
-              multiline
-              minRows={6}
-              as="p"
-              className="whitespace-pre-wrap text-sm leading-relaxed text-ink font-serif w-full block"
-              inputClassName="font-serif text-sm leading-relaxed"
-              label="简报需求"
-              showEditIcon
-            />
-            {globalInspirations.length > 0 && (
-              <div className="pt-2.5 border-t border-line/60 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10.5px] font-semibold text-stone-500 flex items-center gap-1">
-                    <Sparkles className="h-3 w-3 text-indigo-600" />
-                    参考视觉基石（{globalInspirations.length} 单元 · 色板与特征）：
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setAddDialogOpen(true)}
-                    className="text-[10px] font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5 cursor-pointer"
-                  >
-                    <Plus className="h-3 w-3" />
-                    <span>添加灵感</span>
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {globalInspirations.map((item) => (
-                    <VisualInspirationCard
-                      key={item.id}
-                      inspiration={item}
-                      onOpenInspector={(vis) => setInspectorItem(vis)}
-                    />
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink font-serif">
+              {rawBrief}
+            </p>
+            {briefImages.length > 0 && (
+              <div className="pt-2 border-t border-line/60">
+                <span className="text-[10px] font-semibold text-stone-500 block mb-1.5">
+                  附带参考图（{briefImages.length} 张，提取视觉偏好，点击大图预览）：
+                </span>
+                <div className="flex gap-2 flex-wrap">
+                  {briefImages.map((img, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setPreviewImage(img)}
+                      className="group relative h-14 w-14 rounded-lg overflow-hidden border border-line bg-stone-100 hover:ring-2 hover:ring-accent transition-all flex-shrink-0 cursor-pointer text-left"
+                      title="点击查看高清大图"
+                    >
+                      <img
+                        src={img}
+                        alt={`参考意向图 ${idx + 1}`}
+                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <Eye className="h-4 w-4 text-white drop-shadow" />
+                      </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -193,6 +167,35 @@ export function BriefInputNode({ id, selected }: NodeProps) {
               }
             }}
           >
+            <div className="mb-2.5 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] text-muted">
+                <span className="text-stone-500">
+                  聚焦前期视觉策略与检索方向收敛 · <span className="text-stone-400">非生图交付工具</span>
+                </span>
+                {importedBrief && (
+                  <span className="text-accent font-medium">已载入草案</span>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg bg-stone-50/90 px-2.5 py-1.5 border border-line/70 text-[11px] text-stone-500">
+                <span className="truncate pr-2">
+                  推荐结构：我想做一个【品类】，希望【调性】，避免【禁忌】…
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRawBrief(
+                      "我想做一个【设计品类】，希望整体呈现【核心视觉调性与受众感受】，避免【明确的视觉禁忌与常见套路】，重点探索【材质工艺、排版结构或细节】。"
+                    );
+                  }}
+                  className="text-accent hover:underline cursor-pointer flex items-center gap-0.5 font-medium flex-shrink-0"
+                  title="一键载入结构化设计需求句式模板"
+                >
+                  <span>套用模板</span>
+                </button>
+              </div>
+            </div>
+
             <textarea
               id="brief"
               value={rawBrief}
@@ -204,20 +207,46 @@ export function BriefInputNode({ id, selected }: NodeProps) {
               className="w-full resize-y rounded-xl border border-line bg-cream/70 px-3 py-2 text-xs sm:text-sm leading-relaxed outline-none focus:border-accent"
             />
 
-            {/* Quiet Diagnostic Chip (Replacing bulky progress bar) */}
+            {/* Live Brief Diagnostics Radar */}
             {rawBrief.trim().length >= 4 && briefDiagnostics && (
-              <div className="mt-2 flex items-center justify-between rounded-lg bg-stone-50/80 px-2.5 py-1.5 border border-line/60 text-[11px]">
-                <div className="flex items-center gap-1.5 text-stone-700 font-medium">
-                  <span>{briefDiagnostics.domainLabel}</span>
-                  <span className="text-stone-400">·</span>
-                  <span className="text-stone-500 font-normal">
-                    {briefDiagnostics.clarityScore >= 70 ? "诉求清晰" : "可继续补充细节"}
+              <div className="mt-2.5 rounded-xl border border-line/80 bg-white/70 p-2.5 space-y-2">
+                <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-1.5 font-medium text-ink">
+                    <span>{briefDiagnostics.domainLabel}</span>
+                    <span className="text-stone-400 font-mono text-[10px]">
+                      · 匹配度 {Math.round(briefDiagnostics.confidence * 100)}%
+                    </span>
+                  </div>
+                  <span className="font-mono text-[9.5px] text-stone-400 flex items-center gap-1">
+                    <Sparkles className="h-2.5 w-2.5 text-amber-500" />
+                    <span>实时解析 · {briefDiagnostics.latencyMs}ms</span>
                   </span>
                 </div>
+
+                {/* Visual Clarity Progress Bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[10.5px]">
+                    <span className="text-stone-500">诉求清晰度</span>
+                    <span className="font-mono font-medium text-ink">
+                      {briefDiagnostics.clarityScore} / 100
+                    </span>
+                  </div>
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-stone-200">
+                    <div
+                      className="h-full rounded-full bg-ink/75 transition-all duration-300"
+                      style={{ width: `${briefDiagnostics.clarityScore}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Contextual Clean Suggestion */}
                 {briefDiagnostics.suggestion && (
-                  <span className="text-[10px] text-stone-500 truncate max-w-[200px] sm:max-w-[230px]">
-                    {briefDiagnostics.suggestion.replace(/^(?:💡|✨|⚡️)\s*/u, "")}
-                  </span>
+                  <div className="flex items-start gap-1.5 pt-1 border-t border-line/40 text-[10.5px] text-stone-500 leading-relaxed">
+                    <Sparkles className="h-3 w-3 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <span>
+                      {briefDiagnostics.suggestion.replace(/^(?:💡|✨|⚡️)\s*/u, "")}
+                    </span>
+                  </div>
                 )}
               </div>
             )}
@@ -237,17 +266,12 @@ export function BriefInputNode({ id, selected }: NodeProps) {
               onDrop={handleDrop}
             >
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5">
-                  <ImagePlus className="h-3.5 w-3.5 text-indigo-600" />
-                  <span className="text-xs font-semibold text-ink">
-                    参考视觉单元
-                  </span>
-                  <span className="text-[10px] text-stone-400 font-mono">
-                    ({globalInspirations.length}/6)
-                  </span>
-                </div>
+                <span className="text-[11px] font-medium text-stone-700 flex items-center gap-1.5">
+                  <ImagePlus className="h-3.5 w-3.5 text-accent" />
+                  意向参考图 (可选，用于提炼材质与排版偏好，非垫图渲染)
+                </span>
                 <span className="text-[10px] text-stone-400">
-                  支持拖拽或 ⌘V 粘贴
+                  支持直接截图粘贴 (⌘V) 或拖拽
                 </span>
               </div>
 
@@ -265,28 +289,42 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                 }}
               />
 
-              <div className="grid grid-cols-3 gap-2">
-                {globalInspirations.map((item) => (
-                  <VisualInspirationCard
-                    key={item.id}
-                    inspiration={item}
-                    onOpenInspector={(vis) => setInspectorItem(vis)}
-                  />
+              <div className="flex items-center gap-2 flex-wrap">
+                {briefImages.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className="relative group h-14 w-14 rounded-lg overflow-hidden border border-line bg-stone-100 flex-shrink-0"
+                  >
+                    <img
+                      src={img}
+                      alt={`参考图 ${idx + 1}`}
+                      className="h-full w-full object-cover cursor-pointer"
+                      onClick={() => setPreviewImage(img)}
+                      title="点击放大预览"
+                    />
+                    <button
+                      type="button"
+                      disabled={Boolean(activeRequest)}
+                      onClick={() => removeBriefImage(idx)}
+                      className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-80 hover:opacity-100 hover:scale-110 transition-all cursor-pointer"
+                      title="删除图片"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
                 ))}
-                {globalInspirations.length < 6 && (
+
+                {briefImages.length < 3 && (
                   <button
                     type="button"
                     disabled={Boolean(activeRequest) || compressing}
-                    onClick={() => setAddDialogOpen(true)}
-                    className="min-h-[105px] rounded-xl border-2 border-dashed border-stone-300 hover:border-indigo-400 hover:bg-white bg-white/50 flex flex-col items-center justify-center text-stone-500 hover:text-indigo-600 transition-all cursor-pointer p-2"
-                    title="上传参考图或添加外链灵感"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="h-14 w-14 rounded-lg border border-dashed border-stone-300 hover:border-accent hover:bg-white bg-white/50 flex flex-col items-center justify-center text-stone-500 hover:text-accent transition-colors disabled:opacity-50 cursor-pointer"
+                    title="上传或选择参考图"
                   >
                     <Plus className="h-4 w-4" />
-                    <span className="text-[10.5px] mt-1 font-medium">
-                      {compressing ? "解析中…" : "添加参考图"}
-                    </span>
-                    <span className="text-[9px] text-stone-400">
-                      本地/外链/色板
+                    <span className="text-[9px] mt-0.5 font-medium">
+                      {compressing ? "压缩中…" : "添加图"}
                     </span>
                   </button>
                 )}
@@ -300,7 +338,7 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                 disabled={Boolean(activeRequest) || !rawBrief.trim()}
                 title="推荐：通过 1–2 个具象视觉问题，启发并精准锁定设计方向与搜索策略"
               >
-                <span>{activeRequest ? "正在推演策略…" : "开始方向收敛"}</span>
+                <span>{activeRequest ? "正在推演策略…" : "开始策略收敛 →"}</span>
                 {!activeRequest && (
                   <span className="rounded bg-amber-400/25 px-1 py-0.5 text-[9px] font-semibold text-amber-200">
                     推荐
@@ -314,31 +352,71 @@ export function BriefInputNode({ id, selected }: NodeProps) {
               </button>
               <button
                 type="button"
-                className="btn-ghost w-full text-xs flex items-center justify-center gap-1.5 cursor-pointer py-2.5 border border-line hover:border-ink/40"
+                className="btn-ghost w-full text-xs cursor-pointer py-2.5 border border-line/80 text-stone-600 hover:text-ink hover:bg-stone-50 transition-colors"
                 disabled={Boolean(activeRequest) || !rawBrief.trim()}
                 onClick={() => void siftActions.fastStart()}
-                title="跳过问答，直接生成设计方向与三套设计主题"
+                title="跳过问答：基于当前输入直接收敛方向，生成 3 套风格主题与搜索策略"
               >
-                <Zap className="h-3.5 w-3.5 text-accent" />
-                <span>一键直出方向</span>
+                跳过提问 · 直接生成主题
               </button>
+            </div>
+            <div className="mt-1.5 flex items-center justify-between px-1 text-[10px] text-stone-400">
+              <span>✦ 关键提问锁定视觉策略</span>
+              <span>推导 3 套风格主题与检索方向 ↗</span>
+            </div>
+            <div className="mt-3.5 border-t border-line/60 pt-2.5">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[11px] font-medium text-stone-500">
+                  预设示例（点击载入完整 Brief 结构）：
+                </p>
+                <span className="text-[10px] text-stone-400">
+                  可在此基础上自由修改
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {EXAMPLES.map((example) => (
+                  <button
+                    key={example.id}
+                    type="button"
+                    disabled={Boolean(activeRequest)}
+                    onClick={() => setRawBrief(example.brief)}
+                    className="rounded-lg border border-line/70 bg-white/70 px-2 py-0.5 text-[11px] text-ink transition-colors hover:border-ink hover:bg-white active:scale-98 cursor-pointer"
+                  >
+                    {example.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </form>
         )}
       </NodeShell>
 
-      {/* Visual Inspector Modal */}
-      <VisualInspirationModal
-        inspiration={inspectorItem}
-        onClose={() => setInspectorItem(null)}
-      />
-
-      {/* Add Inspiration Dialog */}
-      <AddInspirationDialog
-        isOpen={addDialogOpen}
-        onClose={() => setAddDialogOpen(false)}
-        defaultScope="global"
-      />
+      {/* Lightbox / Preview Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative max-w-3xl max-h-[85vh] rounded-2xl overflow-hidden shadow-2xl bg-stone-900 border border-white/20 p-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={previewImage}
+              alt="参考图大图预览"
+              className="max-w-full max-h-[80vh] object-contain rounded-xl"
+            />
+            <button
+              type="button"
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/90 hover:scale-105 transition-all cursor-pointer shadow-md"
+              title="关闭预览 (ESC)"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

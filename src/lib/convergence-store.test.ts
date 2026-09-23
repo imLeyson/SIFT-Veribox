@@ -132,27 +132,234 @@ describe("convergence session", () => {
     expect(customPriority?.basis).toBe("user");
   });
 
-  it("handles node collapse, expand all, and collapse completed nodes", () => {
+  it("supports Figma-like freeform custom cards, custom edges, and node duplication/deletion", () => {
     const store = createSiftStore(memoryStorage());
-    expect(store.getState().collapsedNodes).toEqual({});
 
-    // Toggle single node
-    store.getState().toggleNodeCollapse("brief");
-    expect(store.getState().collapsedNodes["brief"]).toBe(true);
-    store.getState().toggleNodeCollapse("brief");
-    expect(store.getState().collapsedNodes["brief"]).toBe(false);
+    // 1. Add a custom note card
+    const noteId = store.getState().addCustomCard({
+      type: "note",
+      title: "关于触感包装的灵感",
+      content: "参考日式极简纤维纸",
+      position: { x: 300, y: 200 },
+    });
+    expect(store.getState().customCards).toHaveLength(1);
+    expect(store.getState().customCards[0].id).toBe(noteId);
+    expect(store.getState().customCards[0].title).toBe("关于触感包装的灵感");
 
-    // Explicit set
-    store.getState().setNodeCollapse("direction", true);
-    expect(store.getState().collapsedNodes["direction"]).toBe(true);
+    // 2. Update custom card
+    store.getState().updateCustomCard(noteId, {
+      content: "更新为德国工业灰卡",
+      color: "sky",
+    });
+    expect(store.getState().customCards[0].content).toBe("更新为德国工业灰卡");
+    expect(store.getState().customCards[0].color).toBe("sky");
 
-    // Commit turn so state exists
-    store.getState().commitTurn(response(store));
-    store.getState().collapseCompletedNodes();
-    expect(store.getState().collapsedNodes["brief"]).toBe(true);
+    // 3. Duplicate custom card
+    const dupId = store.getState().duplicateNode(noteId);
+    expect(dupId).toBeTruthy();
+    expect(store.getState().customCards).toHaveLength(2);
+    expect(store.getState().customCards[1].position.x).toBe(340);
 
-    // Expand all
-    store.getState().expandAllNodes();
-    expect(store.getState().collapsedNodes).toEqual({});
+    // 4. Add custom edge between them
+    store.getState().addCustomEdge({
+      id: `edge-${noteId}-${dupId}`,
+      source: noteId,
+      target: dupId!,
+    });
+    expect(store.getState().customEdges).toHaveLength(1);
+
+    // 5. Delete node cleans up custom edges
+    store.getState().deleteNodeById(noteId);
+    expect(store.getState().customCards.find((c) => c.id === noteId)).toBeUndefined();
+    expect(store.getState().deletedNodeIds).toContain(noteId);
+    expect(store.getState().customEdges).toHaveLength(0);
+  });
+
+  it("supports adding, selecting, and duplicating custom route cards seamlessly", () => {
+    const store = createSiftStore(memoryStorage());
+
+    const customRoute = {
+      id: "route-custom-1",
+      title: "【自定义风格探索】质感极简",
+      themeName: "质感极简",
+      focusDimension: "核心材质与视觉调性",
+      startingPoint: "自由探索切入",
+      coreProblem: "建立视觉记忆点",
+      purpose: "全案风格探索",
+      pros: "灵活度高",
+      cons: "需自行验证",
+      recommendedReason: null,
+      alignmentScore: 92,
+      steps: [
+        {
+          id: "step-1",
+          title: "核心母题试验",
+          question: "如何确立辨识度？",
+          purpose: "提炼视觉母题",
+          acceptanceCriteria: ["清晰记忆点"],
+        },
+      ],
+    };
+
+    // 1. Add custom route card
+    const cardId = store.getState().addCustomCard({
+      id: "card-custom-route-1",
+      type: "route",
+      position: { x: 500, y: 100 },
+      title: "质感极简",
+      data: { route: customRoute },
+    });
+
+    expect(cardId).toBe("card-custom-route-1");
+    expect(store.getState().routes.some((r) => r.id === "route-custom-1")).toBe(true);
+
+    // 2. Select this custom route
+    store.getState().selectRoute("route-custom-1");
+    expect(store.getState().selectedRouteId).toBe("route-custom-1");
+    expect(store.getState().activeStepId).toBe("step-1");
+    expect(store.getState().explorationStage).toBe("route_selected");
+
+    // 3. Duplicate this route node
+    const dupCardId = store.getState().duplicateNode("card-custom-route-1");
+    expect(dupCardId).toBeTruthy();
+    const dupCard = store.getState().customCards.find((c) => c.id === dupCardId);
+    expect(dupCard).toBeDefined();
+    expect(dupCard?.data?.route.id).not.toBe("route-custom-1");
+    expect(dupCard?.data?.route.steps[0].id).not.toBe("step-1");
+
+    // 4. Can select the duplicated route as well
+    store.getState().selectRoute(dupCard!.data!.route.id);
+    expect(store.getState().selectedRouteId).toBe(dupCard!.data!.route.id);
+    expect(store.getState().activeStepId).toBe(dupCard!.data!.route.steps[0].id);
+  });
+
+  it("supports creating, updating, and resizing image cards for visual reference", () => {
+    const store = createSiftStore(memoryStorage());
+
+    const imgCardId = store.getState().addCustomCard({
+      id: "card-image-1",
+      type: "image",
+      position: { x: 200, y: 300 },
+      title: "参考效果图",
+      data: {
+        src: "data:image/png;base64,abc",
+        width: 360,
+        height: 240,
+        naturalWidth: 1200,
+        naturalHeight: 800,
+        fileName: "moodboard.png",
+        lockAspectRatio: true,
+      },
+    });
+
+    expect(imgCardId).toBe("card-image-1");
+    const card = store.getState().customCards.find((c) => c.id === "card-image-1");
+    expect(card).toBeDefined();
+    expect(card?.type).toBe("image");
+    expect(card?.data?.fileName).toBe("moodboard.png");
+
+    // Update dimensions / aspect ratio
+    store.getState().updateCustomCard("card-image-1", {
+      data: {
+        ...card?.data,
+        width: 500,
+        height: 333,
+        lockAspectRatio: false,
+      },
+    });
+
+    const updated = store.getState().customCards.find((c) => c.id === "card-image-1");
+    expect(updated?.data?.width).toBe(500);
+    expect(updated?.data?.height).toBe(333);
+    expect(updated?.data?.lockAspectRatio).toBe(false);
+  });
+
+  it("does not auto-generate on connection, but synthesizes on synthesizeCard call and supports edge toggling", () => {
+    const store = createSiftStore(memoryStorage());
+
+    // 1. Add route 1
+    const r1 = store.getState().addCustomCard({
+      id: "card-r1",
+      type: "route",
+      position: { x: 100, y: 100 },
+      title: "极简几何",
+      data: {
+        route: {
+          id: "r1",
+          title: "极简几何",
+          themeName: "极简几何",
+          focusDimension: "几何结构",
+          startingPoint: "点线面",
+          coreProblem: "清晰度",
+          purpose: "纯粹结构",
+          pros: "秩序感强",
+          cons: "略冷硬",
+          recommendedReason: null,
+          alignmentScore: 92,
+          steps: [{ id: "r1-s1", title: "网格骨架", question: "如何对齐？", purpose: "确定骨架", acceptanceCriteria: ["规整"] }],
+        },
+      },
+    });
+
+    // 2. Add route 2
+    const r2 = store.getState().addCustomCard({
+      id: "card-r2",
+      type: "route",
+      position: { x: 100, y: 300 },
+      title: "温暖触感",
+      data: {
+        route: {
+          id: "r2",
+          title: "温暖触感",
+          themeName: "温暖触感",
+          focusDimension: "触觉材质",
+          startingPoint: "天然纤维",
+          coreProblem: "亲和力",
+          purpose: "温度传递",
+          pros: "情绪饱满",
+          cons: "易杂乱",
+          recommendedReason: null,
+          alignmentScore: 88,
+          steps: [{ id: "r2-s1", title: "微触感试验", question: "如何温润？", purpose: "确定肌理", acceptanceCriteria: ["温和"] }],
+        },
+      },
+    });
+
+    // 3. Add an empty route card
+    const targetCardId = store.getState().addCustomCard({
+      id: "card-target",
+      type: "route",
+      position: { x: 500, y: 200 },
+      title: "空白主题待推导",
+      data: { isEmpty: true },
+    });
+
+    // 4. Connect r1 -> targetCardId and r2 -> targetCardId
+    store.getState().addCustomEdge({ id: "e1", source: "card-r1", target: "card-target" });
+    store.getState().addCustomEdge({ id: "e2", source: "card-r2", target: "card-target" });
+
+    // Target card remains isEmpty before button click!
+    const targetBefore = store.getState().customCards.find((c) => c.id === "card-target");
+    expect(targetBefore?.data?.isEmpty).toBe(true);
+
+    // 5. Trigger synthesizeCard
+    const success = store.getState().synthesizeCard("card-target");
+    expect(success).toBe(true);
+
+    const targetAfter = store.getState().customCards.find((c) => c.id === "card-target");
+    expect(targetAfter?.data?.isEmpty).toBe(false);
+    expect(targetAfter?.data?.isBlended).toBe(true);
+    expect(targetAfter?.data?.route.themeName).toContain("极简几何");
+    expect(targetAfter?.data?.route.themeName).toContain("温暖触感");
+
+    // 6. Test edge cancellation: deleting edge removes connection
+    store.getState().deleteCustomEdge("e2");
+    expect(store.getState().customEdges.some((e) => e.id === "e2")).toBe(false);
+
+    // Re-synthesizing now with single route evolves it into variation
+    store.getState().synthesizeCard("card-target");
+    const targetSingle = store.getState().customCards.find((c) => c.id === "card-target");
+    expect(targetSingle?.data?.isEvolved).toBe(true);
   });
 });
+

@@ -5,6 +5,8 @@ import { StateNode } from "./nodes/StateNode";
 import { RouteNode } from "./nodes/RouteNode";
 import { StepNode } from "./nodes/StepNode";
 import { PlatformPlanNode } from "./nodes/PlatformPlanNode";
+import { StickyNoteNode } from "./nodes/StickyNoteNode";
+import { ImageNode } from "./nodes/ImageNode";
 
 export const nodeTypes = {
   brief: BriefInputNode,
@@ -13,4 +15,6 @@ export const nodeTypes = {
   route: RouteNode,
   step: StepNode,
   platformPlan: PlatformPlanNode,
+  note: StickyNoteNode,
+  image: ImageNode,
 } satisfies NodeTypes;

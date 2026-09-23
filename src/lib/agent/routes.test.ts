@@ -125,7 +125,7 @@ describe("routes agent generation", () => {
 
     expect(normalized.routes).toHaveLength(3);
     expect(normalized.routes[0].title).not.toBe("自然");
-    expect(normalized.routes[0].title).toMatch(/视觉表现与灵感演绎/);
+    expect(normalized.routes[0].title).toMatch(/转译与落地法/);
     expect(normalized.routes[0].focusDimension).toBeTruthy();
     expect(normalized.routes[0].feasibility).toBe("high");
     expect(normalized.routes[0].steps.length).toBeGreaterThanOrEqual(3);

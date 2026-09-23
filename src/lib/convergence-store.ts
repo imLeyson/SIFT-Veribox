@@ -9,17 +9,11 @@ import {
 import { z } from "zod";
 import {
   AnswerSchema,
-  DecisionContext,
-  DecisionStatus,
   DesignStateSchema,
   HistoryEntrySchema,
-  ItemDecision,
-  ItemDecisionSchema,
   NextSchema,
   TurnPayloadSchema,
   TurnResultSchema,
-  VisualInspiration,
-  VisualInspirationSchema,
 } from "./agent/convergence-schema";
 import {
   RouteSchema,
@@ -32,9 +26,9 @@ import {
 } from "@/types/convergence";
 import type {
   Route,
-  RouteStep,
   PlatformPlan,
 } from "@/types/routes";
+import { synthesizeCardFromInputs, type ToolType } from "./card-synthesis";
 
 export const STORAGE_KEY = "sift-convergence-v3";
 
@@ -45,12 +39,34 @@ const SourceInteractionSchema = z.object({
   copiedKeywords: z.array(z.string()).optional(),
 });
 
+export const CustomCardSchema = z.object({
+  id: z.string(),
+  type: z.enum(["brief", "ask", "state", "route", "step", "platformPlan", "note", "image"]),
+  title: z.string().optional(),
+  content: z.string().optional(),
+  color: z.string().optional(),
+  data: z.record(z.string(), z.any()).optional(),
+  position: z.object({ x: z.number(), y: z.number() }),
+});
+
+export type CustomCard = z.infer<typeof CustomCardSchema>;
+
+export const CustomEdgeSchema = z.object({
+  id: z.string(),
+  source: z.string(),
+  target: z.string(),
+  animated: z.boolean().optional().default(true),
+  style: z.record(z.string(), z.any()).optional(),
+});
+
+export type CustomEdge = z.infer<typeof CustomEdgeSchema>;
+export type CustomEdgeInput = z.input<typeof CustomEdgeSchema>;
+
 const SessionSchema = z
   .object({
     sessionId: z.string().min(1),
     rawBrief: z.string().max(10000),
     briefImages: z.array(z.string()).default([]),
-    visualInspirations: z.array(VisualInspirationSchema).default([]),
     state: DesignStateSchema.nullable(),
     next: NextSchema.nullable(),
     history: z.array(HistoryEntrySchema),
@@ -77,12 +93,15 @@ const SessionSchema = z
     recommendedRouteId: z.string().nullable(),
     selectedRouteId: z.string().nullable(),
     activeStepId: z.string().nullable(),
+    exploredRouteIds: z.array(z.string()).default([]),
     platformPlans: z.array(PlatformPlanSchema),
     sourceInteractions: z.record(z.string(), SourceInteractionSchema),
     stepNotes: z.record(z.string(), z.array(z.string())).default({}),
     completedCriteria: z.record(z.string(), z.array(z.string())).default({}),
-    collapsedNodes: z.record(z.string(), z.boolean()).default({}),
-    itemDecisions: z.record(z.string(), ItemDecisionSchema).default({}),
+    customCards: z.array(CustomCardSchema).default([]),
+    customEdges: z.array(CustomEdgeSchema).default([]),
+    deletedNodeIds: z.array(z.string()).default([]),
+    collapsedNodeIds: z.array(z.string()).default([]),
   })
   .superRefine((value, ctx) => {
     if (
@@ -106,23 +125,6 @@ export type SiftStore = Session & {
   setBriefImages: (images: string[]) => void;
   addBriefImage: (image: string) => void;
   removeBriefImage: (index: number) => void;
-  addVisualInspiration: (item: {
-    id?: string;
-    url: string;
-    title?: string;
-    sourceType?: "upload" | "clipboard" | "external_url";
-    sourceUrl?: string;
-    status?: DecisionStatus;
-    scope?: "global" | "route" | "step";
-    targetId?: string;
-    palette?: string[];
-    keywords?: string[];
-    notes?: string;
-  }) => string;
-  removeVisualInspiration: (id: string) => void;
-  updateVisualInspiration: (id: string, partial: Partial<VisualInspiration>) => void;
-  setVisualInspirationStatus: (id: string, status: DecisionStatus) => void;
-  assignVisualInspiration: (id: string, scope: "global" | "route" | "step", targetId?: string) => void;
   setDrafts: (answers: Answer[]) => void;
   setCorrectionDraft: (text: string) => void;
   setPosition: (id: string, position: { x: number; y: number }) => void;
@@ -136,6 +138,8 @@ export type SiftStore = Session & {
   confirm: () => void;
   setRoutes: (routes: Route[], recommendedRouteId: string | null) => void;
   selectRoute: (routeId: string) => void;
+  unexploreRoute: (routeId: string) => void;
+  toggleExploreRoute: (routeId: string) => void;
   reselectRoute: () => void;
   setActiveStep: (stepId: string) => void;
   setPlatformPlan: (plan: PlatformPlan) => void;
@@ -151,34 +155,16 @@ export type SiftStore = Session & {
     action: "opened" | "copied",
     keyword?: string,
   ) => void;
-  toggleNodeCollapse: (nodeId: string) => void;
-  setNodeCollapse: (nodeId: string, collapsed: boolean) => void;
-  collapseCompletedNodes: () => void;
+  addCustomCard: (card: Omit<CustomCard, "id"> & { id?: string }) => string;
+  updateCustomCard: (id: string, patch: Partial<CustomCard>) => void;
+  deleteNodeById: (id: string) => void;
+  addCustomEdge: (edge: CustomEdgeInput) => void;
+  deleteCustomEdge: (id: string) => void;
+  synthesizeCard: (id: string) => boolean;
+  duplicateNode: (id: string) => string | null;
+  toggleNodeCollapse: (id: string) => void;
+  collapseAllNodes: (nodeIds: string[]) => void;
   expandAllNodes: () => void;
-  setItemDecision: (decision: Omit<ItemDecision, "updatedAt">) => void;
-  toggleItemStatus: (id: string, nextStatus: DecisionStatus) => void;
-  removeItemDecision: (id: string) => void;
-  getDecisionContext: () => DecisionContext;
-  updateRawBrief: (text: string) => void;
-  updateStateIntent: (text: string) => void;
-  updateStatePriority: (index: number, text: string) => void;
-  updateStateAvoid: (index: number, text: string) => void;
-  addStatePriority: (text: string) => void;
-  removeStatePriority: (index: number) => void;
-  addStateAvoid: (text: string) => void;
-  removeStateAvoid: (index: number) => void;
-  updateStateHypothesis: (text: string) => void;
-  updateVisualKeyword: (index: number, keyword: string) => void;
-  addVisualKeyword: (text: string) => void;
-  removeVisualKeyword: (index: number) => void;
-  updateRoute: (routeId: string, partial: Partial<Route>) => void;
-  updateRouteStep: (routeId: string, stepId: string, partial: Partial<RouteStep>) => void;
-  updatePlatformKeyword: (
-    stepId: string,
-    sourceId: string,
-    kwIndex: number,
-    newKw: string,
-  ) => void;
   reset: () => void;
 };
 
@@ -187,7 +173,6 @@ function emptySession(): Session {
     sessionId: crypto.randomUUID(),
     rawBrief: "",
     briefImages: [],
-    visualInspirations: [],
     state: null,
     next: null,
     history: [],
@@ -202,12 +187,15 @@ function emptySession(): Session {
     recommendedRouteId: null,
     selectedRouteId: null,
     activeStepId: null,
+    exploredRouteIds: [],
     platformPlans: [],
     sourceInteractions: {},
     stepNotes: {},
     completedCriteria: {},
-    collapsedNodes: {},
-    itemDecisions: {},
+    customCards: [],
+    customEdges: [],
+    deletedNodeIds: [],
+    collapsedNodeIds: [],
   };
 }
 
@@ -219,31 +207,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
         const target = providedStorage ?? localStorage;
         const stored = await target.getItem(name);
         if (stored !== null) {
-          try {
-            const parsed = JSON.parse(stored);
-            const session = parsed?.state ?? parsed;
-            if (
-              Array.isArray(session?.briefImages) &&
-              session.briefImages.length > 0 &&
-              (!Array.isArray(session?.visualInspirations) ||
-                session.visualInspirations.length === 0)
-            ) {
-              session.visualInspirations = session.briefImages.map(
-                (img: string, idx: number) => ({
-                  id: `vis_legacy_${idx}`,
-                  url: img,
-                  title: `参考图 0${idx + 1}`,
-                  sourceType: "upload",
-                  status: "confirmed",
-                  scope: "global",
-                  palette: [],
-                  keywords: [],
-                  createdAt: Date.now(),
-                }),
-              );
-              return JSON.stringify(parsed);
-            }
-          } catch {}
+          JSON.parse(stored); // Recover malformed JSON before Zustand's decoder.
           return stored;
         }
 
@@ -323,158 +287,11 @@ export function createSiftStore(providedStorage?: StateStorage) {
         setBriefImages: (briefImages) => set({ briefImages }),
         addBriefImage: (image) => {
           const current = get().briefImages;
-          if (current.length >= 5) return;
-          const nextImages = [...current, image];
-          // Also register as visual inspiration if not present
-          const hasInspiration = (get().visualInspirations || []).some((v) => v.url === image);
-          if (!hasInspiration) {
-            get().addVisualInspiration({
-              url: image,
-              sourceType: "upload",
-              scope: "global",
-              title: `参考图 0${nextImages.length}`,
-            });
-          } else {
-            set({ briefImages: nextImages });
-          }
+          if (current.length >= 3) return;
+          set({ briefImages: [...current, image] });
         },
         removeBriefImage: (index) => {
-          const targetUrl = get().briefImages[index];
-          const nextBrief = get().briefImages.filter((_, i) => i !== index);
-          const nextVisual = (get().visualInspirations || []).filter((v) => v.url !== targetUrl);
-          set({ briefImages: nextBrief, visualInspirations: nextVisual });
-        },
-        addVisualInspiration: (item) => {
-          const id = item.id || `vis_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-          const newItem: VisualInspiration = {
-            id,
-            url: item.url,
-            title: item.title ?? "",
-            sourceType: item.sourceType ?? "upload",
-            sourceUrl: item.sourceUrl,
-            status: item.status ?? "confirmed",
-            scope: item.scope ?? "global",
-            targetId: item.targetId,
-            palette: item.palette ?? [],
-            keywords: item.keywords ?? [],
-            notes: item.notes,
-            createdAt: Date.now(),
-          };
-          set((s) => {
-            const nextList = [newItem, ...(s.visualInspirations || [])];
-            // Sync to itemDecisions
-            const nextDecisions = {
-              ...s.itemDecisions,
-              [id]: {
-                id,
-                type: "image" as const,
-                content: newItem.url,
-                label: newItem.title || "视觉灵感",
-                status: newItem.status,
-                sourceNode:
-                  newItem.scope === "route"
-                    ? "03 主题"
-                    : newItem.scope === "step"
-                      ? "04 视点"
-                      : "00 简报",
-                updatedAt: Date.now(),
-              },
-            };
-            // Sync to briefImages if global/brief
-            let nextBrief = s.briefImages;
-            if (newItem.scope === "global" && !s.briefImages.includes(newItem.url)) {
-              nextBrief = [...s.briefImages, newItem.url].slice(0, 5);
-            }
-            return {
-              visualInspirations: nextList,
-              itemDecisions: nextDecisions,
-              briefImages: nextBrief,
-            };
-          });
-          return id;
-        },
-        removeVisualInspiration: (id) => {
-          set((s) => {
-            const item = (s.visualInspirations || []).find((v) => v.id === id);
-            const nextList = (s.visualInspirations || []).filter((v) => v.id !== id);
-            const nextDecisions = { ...s.itemDecisions };
-            delete nextDecisions[id];
-            const nextBrief = item
-              ? s.briefImages.filter((img) => img !== item.url)
-              : s.briefImages;
-            return {
-              visualInspirations: nextList,
-              itemDecisions: nextDecisions,
-              briefImages: nextBrief,
-            };
-          });
-        },
-        updateVisualInspiration: (id, partial) => {
-          set((s) => {
-            const nextList = (s.visualInspirations || []).map((v) => {
-              if (v.id !== id) return v;
-              return { ...v, ...partial };
-            });
-            const updatedItem = nextList.find((v) => v.id === id);
-            const nextDecisions = { ...s.itemDecisions };
-            if (updatedItem && nextDecisions[id]) {
-              nextDecisions[id] = {
-                ...nextDecisions[id],
-                content: updatedItem.url,
-                label: updatedItem.title || nextDecisions[id].label,
-                status: updatedItem.status,
-                updatedAt: Date.now(),
-              };
-            }
-            return {
-              visualInspirations: nextList,
-              itemDecisions: nextDecisions,
-            };
-          });
-        },
-        setVisualInspirationStatus: (id, status) => {
-          set((s) => {
-            const nextList = (s.visualInspirations || []).map((v) =>
-              v.id === id ? { ...v, status } : v,
-            );
-            const nextDecisions = { ...s.itemDecisions };
-            if (nextDecisions[id]) {
-              nextDecisions[id] = {
-                ...nextDecisions[id],
-                status,
-                updatedAt: Date.now(),
-              };
-            }
-            return {
-              visualInspirations: nextList,
-              itemDecisions: nextDecisions,
-            };
-          });
-        },
-        assignVisualInspiration: (id, scope, targetId) => {
-          set((s) => {
-            const nextList = (s.visualInspirations || []).map((v) =>
-              v.id === id ? { ...v, scope, targetId } : v,
-            );
-            const updatedItem = nextList.find((v) => v.id === id);
-            const nextDecisions = { ...s.itemDecisions };
-            if (updatedItem && nextDecisions[id]) {
-              nextDecisions[id] = {
-                ...nextDecisions[id],
-                sourceNode:
-                  scope === "route"
-                    ? "03 主题"
-                    : scope === "step"
-                      ? "04 视点"
-                      : "00 简报",
-                updatedAt: Date.now(),
-              };
-            }
-            return {
-              visualInspirations: nextList,
-              itemDecisions: nextDecisions,
-            };
-          });
+          set({ briefImages: get().briefImages.filter((_, i) => i !== index) });
         },
         setDrafts: (drafts) => set({ drafts }),
         setCorrectionDraft: (correctionDraft) => set({ correctionDraft }),
@@ -575,27 +392,73 @@ export function createSiftStore(providedStorage?: StateStorage) {
           set({
             routes,
             recommendedRouteId,
+            exploredRouteIds: [],
             explorationStage: "routes",
             activeRequest: null,
             error: null,
           });
         },
         selectRoute: (routeId) => {
-          const route = get().routes.find((r) => r.id === routeId);
+          let route = get().routes.find(
+            (r) => r.id === routeId || `route-${r.id}` === routeId,
+          );
+          if (!route) {
+            const custom = get().customCards.find(
+              (c) => c.id === routeId || c.data?.route?.id === routeId,
+            );
+            if (custom?.data?.route) {
+              route = custom.data.route as Route;
+            }
+          }
           if (!route) return;
+
+          const currentRoutes = get().routes;
+          const nextRoutes = currentRoutes.some((r) => r.id === route!.id)
+            ? currentRoutes
+            : [...currentRoutes, route];
+
+          const currentExplored = get().exploredRouteIds ?? [];
+          const nextExplored = currentExplored.includes(route.id)
+            ? currentExplored
+            : [...currentExplored, route.id];
+
           set({
-            selectedRouteId: routeId,
+            routes: nextRoutes,
+            selectedRouteId: route.id,
+            exploredRouteIds: nextExplored,
             activeStepId: route.steps[0]?.id ?? null,
             explorationStage: "route_selected",
-            platformPlans: [],
-            sourceInteractions: {},
-            completedCriteria: {},
+            // Multi-branch: preserve platformPlans and other theme progress!
             error: null,
           });
+        },
+        unexploreRoute: (routeId) => {
+          const currentExplored = get().exploredRouteIds ?? [];
+          const nextExplored = currentExplored.filter(
+            (id) => id !== routeId && `route-${id}` !== routeId,
+          );
+          set({
+            exploredRouteIds: nextExplored,
+            selectedRouteId:
+              get().selectedRouteId === routeId
+                ? nextExplored[nextExplored.length - 1] ?? null
+                : get().selectedRouteId,
+            explorationStage:
+              nextExplored.length > 0 ? "route_selected" : "routes",
+          });
+        },
+        toggleExploreRoute: (routeId) => {
+          const currentExplored = get().exploredRouteIds ?? [];
+          if (currentExplored.includes(routeId)) {
+            get().unexploreRoute(routeId);
+          } else {
+            get().selectRoute(routeId);
+          }
         },
         reselectRoute: () => {
           set({
             selectedRouteId: null,
+            exploredRouteIds: [],
             activeStepId: null,
             explorationStage: "routes",
             platformPlans: [],
@@ -605,22 +468,31 @@ export function createSiftStore(providedStorage?: StateStorage) {
           });
         },
         setActiveStep: (stepId) => {
-          const selectedRoute = get().routes.find(
-            (r) => r.id === get().selectedRouteId,
-          );
-          if (!selectedRoute) return;
-          const stepIndex = selectedRoute.steps.findIndex(
-            (s) => s.id === stepId,
-          );
-          if (stepIndex === -1) return;
+          const selectedRoute =
+            get().routes.find((r) => r.steps.some((s) => s.id === stepId)) ??
+            get().routes.find((r) => r.id === get().selectedRouteId);
 
-          // Rollback cleanup: clean up plans and interactions for steps after this step
-          const keptStepIds = new Set(
-            selectedRoute.steps.slice(0, stepIndex + 1).map((s) => s.id),
-          );
-          const filteredPlans = get().platformPlans.filter((p) =>
-            keptStepIds.has(p.stepId),
-          );
+          let filteredPlans = get().platformPlans;
+          if (selectedRoute) {
+            const stepIndex = selectedRoute.steps.findIndex(
+              (s) => s.id === stepId,
+            );
+            if (stepIndex !== -1) {
+              const currentRouteStepIds = new Set(
+                selectedRoute.steps.map((s) => s.id),
+              );
+              const keptStepIds = new Set(
+                selectedRoute.steps.slice(0, stepIndex + 1).map((s) => s.id),
+              );
+              // Clean up subsequent steps of THIS route only, keeping plans of other routes intact
+              filteredPlans = get().platformPlans.filter(
+                (p) =>
+                  !currentRouteStepIds.has(p.stepId) ||
+                  keptStepIds.has(p.stepId),
+              );
+            }
+          }
+
           const hasPlanForStep = filteredPlans.some((p) => p.stepId === stepId);
 
           set({
@@ -747,461 +619,278 @@ export function createSiftStore(providedStorage?: StateStorage) {
             },
           });
         },
-        toggleNodeCollapse: (nodeId) => {
-          const current = get().collapsedNodes[nodeId] ?? false;
-          set({
-            collapsedNodes: {
-              ...get().collapsedNodes,
-              [nodeId]: !current,
-            },
-          });
-        },
-        setNodeCollapse: (nodeId, collapsed) => {
-          set({
-            collapsedNodes: {
-              ...get().collapsedNodes,
-              [nodeId]: collapsed,
-            },
-          });
-        },
-        collapseCompletedNodes: () => {
-          const s = get();
-          const nextCollapsed: Record<string, boolean> = { ...s.collapsedNodes };
-          if (s.state) {
-            nextCollapsed["brief"] = true;
+        addCustomCard: (card) => {
+          const id = card.id ?? `card-${crypto.randomUUID().slice(0, 8)}`;
+          const newCard: CustomCard = {
+            id,
+            type: card.type,
+            title: card.title,
+            content: card.content,
+            color: card.color,
+            data: card.data,
+            position: card.position,
+          };
+          const nextCards = [...get().customCards, newCard];
+          const currentRoutes = get().routes;
+          let nextRoutes = currentRoutes;
+
+          if (newCard.type === "route" && newCard.data?.route) {
+            const r = newCard.data.route as Route;
+            if (!currentRoutes.some((existing) => existing.id === r.id)) {
+              nextRoutes = [...currentRoutes, r];
+            }
           }
-          if (s.state?.status === "confirmed" && s.routes.length > 0) {
-            nextCollapsed["direction"] = true;
-          }
-          s.history.forEach((turn) => {
-            nextCollapsed[`turn-${turn.id}`] = true;
+
+          set({
+            customCards: nextCards,
+            routes: nextRoutes,
           });
-          if (s.selectedRouteId) {
-            s.routes.forEach((r) => {
-              if (r.id !== s.selectedRouteId) {
-                nextCollapsed[`route-${r.id}`] = true;
+          return id;
+        },
+        updateCustomCard: (id, patch) => {
+          const currentCards = get().customCards;
+          const currentRoutes = get().routes;
+          let nextRoutes = currentRoutes;
+
+          const updatedCards = currentCards.map((c) => {
+            if (c.id !== id) return c;
+            const updated = {
+              ...c,
+              ...patch,
+              data: {
+                ...(c.data || {}),
+                ...(patch.data || {}),
+              },
+            };
+            if (updated.type === "route" && updated.data?.route) {
+              const r = updated.data.route as Route;
+              if (!nextRoutes.some((existing) => existing.id === r.id)) {
+                nextRoutes = [...nextRoutes, r];
+              } else {
+                nextRoutes = nextRoutes.map((existing) => (existing.id === r.id ? r : existing));
               }
-            });
+            }
+            return updated;
+          });
+
+          set({
+            customCards: updatedCards,
+            routes: nextRoutes,
+          });
+        },
+        deleteNodeById: (id) => {
+          const currentDeleted = get().deletedNodeIds;
+          set({
+            deletedNodeIds: currentDeleted.includes(id)
+              ? currentDeleted
+              : [...currentDeleted, id],
+            customCards: get().customCards.filter((c) => c.id !== id),
+            customEdges: get().customEdges.filter(
+              (e) => e.source !== id && e.target !== id
+            ),
+          });
+        },
+        addCustomEdge: (edge) => {
+          const currentEdges = get().customEdges;
+          if (
+            currentEdges.some(
+              (e) => e.source === edge.source && e.target === edge.target
+            )
+          ) {
+            return;
           }
-          set({ collapsedNodes: nextCollapsed });
-        },
-        expandAllNodes: () => {
-          set({ collapsedNodes: {} });
-        },
-        setItemDecision: (decision) => {
-          set((s) => ({
-            itemDecisions: {
-              ...s.itemDecisions,
-              [decision.id]: {
-                ...decision,
-                updatedAt: Date.now(),
+          set({
+            customEdges: [
+              ...currentEdges,
+              {
+                id: edge.id,
+                source: edge.source,
+                target: edge.target,
+                animated: edge.animated ?? true,
+                style: edge.style,
               },
-            },
-          }));
-        },
-        toggleItemStatus: (id, nextStatus) => {
-          set((s) => {
-            const current = s.itemDecisions[id];
-            if (!current) return s;
-            return {
-              itemDecisions: {
-                ...s.itemDecisions,
-                [id]: {
-                  ...current,
-                  status: nextStatus,
-                  updatedAt: Date.now(),
-                },
-              },
-            };
+            ],
           });
         },
-        removeItemDecision: (id) => {
-          set((s) => {
-            const next = { ...s.itemDecisions };
-            delete next[id];
-            return { itemDecisions: next };
+        deleteCustomEdge: (id) => {
+          set({
+            customEdges: get().customEdges.filter((e) => e.id !== id),
           });
         },
-        getDecisionContext: () => {
-          const decisions = get().itemDecisions;
-          const confirmed: ItemDecision[] = [];
-          const uncertain: ItemDecision[] = [];
-          const discarded: ItemDecision[] = [];
-          for (const item of Object.values(decisions)) {
-            if (item.status === "confirmed") confirmed.push(item);
-            else if (item.status === "uncertain") uncertain.push(item);
-            else if (item.status === "discarded") discarded.push(item);
-          }
-          return { confirmed, uncertain, discarded };
-        },
-        updateRawBrief: (text: string) => {
-          set((s) => ({
-            rawBrief: text,
-            itemDecisions: {
-              ...s.itemDecisions,
-              brief_text: {
-                id: "brief_text",
-                type: "text",
-                content: text,
-                label: "简报需求 (已自定义)",
-                status: "confirmed",
-                sourceNode: "00 简报",
-                updatedAt: Date.now(),
-              },
-            },
-          }));
-        },
-        updateStateIntent: (text: string) => {
-          set((s) => {
-            if (!s.state) return s;
-            const updatedDirection = {
-              ...s.state.direction,
-              intent: { text, basis: "user" as const, sourceIds: ["user_edit"] },
-            };
-            return {
-              state: {
-                ...s.state,
-                revision: s.state.revision + 1,
-                direction: updatedDirection,
-              },
-              itemDecisions: {
-                ...s.itemDecisions,
-                state_intent: {
-                  id: "state_intent",
-                  type: "text",
-                  content: text,
-                  label: "视觉主张 (已自定义)",
-                  status: "confirmed",
-                  sourceNode: "02 方向",
-                  updatedAt: Date.now(),
-                },
-              },
-            };
-          });
-        },
-        updateStatePriority: (index: number, text: string) => {
-          set((s) => {
-            if (!s.state) return s;
-            const priorities = [...s.state.direction.priorities];
-            if (index >= 0 && index < priorities.length) {
-              priorities[index] = { text, basis: "user" as const, sourceIds: ["user_edit"] };
-            } else if (text.trim()) {
-              priorities.push({ text, basis: "user" as const, sourceIds: ["user_edit"] });
-            }
-            return {
-              state: {
-                ...s.state,
-                revision: s.state.revision + 1,
-                direction: { ...s.state.direction, priorities },
-              },
-              itemDecisions: {
-                ...s.itemDecisions,
-                [`priority_${index}`]: {
-                  id: `priority_${index}`,
-                  type: "text",
-                  content: text,
-                  label: "视觉坚持 (已自定义)",
-                  status: "confirmed",
-                  sourceNode: "02 方向",
-                  updatedAt: Date.now(),
-                },
-              },
-            };
-          });
-        },
-        updateStateAvoid: (index: number, text: string) => {
-          set((s) => {
-            if (!s.state) return s;
-            const avoid = [...s.state.direction.avoid];
-            if (index >= 0 && index < avoid.length) {
-              avoid[index] = { text, basis: "user" as const, sourceIds: ["user_edit"] };
-            } else if (text.trim()) {
-              avoid.push({ text, basis: "user" as const, sourceIds: ["user_edit"] });
-            }
-            return {
-              state: {
-                ...s.state,
-                revision: s.state.revision + 1,
-                direction: { ...s.state.direction, avoid },
-              },
-              itemDecisions: {
-                ...s.itemDecisions,
-                [`avoid_${index}`]: {
-                  id: `avoid_${index}`,
-                  type: "text",
-                  content: text,
-                  label: "视觉红线 (已自定义)",
-                  status: "confirmed",
-                  sourceNode: "02 方向",
-                  updatedAt: Date.now(),
-                },
-              },
-            };
-          });
-        },
-        addStatePriority: (text: string) => {
-          const trimmed = text.trim();
-          if (!trimmed) return;
-          set((s) => {
-            if (!s.state) return s;
-            const priorities = [
-              ...s.state.direction.priorities,
-              { text: trimmed, basis: "user" as const, sourceIds: ["user_add"] },
-            ];
-            const newIndex = priorities.length - 1;
-            return {
-              state: {
-                ...s.state,
-                revision: s.state.revision + 1,
-                direction: { ...s.state.direction, priorities },
-              },
-              itemDecisions: {
-                ...s.itemDecisions,
-                [`priority_${newIndex}`]: {
-                  id: `priority_${newIndex}`,
-                  type: "text",
-                  content: trimmed,
-                  label: "视觉坚持 (已添加)",
-                  status: "confirmed",
-                  sourceNode: "02 方向",
-                  updatedAt: Date.now(),
-                },
-              },
-            };
-          });
-        },
-        removeStatePriority: (index: number) => {
-          set((s) => {
-            if (!s.state) return s;
-            const priorities = s.state.direction.priorities.filter((_, i) => i !== index);
-            const nextDecisions = { ...s.itemDecisions };
-            delete nextDecisions[`priority_${index}`];
-            return {
-              state: {
-                ...s.state,
-                revision: s.state.revision + 1,
-                direction: { ...s.state.direction, priorities },
-              },
-              itemDecisions: nextDecisions,
-            };
-          });
-        },
-        addStateAvoid: (text: string) => {
-          const trimmed = text.trim();
-          if (!trimmed) return;
-          set((s) => {
-            if (!s.state) return s;
-            const avoid = [
-              ...s.state.direction.avoid,
-              { text: trimmed, basis: "user" as const, sourceIds: ["user_add"] },
-            ];
-            const newIndex = avoid.length - 1;
-            return {
-              state: {
-                ...s.state,
-                revision: s.state.revision + 1,
-                direction: { ...s.state.direction, avoid },
-              },
-              itemDecisions: {
-                ...s.itemDecisions,
-                [`avoid_${newIndex}`]: {
-                  id: `avoid_${newIndex}`,
-                  type: "text",
-                  content: trimmed,
-                  label: "视觉红线 (已添加)",
-                  status: "confirmed",
-                  sourceNode: "02 方向",
-                  updatedAt: Date.now(),
-                },
-              },
-            };
-          });
-        },
-        removeStateAvoid: (index: number) => {
-          set((s) => {
-            if (!s.state) return s;
-            const avoid = s.state.direction.avoid.filter((_, i) => i !== index);
-            const nextDecisions = { ...s.itemDecisions };
-            delete nextDecisions[`avoid_${index}`];
-            return {
-              state: {
-                ...s.state,
-                revision: s.state.revision + 1,
-                direction: { ...s.state.direction, avoid },
-              },
-              itemDecisions: nextDecisions,
-            };
-          });
-        },
-        updateStateHypothesis: (text: string) => {
-          set((s) => {
-            if (!s.state) return s;
-            return {
-              state: {
-                ...s.state,
-                revision: s.state.revision + 1,
-                currentHypothesis: text,
-              },
-            };
-          });
-        },
-        updateVisualKeyword: (index: number, keyword: string) => {
-          set((s) => {
-            if (!s.state) return s;
-            const visualKeywords = [...(s.state.visualKeywords ?? [])];
-            if (index >= 0 && index < visualKeywords.length) {
-              visualKeywords[index] = keyword;
-            } else if (keyword.trim()) {
-              visualKeywords.push(keyword);
-            }
-            return {
-              state: {
-                ...s.state,
-                revision: s.state.revision + 1,
-                visualKeywords,
-              },
-              itemDecisions: {
-                ...s.itemDecisions,
-                [`kw_${keyword}`]: {
-                  id: `kw_${keyword}`,
-                  type: "text",
-                  content: keyword,
-                  label: "视觉关键词 (已自定义)",
-                  status: "confirmed",
-                  sourceNode: "02 方向",
-                  updatedAt: Date.now(),
-                },
-              },
-            };
-          });
-        },
-        addVisualKeyword: (text: string) => {
-          const trimmed = text.trim();
-          if (!trimmed) return;
-          set((s) => {
-            if (!s.state) return s;
-            const visualKeywords = [...(s.state.visualKeywords ?? [])];
-            if (!visualKeywords.includes(trimmed)) {
-              visualKeywords.push(trimmed);
-            }
-            return {
-              state: {
-                ...s.state,
-                revision: s.state.revision + 1,
-                visualKeywords,
-              },
-              itemDecisions: {
-                ...s.itemDecisions,
-                [`kw_${trimmed}`]: {
-                  id: `kw_${trimmed}`,
-                  type: "text",
-                  content: trimmed,
-                  label: "视觉关键词 (已添加)",
-                  status: "confirmed",
-                  sourceNode: "02 方向",
-                  updatedAt: Date.now(),
-                },
-              },
-            };
-          });
-        },
-        removeVisualKeyword: (index: number) => {
-          set((s) => {
-            if (!s.state) return s;
-            const visualKeywords = (s.state.visualKeywords ?? []).filter((_, i) => i !== index);
-            const nextDecisions = { ...s.itemDecisions };
-            delete nextDecisions[`kw_${index}`];
-            return {
-              state: {
-                ...s.state,
-                revision: s.state.revision + 1,
-                visualKeywords,
-              },
-              itemDecisions: nextDecisions,
-            };
-          });
-        },
-        updateRoute: (routeId: string, partial: Partial<Route>) => {
-          set((s) => {
-            const routes = s.routes.map((r) =>
-              r.id === routeId ? { ...r, ...partial } : r,
-            );
-            const target = routes.find((r) => r.id === routeId);
-            const extraDecisions: Record<string, ItemDecision> = {};
-            if (target && (partial.themeName || partial.visualSnapshot)) {
-              extraDecisions[`theme_${routeId}`] = {
-                id: `theme_${routeId}`,
-                type: "theme",
-                content: `${target.themeName || target.title}${target.visualSnapshot ? ` · ${target.visualSnapshot}` : ""}`,
-                label: "设计主题 (已自定义)",
-                status: "confirmed",
-                sourceNode: "03 主题",
-                updatedAt: Date.now(),
-              };
-            }
-            return {
-              routes,
-              itemDecisions: { ...s.itemDecisions, ...extraDecisions },
-            };
-          });
-        },
-        updateRouteStep: (
-          routeId: string,
-          stepId: string,
-          partial: Partial<RouteStep>,
-        ) => {
-          set((s) => {
-            const routes = s.routes.map((r) => {
-              if (r.id !== routeId) return r;
-              const steps = r.steps.map((st) =>
-                st.id === stepId ? { ...st, ...partial } : st,
-              );
-              return { ...r, steps };
-            });
-            return { routes };
-          });
-        },
-        updatePlatformKeyword: (
-          stepId: string,
-          sourceId: string,
-          kwIndex: number,
-          newKw: string,
-        ) => {
-          set((s) => {
-            const platformPlans = s.platformPlans.map((plan) => {
-              if (plan.stepId !== stepId) return plan;
-              const primarySources = plan.primarySources.map((source) => {
-                if (source.id !== sourceId) return source;
-                const keywords = [...source.keywords];
-                if (kwIndex >= 0 && kwIndex < keywords.length) {
-                  keywords[kwIndex] = {
-                    ...keywords[kwIndex],
-                    keyword: newKw,
-                    calibratedQuery: newKw,
-                    advancedQuery: newKw,
-                  };
+        synthesizeCard: (cardId: string) => {
+          const state = get();
+          const targetCard = state.customCards.find((c) => c.id === cardId);
+          if (!targetCard) return false;
+
+          const upstreamEdges = state.customEdges.filter((e) => e.target === cardId);
+          const upstreamIds = Array.from(new Set(upstreamEdges.map((e) => e.source)));
+
+          const upstreamNodes: Array<{ id: string; type?: string; data: any }> = [];
+          for (const srcId of upstreamIds) {
+            if (srcId === "brief") {
+              upstreamNodes.push({ id: "brief", type: "brief", data: { goal: state.rawBrief } });
+            } else if (srcId === "state") {
+              upstreamNodes.push({ id: "state", type: "state", data: { state: state.state } });
+            } else if (srcId === "ask") {
+              upstreamNodes.push({ id: "ask", type: "ask", data: { next: state.next } });
+            } else {
+              const routeMatch = state.routes.find((r) => r.id === srcId || `route-${r.id}` === srcId);
+              if (routeMatch) {
+                upstreamNodes.push({ id: srcId, type: "route", data: { route: routeMatch } });
+              } else {
+                const customMatch = state.customCards.find((c) => c.id === srcId);
+                if (customMatch) {
+                  upstreamNodes.push({
+                    id: customMatch.id,
+                    type: customMatch.type,
+                    data: customMatch.data,
+                  });
                 }
-                return { ...source, keywords };
-              });
-              return { ...plan, primarySources };
-            });
-            return {
-              platformPlans,
-              itemDecisions: {
-                ...s.itemDecisions,
-                [`kw_${newKw}`]: {
-                  id: `kw_${newKw}`,
-                  type: "text",
-                  content: newKw,
-                  label: "搜索词 (已自定义)",
-                  status: "confirmed",
-                  sourceNode: "05 搜索",
-                  updatedAt: Date.now(),
-                },
+              }
+            }
+          }
+
+          const synthesized = synthesizeCardFromInputs(
+            targetCard.type as ToolType,
+            upstreamNodes,
+            {
+              state: state.state,
+              rawBrief: state.rawBrief,
+              routes: state.routes,
+            }
+          );
+
+          let nextRoutes = state.routes;
+          if (synthesized.data?.route) {
+            const newRoute = synthesized.data.route as Route;
+            if (!nextRoutes.some((r) => r.id === newRoute.id)) {
+              nextRoutes = [...nextRoutes, newRoute];
+            } else {
+              nextRoutes = nextRoutes.map((r) => (r.id === newRoute.id ? newRoute : r));
+            }
+          }
+
+          set({
+            routes: nextRoutes,
+            customCards: state.customCards.map((c) =>
+              c.id === cardId
+                ? {
+                    ...c,
+                    ...synthesized,
+                    title: synthesized.title ?? c.title,
+                    data: {
+                      ...c.data,
+                      ...synthesized.data,
+                      isEmpty: false,
+                    },
+                  }
+                : c
+            ),
+          });
+
+          return true;
+        },
+        duplicateNode: (id) => {
+          const state = get();
+          const custom = state.customCards.find((c) => c.id === id);
+          if (custom) {
+            const newId = `card-${crypto.randomUUID().slice(0, 8)}`;
+            let duplicatedData = custom.data ? { ...custom.data } : undefined;
+            let newRouteToSync: Route | null = null;
+
+            if (custom.type === "route" && custom.data?.route) {
+              const oldRoute = custom.data.route as Route;
+              const newRouteId = `route-branch-${crypto.randomUUID().slice(0, 8)}`;
+              newRouteToSync = {
+                ...oldRoute,
+                id: newRouteId,
+                title: `${oldRoute.title} (副本分支)`,
+                themeName: `${oldRoute.themeName || "风格主题"} (副本)`,
+                steps: (oldRoute.steps ?? []).map((s, idx) => ({
+                  ...s,
+                  id: `${newRouteId}-s${idx + 1}`,
+                })),
+              };
+              duplicatedData = { ...duplicatedData, route: newRouteToSync };
+            }
+
+            const duplicated: CustomCard = {
+              ...custom,
+              id: newId,
+              title: newRouteToSync?.themeName ?? (custom.title ? `${custom.title} (副本)` : undefined),
+              data: duplicatedData,
+              position: {
+                x: custom.position.x + 40,
+                y: custom.position.y + 40,
               },
             };
-          });
+
+            set({
+              customCards: [...state.customCards, duplicated],
+              routes: newRouteToSync ? [...state.routes, newRouteToSync] : state.routes,
+            });
+            return newId;
+          }
+
+          const route = state.routes.find(
+            (r) => `route-${r.id}` === id || r.id === id,
+          );
+          if (route) {
+            const newCardId = `card-${crypto.randomUUID().slice(0, 8)}`;
+            const newRouteId = `route-branch-${crypto.randomUUID().slice(0, 8)}`;
+            const duplicatedRoute: Route = {
+              ...route,
+              id: newRouteId,
+              title: `${route.themeName || route.title} (分支副本)`,
+              themeName: `${route.themeName || "风格主题"} (副本)`,
+              steps: (route.steps ?? []).map((s, idx) => ({
+                ...s,
+                id: `${newRouteId}-s${idx + 1}`,
+              })),
+            };
+            const duplicated: CustomCard = {
+              id: newCardId,
+              type: "route",
+              title: duplicatedRoute.themeName,
+              data: { route: duplicatedRoute },
+              position: {
+                x: (state.positions[id]?.x ?? 400) + 40,
+                y: (state.positions[id]?.y ?? 100) + 40,
+              },
+            };
+            set({
+              customCards: [...state.customCards, duplicated],
+              routes: [...state.routes, duplicatedRoute],
+            });
+            return newCardId;
+          }
+
+          const pos = state.positions[id] ?? { x: 400, y: 100 };
+          const newId = `card-${crypto.randomUUID().slice(0, 8)}`;
+          const duplicated: CustomCard = {
+            id: newId,
+            type: "note",
+            title: "副本便签",
+            content: `源自 ${id} 的探索分支`,
+            position: { x: pos.x + 40, y: pos.y + 40 },
+          };
+          set({ customCards: [...state.customCards, duplicated] });
+          return newId;
         },
+        toggleNodeCollapse: (id: string) =>
+          set((state) => ({
+            collapsedNodeIds: state.collapsedNodeIds.includes(id)
+              ? state.collapsedNodeIds.filter((x) => x !== id)
+              : [...state.collapsedNodeIds, id],
+          })),
+        collapseAllNodes: (nodeIds: string[]) =>
+          set(() => ({
+            collapsedNodeIds: Array.from(new Set(nodeIds)),
+          })),
+        expandAllNodes: () =>
+          set(() => ({
+            collapsedNodeIds: [],
+          })),
         reset: () =>
           set({ ...emptySession(), activeRequest: null, error: null }),
       }),
@@ -1214,7 +903,6 @@ export function createSiftStore(providedStorage?: StateStorage) {
           sessionId,
           rawBrief,
           briefImages,
-          visualInspirations,
           state,
           next,
           history,
@@ -1229,17 +917,19 @@ export function createSiftStore(providedStorage?: StateStorage) {
           recommendedRouteId,
           selectedRouteId,
           activeStepId,
+          exploredRouteIds,
           platformPlans,
           sourceInteractions,
           stepNotes,
           completedCriteria,
-          collapsedNodes,
-          itemDecisions,
+          customCards,
+          customEdges,
+          deletedNodeIds,
+          collapsedNodeIds,
         }) => ({
           sessionId,
           rawBrief,
           briefImages,
-          visualInspirations,
           state,
           next,
           history,
@@ -1254,22 +944,37 @@ export function createSiftStore(providedStorage?: StateStorage) {
           recommendedRouteId,
           selectedRouteId,
           activeStepId,
+          exploredRouteIds,
           platformPlans,
           sourceInteractions,
           stepNotes,
           completedCriteria,
-          collapsedNodes,
-          itemDecisions,
+          customCards,
+          customEdges,
+          deletedNodeIds,
+          collapsedNodeIds,
         }),
         merge: (saved, current) => {
           if (!saved) return { ...current, storageWarning: readWarning };
           const parsed = SessionSchema.safeParse(saved);
-          return parsed.success
-            ? { ...current, ...parsed.data }
-            : {
-                ...current,
-                storageWarning: "本地记录格式不兼容，已打开空白会话。",
-              };
+          if (!parsed.success) {
+            return {
+              ...current,
+              storageWarning: "本地记录格式不兼容，已打开空白会话。",
+            };
+          }
+          const loadedExplored = parsed.data.exploredRouteIds ?? [];
+          const finalExplored =
+            loadedExplored.length > 0
+              ? loadedExplored
+              : parsed.data.selectedRouteId
+                ? [parsed.data.selectedRouteId]
+                : [];
+          return {
+            ...current,
+            ...parsed.data,
+            exploredRouteIds: finalExplored,
+          };
         },
       },
     ),
@@ -1278,3 +983,72 @@ export function createSiftStore(providedStorage?: StateStorage) {
 }
 
 export const useSiftStore = createSiftStore();
+
+export interface UpstreamSummary {
+  count: number;
+  labels: string[];
+  themesCount: number;
+  hasStrategy: boolean;
+  hasBrief: boolean;
+  hasStep: boolean;
+}
+
+export function getUpstreamSummary(
+  cardId: string,
+  store: { customEdges: CustomEdgeInput[]; routes: Route[]; customCards: CustomCard[] },
+): UpstreamSummary {
+  const edges = store.customEdges.filter((e) => e.target === cardId);
+  const upstreamIds = Array.from(new Set(edges.map((e) => e.source)));
+  const labels: string[] = [];
+  let themesCount = 0;
+  let hasStrategy = false;
+  let hasBrief = false;
+  let hasStep = false;
+
+  for (const srcId of upstreamIds) {
+    if (srcId === "brief") {
+      labels.push("00 简报解析");
+      hasBrief = true;
+    } else if (srcId === "ask") {
+      labels.push("01 视觉抉择");
+    } else if (srcId === "state") {
+      labels.push("02 策略基准");
+      hasStrategy = true;
+    } else {
+      const route = store.routes.find((r) => r.id === srcId || `route-${r.id}` === srcId);
+      if (route) {
+        labels.push(`主题：${route.themeName || route.title}`);
+        themesCount++;
+      } else {
+        const custom = store.customCards.find((c) => c.id === srcId);
+        if (custom) {
+          if (custom.type === "route") {
+            labels.push(`主题：${custom.title || custom.data?.route?.themeName || "风格主题"}`);
+            themesCount++;
+          } else if (custom.type === "step") {
+            labels.push("04 视点推进");
+            hasStep = true;
+          } else if (custom.type === "platformPlan") {
+            labels.push("05 灵感检索");
+          } else if (custom.type === "image") {
+            labels.push(`参考图：${custom.data?.fileName || "意向图"}`);
+          } else if (custom.type === "note") {
+            labels.push(`便签：${custom.title || "灵感"}`);
+          } else {
+            labels.push(custom.title || "自定义卡片");
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    count: upstreamIds.length,
+    labels,
+    themesCount,
+    hasStrategy,
+    hasBrief,
+    hasStep,
+  };
+}
+

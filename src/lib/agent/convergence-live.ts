@@ -47,14 +47,9 @@ priorities 是表达主次与视觉坚持，avoid 是明确的视觉禁忌与审
 1. 视觉关键词必须在 state.visualKeywords 中提取 4–6 个极其具象、专业的设计视觉参数（严禁输出“高端”、“好看”、“大气”等空洞泛词），覆盖四个维度：
    - 色彩参数：具象色相或色号（如 "冷茶青 #4A5A52"、"原浆棉纸暖白"、"深炭灰 #2B2B2B"）；
    - 空间网格：比例与排版层级（如 "65% 网格负空间"、"双栏无衬线微排版"、"垂直信息标尺"）；
-   - 材质工艺：触感与表面工艺（如 "特种棉纸微肌理"、"单色深压凹微触感"、"哑光无反光漫反射"）；
+   - 材质工艺：触感与表面工艺（如 "300g 特种棉纸微肌理"、"单色深压凹工艺"、"哑光无反光触感"）；
    - 美学流派：具体设计思潮（如 "德式理性功能主义"、"日式日常克制"、"现代新包豪斯"）。
-2. 【纯视觉灵感与头脑风暴，绝对红线（铁律）】：
-   - SIFT 绝不帮设计师落地施工，绝不提供工厂生产制造规范，绝不写打样说明书！
-   - 严禁出现“落地”、“落地法”、“落地案”、“商业落地”、“工程落地”等词汇！
-   - 绝对禁止包含具体纸张克重（严禁输出“300g”、“400g”、“157g”等数字参数，必须改用“特种棉纸”、“细腻质感纸”等感官审美词）！
-   - 绝对禁止写出任何印刷施工/机械制造质检参数（严禁写“压凹过深纸面破裂”、“克重与压力需精确匹配”、“模切公差”等车间质检话术）！
-3. 当输入附带参考图片（images）时，必须深度执行视觉逆向工程：
+2. 当输入附带参考图片（images）时，必须深度执行视觉逆向工程：
    - 提问必须显式引用参考图中的具体视觉现象（例如：“参考图中呈现了 >60% 的大面积纸白与极细中英字阶，在实际包装正面，产品品名与风味信息是否同样退入辅助层级？”）；
    - 选项必须清晰映射“严格沿用参考图比例”与“其他设计流派/折衷手法”的对比；
    - 敏锐检测图文冲突：若文字 Brief 与参考图风格相悖（如文字要求“极简克制”，图片呈现“高饱和重度插画”），第 1 题必须作为最高阻塞判断（blocking）抛出冲突取舍。
@@ -78,7 +73,7 @@ priorities 是表达主次与视觉坚持，avoid 是明确的视觉禁忌与审
 4. 问题字数极其精炼（≤35字）；选项 2–3 个且每项最多 32 字。选项必须采用「流派/手法：具象取舍」的对立格式（例如：“单色微字阶：仅保留单行品名与技术标尺，其余留白” vs “风味图示化：以局部几何色块突出茶品辨识度”），绝不模棱两可。
 5. 不重复已回答、已暂缓或上一轮语义相同的问题；本轮已有答案能推导出的判断不要再问。
 6. 不问已给出的受众或约束；不强制定死具体色值 HEX 或字号 pt，重点是视觉语言的感知基调、表达主次、禁忌与评价准则。
-7. 每次回答后必须重写 currentHypothesis，使它富有画面感与视觉表现力，建议格式：以[核心视觉语言/材质/排版结构]在[媒介与成本约束]下呈现[视觉心理感知与张力]，坚决杜绝[视觉禁忌]（最多 100 字）。
+7. 每次回答后必须重写 currentHypothesis，使它富有画面感与落地张力，建议格式：以[核心视觉语言/材质/排版结构]在[媒介与成本约束]下呈现[视觉心理感知与张力]，坚决杜绝[视觉禁忌]（最多 100 字）。
 8. validationAction 必须是 10–20 分钟内设计师可直接在电脑或工位上实操的轻量级视觉观察/对照动作（例如：“将草样置于黑白灰度下，测试 0.5 秒内主信息字块是否依然最先被捕捉”；“1:1 打印黑白纸样贴在办公桌面，测试陈列呼吸感与杂乱度”；“提取 3 款同品类标杆正面做视线动线盲测对比”）。
 9. 无高价值未决判断→ready；剩余判断均暂缓或需外部证据→needs_evidence。等待用户在检查点决定开始设计、继续深化或回退修改。
 若 event.type 为 fast_start：禁止提问，不要返回 next.type=ask，不要输出 confirmed。从 Brief 提取的明确事实标 basis=user；为填满方向而做的推导必须写入 direction 并标 basis=assumption。无法合理假设的判断留在 uncertainties。state.status=checkpoint，next={"type":"checkpoint","reason":"fast_converged"}。`;
@@ -427,36 +422,16 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
       : [];
   const visualKeywords = rawKeywords
     .filter((k): k is string => typeof k === "string" && Boolean(k.trim()))
-    .map((k) =>
-      k
-        .replace(/(\b|\D)\d{2,4}\s*g(?=[^\w]|$)/gi, "$1")
-        .replace(/\b\d{2,4}克(?:重)?/g, "")
-        .replace(/商业落地/g, "商业案例")
-        .replace(/落地法/g, "灵感演绎")
-        .replace(/落地/g, "参考")
-        .trim()
-        .slice(0, 40),
-    )
-    .filter(Boolean);
-
-  const discardedSet = new Set(
-    (input.decisions?.discarded ?? [])
-      .map((d) => d.content.toLowerCase().trim())
-      .filter(Boolean),
-  );
-  const filteredKeywords = visualKeywords
-    .filter((k) => !discardedSet.has(k.toLowerCase().trim()))
+    .map((k) => k.trim().slice(0, 40))
     .slice(0, 8);
-
-  const finalVisualKeywords = filteredKeywords.length > 0 ? filteredKeywords : visualKeywords.slice(0, 8);
-  if (finalVisualKeywords.length === 0) {
+  if (visualKeywords.length === 0) {
     if (state.direction && typeof state.direction === "object") {
       const intentText = (state.direction as RecordLike).intent;
       if (intentText && typeof intentText === "object" && typeof (intentText as RecordLike).text === "string") {
-        finalVisualKeywords.push(((intentText as RecordLike).text as string).slice(0, 20));
+        visualKeywords.push(((intentText as RecordLike).text as string).slice(0, 20));
       }
     }
-    finalVisualKeywords.push("极简版式", "克制质感");
+    visualKeywords.push("极简版式", "克制质感");
   }
 
   return {
@@ -481,42 +456,18 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
             }
           : previous?.validationAction ?? null,
       uncertainties,
-      visualKeywords: finalVisualKeywords,
+      visualKeywords,
     },
     next,
   };
 }
 
 export function liveConvergence(input: ConvergenceInput): Promise<unknown> {
-  const rawImages = input.images ?? [];
-  const discardedImageUrls = new Set(
-    (input.decisions?.discarded ?? [])
-      .filter((d) => d.type === "image")
-      .map((d) => d.content),
-  );
-  const images = rawImages.filter((img) => !discardedImageUrls.has(img));
+  const images = input.images ?? [];
   const { images: _ignored, ...pureInput } = input;
   let prompt = SYSTEM;
   if (input.rawBrief?.trim()) {
     prompt += `\n\n【当前任务核心 Brief 锚点】：${input.rawBrief}\n提问与状态更新必须严格紧扣此主题（如宠物生活、SaaS工作台、潮玩IP、品牌VI等），严禁发生主体漂移！`;
-  }
-  if (input.decisions) {
-    const { confirmed, uncertain, discarded } = input.decisions;
-    if (confirmed.length > 0) {
-      prompt += `\n\n【不可动摇的设计师已确认项（必须 100% 遵守的硬约束）】：\n${confirmed
-        .map((c) => `- [${c.type}] ${c.label ? `${c.label}: ` : ""}${c.content}`)
-        .join("\n")}\n后续方向收敛、视觉主张与提问必须完全尊重这些已确认基石，绝不可背离！`;
-    }
-    if (uncertain.length > 0) {
-      prompt += `\n\n【待验证的不确定想法与假设（优先提问与探索切入点）】：\n${uncertain
-        .map((u) => `- [${u.type}] ${u.label ? `${u.label}: ` : ""}${u.content}`)
-        .join("\n")}\n可围绕这些未定点提出分水岭对比选项或提炼为待探索假说。`;
-    }
-    if (discarded.length > 0) {
-      prompt += `\n\n【绝对禁止：设计师已明确舍弃的内容（负向排除红线）】：\n${discarded
-        .map((d) => `- [${d.type}] ${d.label ? `${d.label}: ` : ""}${d.content}`)
-        .join("\n")}\n严禁在视觉主张、视觉关键词、后续提问及选项中以任何形式重新引入这些已舍弃的方向！`;
-    }
   }
   return completeJson(prompt, JSON.stringify(pureInput), "none", images).then((payload) =>
     normalizeLivePayload(payload, input),
