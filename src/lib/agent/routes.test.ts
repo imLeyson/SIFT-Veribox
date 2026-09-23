@@ -233,13 +233,13 @@ describe("routes agent generation", () => {
     );
 
     expect(petNormalized.routes).toHaveLength(3);
-    // Theme names should be pet-adaptive, not hardcoded tea/paper mill
-    expect(petNormalized.routes[0].themeName).toBe("温润陪伴 · 治愈微触感");
-    expect(petNormalized.routes[1].themeName).toBe("理性守护 · 科学信息网格");
-    expect(petNormalized.routes[2].themeName).toBe("几何萌态 · 超级动物符号");
+    // Theme names should be pet-adaptive, intuitive and without AI buzzwords
+    expect(petNormalized.routes[0].themeName).toBe("温润棉感与克制留白");
+    expect(petNormalized.routes[1].themeName).toBe("模块网格与双语排印");
+    expect(petNormalized.routes[2].themeName).toBe("极简剪影与超级符号");
 
     // Titles & snapshots must refer to warm healing / pet identity
-    expect(petNormalized.routes[0].title).toContain("温润治愈质感");
+    expect(petNormalized.routes[0].title).toBe("温润棉感与克制留白");
     expect(petNormalized.routes[0].visualSnapshot).toContain("陪伴温度");
     expect(petNormalized.routes[0].visualSnapshot).not.toContain("罐身大面积纯白原浆棉纸");
 
@@ -270,9 +270,9 @@ describe("routes agent generation", () => {
 
     expect(normalized.routes).toHaveLength(3);
     // Theme names should adapt to sustainable material and emotional product, NOT 2D brand identity
-    expect(normalized.routes[0].themeName).toBe("原生纤维 · 触感转化");
-    expect(normalized.routes[1].themeName).toBe("情感器物 · 陪伴隐喻");
-    expect(normalized.routes[2].themeName).toBe("现代极简 · 日常共生");
+    expect(normalized.routes[0].themeName).toBe("原生纤维与微颗粒肌理");
+    expect(normalized.routes[1].themeName).toBe("柔和弧度与温润器型");
+    expect(normalized.routes[2].themeName).toBe("机能卡扣与日常实用");
 
     // Snapshots must focus on recycled fiber and vessel/object form, not paper mill / 2D logo
     expect(normalized.routes[0].visualSnapshot).toContain("再生纤维");

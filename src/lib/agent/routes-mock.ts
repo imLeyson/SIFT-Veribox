@@ -46,8 +46,8 @@ export function getMockRoutes(
     const routes: Route[] = [
       {
         id: "route_prod_fiber",
-        themeName: "原生纤维 · 触感转化",
-        title: "【再生纤维与微气孔】原生温润触感",
+        themeName: "原生纤维与微颗粒肌理",
+        title: "原生纤维与微颗粒肌理",
         visualSnapshot: "回收再生纤维压合成微孔哑光表面，保留天然毛色微杂质与漫反射暖意，触感温润微糙，摒弃廉价塑料感，散发物料本真质感。",
         startingPoint: "再生纤维原生肌理与微气孔触感",
         focusDimension: "原生材料转化与微触感",
@@ -87,8 +87,8 @@ export function getMockRoutes(
       },
       {
         id: "route_prod_vessel",
-        themeName: "情感器物 · 陪伴隐喻",
-        title: "【有机弧度与微握持】治愈陪伴器物",
+        themeName: "柔和弧度与温润器型",
+        title: "柔和弧度与温润器型",
         visualSnapshot: "柔和流动的有机弧面与微握持凹槽，器型沉静如卵石，置于居家桌面或掌心抚触，通过实体形态传递无声的陪伴温度。",
         startingPoint: "有机弧面与手握抚慰度",
         focusDimension: "情感陪伴语义与器物形态",
@@ -128,8 +128,8 @@ export function getMockRoutes(
       },
       {
         id: "route_prod_minimal",
-        themeName: "现代极简 · 日常共生",
-        title: "【机能卡扣与极简线条】现代日常共生",
+        themeName: "机能卡扣与日常实用",
+        title: "机能卡扣与日常实用",
         visualSnapshot: "极简克制的几何线条结合精妙微倒角构件，材料与现代铝合金或原木自然嵌合，呈现兼具实用机能与当代家居审美的优雅器物。",
         startingPoint: "现代生活机能与结合部细节",
         focusDimension: "现代机能美学与日常共生",
@@ -180,8 +180,8 @@ export function getMockRoutes(
       const altRoutes: Route[] = [
         {
           id: "route_tea_ink_alt",
-          themeName: "当代东方 · 墨色留白",
-          title: "【微浸润水墨与大开合留白】静谧东方意象",
+          themeName: "水墨留白与宣纸肌理",
+          title: "水墨留白与宣纸肌理",
           visualSnapshot: "特种手工宣纸覆合硬盒，正面仅一抹淡雅水墨晕染与朱红小印，80% 呼吸感留白，墨韵自然散开，无多余商业装饰。",
           startingPoint: "手工宣纸肌理与极简水墨意象",
           focusDimension: "传统材质手工感与当代水墨排版",
@@ -221,8 +221,8 @@ export function getMockRoutes(
         },
         {
           id: "route_tea_ceramic_alt",
-          themeName: "自然器物 · 纯粹几何",
-          title: "【天然陶土质感与几何切削】现代器物感",
+          themeName: "陶土砂砾与多边器物",
+          title: "陶土砂砾与多边器物",
           visualSnapshot: "无涂层陶土质感纸张包裹八边形硬盒，单色哑光微小字符，呈现如桌面雕塑般的器物之美。",
           startingPoint: "天然陶土砂砾触感与利落多边形",
           focusDimension: "矿物微颗粒纸感与雕塑式器型",
@@ -262,8 +262,8 @@ export function getMockRoutes(
         },
         {
           id: "route_tea_black_alt",
-          themeName: "先锋消光 · 极黑触感",
-          title: "【炭黑触感与折光等高线】神秘深邃韵味",
+          themeName: "炭黑暗纹与等高线微光",
+          title: "炭黑暗纹与等高线微光",
           visualSnapshot: "深黑炭质触感特种纸，正面同色系亮光透明折光勾勒茶山等高线，在光线流转下若隐若现，冷峻而先锋。",
           startingPoint: "极黑炭质触感与同色系折光反差",
           focusDimension: "全黑消光材质与局部光油反差",
@@ -310,8 +310,8 @@ export function getMockRoutes(
     const routes: Route[] = [
       {
         id: "route_tea_material",
-        themeName: "素纸微白 · 原生触觉",
-        title: "【特种棉纸与深压凹】极端克制纸感",
+        themeName: "素雅棉纸与无墨压凹",
+        title: "素雅棉纸与无墨压凹",
         visualSnapshot: "大面积纯白原浆棉纸留白，正面无多余彩印，仅凭 0.5mm 侧光单色深压凹显露出茶品名与暗纹，在光线下呈现极简雕塑感。",
         startingPoint: "特种纸微触感与无墨压凹",
         focusDimension: "特种纸肌理与深压凹工艺",
@@ -351,8 +351,8 @@ export function getMockRoutes(
       },
       {
         id: "route_tea_typography",
-        themeName: "瑞士理性 · 档案清单",
-        title: "【瑞士网格与严谨字阶】档案式风味信息",
+        themeName: "严谨网格与档案排版",
+        title: "严谨网格与档案排版",
         visualSnapshot: "严谨双栏瑞士网格排版，中西文字阶 2.5 倍对比，冷冽黑白字符清晰罗列产地海拔与风味批号，呈现如专业档案般的权威可信度。",
         startingPoint: "双栏网格与微字阶层级",
         focusDimension: "双栏网格与微字阶层级",
@@ -392,8 +392,8 @@ export function getMockRoutes(
       },
       {
         id: "route_tea_desk",
-        themeName: "极简静物 · 桌面陪伴",
-        title: "【极简几何色块与视觉锤】工位桌面静物",
+        themeName: "极简几何与视觉大色块",
+        title: "极简几何与视觉大色块",
         visualSnapshot: "低饱和莫兰迪茶色圆角罐身，正面仅居中一枚极简几何抚慰符号，在原木办公桌上呈现纯粹温和的现代艺术静物感。",
         startingPoint: "桌面静物陈列与微解压隐喻",
         focusDimension: "桌面陈列美学与视觉解压",
