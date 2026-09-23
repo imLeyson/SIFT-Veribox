@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { StickyNote, Trash2, GripHorizontal, Sparkles } from "lucide-react";
 import { useSiftStore, getUpstreamSummary } from "@/lib/convergence-store";
@@ -74,14 +74,81 @@ export function StickyNoteNode({ id, data }: NodeProps) {
   const [color, setColor] = useState<NoteColor>(initialColor);
   const theme = COLOR_VARIANTS[color] ?? COLOR_VARIANTS.amber;
 
+  // Debouncing refs for zero typing lag and isolated rendering
+  const titleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const contentTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const latestTitleRef = useRef(title);
+  const latestContentRef = useRef(content);
+  latestTitleRef.current = title;
+  latestContentRef.current = content;
+
+  // Sync state if external card data updates (e.g. from upstream synthesizeCard)
+  useEffect(() => {
+    if (data?.title !== undefined && data.title !== latestTitleRef.current) {
+      setTitle(data.title as string);
+    }
+  }, [data?.title]);
+
+  useEffect(() => {
+    if (data?.content !== undefined && data.content !== latestContentRef.current) {
+      setContent(data.content as string);
+    }
+  }, [data?.content]);
+
+  useEffect(() => {
+    if (data?.color && data.color !== color && (data.color as NoteColor) in COLOR_VARIANTS) {
+      setColor(data.color as NoteColor);
+    }
+  }, [data?.color, color]);
+
+  // Flush any pending debounced change on unmount
+  useEffect(() => {
+    return () => {
+      if (titleTimerRef.current) {
+        clearTimeout(titleTimerRef.current);
+        updateCustomCard(id, { title: latestTitleRef.current });
+      }
+      if (contentTimerRef.current) {
+        clearTimeout(contentTimerRef.current);
+        updateCustomCard(id, { content: latestContentRef.current });
+      }
+    };
+  }, [id, updateCustomCard]);
+
   const handleTitleChange = (val: string) => {
     setTitle(val);
-    updateCustomCard(id, { title: val });
+    latestTitleRef.current = val;
+    if (titleTimerRef.current) clearTimeout(titleTimerRef.current);
+    titleTimerRef.current = setTimeout(() => {
+      updateCustomCard(id, { title: val });
+      titleTimerRef.current = null;
+    }, 300);
+  };
+
+  const handleTitleBlur = () => {
+    if (titleTimerRef.current) {
+      clearTimeout(titleTimerRef.current);
+      titleTimerRef.current = null;
+    }
+    updateCustomCard(id, { title: latestTitleRef.current });
   };
 
   const handleContentChange = (val: string) => {
     setContent(val);
-    updateCustomCard(id, { content: val });
+    latestContentRef.current = val;
+    if (contentTimerRef.current) clearTimeout(contentTimerRef.current);
+    contentTimerRef.current = setTimeout(() => {
+      updateCustomCard(id, { content: val });
+      contentTimerRef.current = null;
+    }, 300);
+  };
+
+  const handleContentBlur = () => {
+    if (contentTimerRef.current) {
+      clearTimeout(contentTimerRef.current);
+      contentTimerRef.current = null;
+    }
+    updateCustomCard(id, { content: latestContentRef.current });
   };
 
   const handleColorChange = (newColor: NoteColor) => {
@@ -180,6 +247,7 @@ export function StickyNoteNode({ id, data }: NodeProps) {
           type="text"
           value={title}
           onChange={(e) => handleTitleChange(e.target.value)}
+          onBlur={handleTitleBlur}
           placeholder="便签标题…"
           className={`w-full bg-transparent text-xs font-semibold focus:outline-hidden border-b border-transparent hover:border-black/10 focus:border-black/20 pb-0.5 ${theme.text}`}
         />
@@ -187,6 +255,7 @@ export function StickyNoteNode({ id, data }: NodeProps) {
         <textarea
           value={content}
           onChange={(e) => handleContentChange(e.target.value)}
+          onBlur={handleContentBlur}
           placeholder="随手记录你的灵感、设计手记、评审反馈或排版约束…"
           rows={estimatedRows}
           className={`w-full bg-transparent text-xs leading-relaxed focus:outline-hidden placeholder:text-stone-400/70 whitespace-pre-wrap break-words resize-y ${theme.text}`}

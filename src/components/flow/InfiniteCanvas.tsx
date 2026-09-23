@@ -16,7 +16,11 @@ import {
   type OnConnectEnd,
   type OnConnectStart,
 } from "@xyflow/react";
-import { useSiftStore, type CustomCard } from "@/lib/convergence-store";
+import {
+  useSiftStore,
+  resolveNodeContext,
+  type CustomCard,
+} from "@/lib/convergence-store";
 import { nodeTypes } from "./nodeTypes";
 import { CanvasToolBar, type ToolType } from "./CanvasToolBar";
 import type { Route, PlatformPlan } from "@/types/routes";
@@ -193,18 +197,14 @@ function deriveNewCardWithContext({
 
   // If sourceNodeId is provided (e.g. dragging a wire handle onto canvas to spawn next node):
   let upstreamNode: any = null;
-  const matchedRoute = routes.find((r) => r.id === sourceNodeId || `route-${r.id}` === sourceNodeId);
-  if (matchedRoute) {
-    upstreamNode = { id: sourceNodeId, type: "route", data: { route: matchedRoute } };
-  } else {
-    const matchedCustom = customCards.find((c) => c.id === sourceNodeId);
-    if (matchedCustom) {
-      upstreamNode = { id: matchedCustom.id, type: matchedCustom.type, data: matchedCustom.data };
-    } else if (sourceNodeId === "brief") {
-      upstreamNode = { id: "brief", type: "brief", data: { rawBrief } };
-    } else if (sourceNodeId === "direction" || sourceNodeId.includes("state")) {
-      upstreamNode = { id: "direction", type: "state", data: { state } };
-    }
+  if (sourceNodeId) {
+    upstreamNode = resolveNodeContext(sourceNodeId, {
+      routes,
+      customCards,
+      state,
+      rawBrief,
+      platformPlans,
+    });
   }
 
   const upstreamNodes = upstreamNode ? [upstreamNode] : [];
@@ -564,6 +564,7 @@ function FlowInner() {
     positions,
     routes,
     selectedRouteId,
+    exploredRouteIds,
     platformPlans,
     customCards,
     customEdges,

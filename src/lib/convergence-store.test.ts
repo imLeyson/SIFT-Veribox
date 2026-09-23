@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSiftStore } from "./convergence-store";
+import { createSiftStore, resolveNodeContext, getUpstreamSummary } from "./convergence-store";
 import { EXAMPLES } from "./agent/examples";
 import { mockConvergence } from "./agent/convergence-mock";
 import type { ConvergenceInput, TurnResult } from "@/types/convergence";
@@ -360,6 +360,131 @@ describe("convergence session", () => {
     store.getState().synthesizeCard("card-target");
     const targetSingle = store.getState().customCards.find((c) => c.id === "card-target");
     expect(targetSingle?.data?.isEvolved).toBe(true);
+  });
+
+  it("normalizes upstream node IDs (direction, step-*, plan-*, turn-*) and synthesizes context accurately", () => {
+    const store = createSiftStore(memoryStorage());
+
+    // Setup state
+    const mockState = {
+      revision: 1,
+      status: "confirmed" as const,
+      brief: { goal: "测试茶叶包装", audience: "年轻群体", deliverable: "包装盒" },
+      constraints: [],
+      direction: {
+        intent: { text: "极简纯白自然主义", basis: "user" as const, sourceIds: [] },
+        priorities: [
+          { text: "原浆微触感", basis: "user" as const, sourceIds: [] },
+          { text: "克制负空间", basis: "user" as const, sourceIds: [] },
+        ],
+        avoid: [
+          { text: "大面积渐变", basis: "user" as const, sourceIds: [] },
+          { text: "塑料质感", basis: "user" as const, sourceIds: [] },
+        ],
+        criteria: [],
+      },
+      currentHypothesis: "以原浆白呈现质感",
+      validationAction: null,
+      uncertainties: [],
+      visualKeywords: [],
+    };
+
+    store.setState({
+      state: mockState,
+      rawBrief: "测试茶叶包装设计",
+      routes: [
+        {
+          id: "r1",
+          title: "原生素纸",
+          themeName: "原生素纸",
+          focusDimension: "材质触感",
+          startingPoint: "素纸留白",
+          coreProblem: "质感",
+          purpose: "呈现",
+          pros: "高级",
+          cons: "易脏",
+          recommendedReason: "推荐",
+          alignmentScore: 95,
+          steps: [
+            {
+              id: "r1-s1",
+              title: "纸张克重与压凹试验",
+              question: "何种克重最显温润？",
+              purpose: "确立第一眼质感",
+              acceptanceCriteria: ["无反光", "肌理明显"],
+            },
+          ],
+        },
+      ],
+      platformPlans: [
+        {
+          id: "plan-r1-s1",
+          routeId: "r1",
+          stepId: "r1-s1",
+          primarySources: [],
+          alternativeSources: [],
+        },
+      ],
+    });
+
+    // 1. Test resolveNodeContext directly
+    const s = store.getState();
+    const resolvedDirection = resolveNodeContext("direction", s);
+    expect(resolvedDirection?.type).toBe("state");
+    expect(resolvedDirection?.label).toContain("02 策略基准");
+
+    const resolvedStep = resolveNodeContext("step-r1", s);
+    expect(resolvedStep?.type).toBe("step");
+    expect(resolvedStep?.label).toContain("04 视点推进");
+    expect(resolvedStep?.data?.step?.title).toBe("纸张克重与压凹试验");
+
+    const resolvedPlan = resolveNodeContext("plan-r1-s1", s);
+    expect(resolvedPlan?.type).toBe("platformPlan");
+    expect(resolvedPlan?.label).toBe("05 灵感检索");
+
+    const resolvedAsk = resolveNodeContext("turn-1", s);
+    expect(resolvedAsk?.type).toBe("ask");
+    expect(resolvedAsk?.label).toBe("01 视觉抉择");
+
+    // 2. Test getUpstreamSummary with direction and step nodes
+    const targetCardId = store.getState().addCustomCard({
+      id: "card-note-test",
+      type: "note",
+      position: { x: 300, y: 100 },
+      title: "设计手记",
+      content: "",
+    });
+
+    // Connect from "direction" (02 策略基准) to note card
+    store.getState().addCustomEdge({ id: "e-dir", source: "direction", target: "card-note-test" });
+
+    const summary = getUpstreamSummary("card-note-test", store.getState());
+    expect(summary.count).toBe(1);
+    expect(summary.hasStrategy).toBe(true);
+    expect(summary.labels[0]).toContain("02 策略基准");
+
+    // 3. Test synthesizeCard on note card connected to "direction"
+    const synthesized = store.getState().synthesizeCard("card-note-test");
+    expect(synthesized).toBe(true);
+
+    const updatedNote = store.getState().customCards.find((c) => c.id === "card-note-test");
+    expect(updatedNote?.content).toContain("极简纯白自然主义");
+    expect(updatedNote?.content).toContain("原浆微触感");
+    expect(updatedNote?.content).toContain("大面积渐变");
+
+    // 4. Test connecting "step-r1" to an empty step card
+    const targetStepId = store.getState().addCustomCard({
+      id: "card-step-test",
+      type: "step",
+      position: { x: 600, y: 100 },
+      title: "视点卡片",
+      data: { isEmpty: true },
+    });
+    store.getState().addCustomEdge({ id: "e-step", source: "step-r1", target: "card-step-test" });
+
+    const stepSummary = getUpstreamSummary("card-step-test", store.getState());
+    expect(stepSummary.hasStep).toBe(true);
+    expect(stepSummary.labels[0]).toContain("04 视点推进");
   });
 });
 

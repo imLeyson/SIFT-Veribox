@@ -24,9 +24,11 @@ import {
   type Answer,
   type TurnResult,
 } from "@/types/convergence";
-import type {
-  Route,
-  PlatformPlan,
+import {
+  cleanStepLabel,
+  type Route,
+  type RouteStep,
+  type PlatformPlan,
 } from "@/types/routes";
 import { synthesizeCardFromInputs, type ToolType } from "./card-synthesis";
 
@@ -725,30 +727,9 @@ export function createSiftStore(providedStorage?: StateStorage) {
           const upstreamEdges = state.customEdges.filter((e) => e.target === cardId);
           const upstreamIds = Array.from(new Set(upstreamEdges.map((e) => e.source)));
 
-          const upstreamNodes: Array<{ id: string; type?: string; data: any }> = [];
-          for (const srcId of upstreamIds) {
-            if (srcId === "brief") {
-              upstreamNodes.push({ id: "brief", type: "brief", data: { goal: state.rawBrief } });
-            } else if (srcId === "state") {
-              upstreamNodes.push({ id: "state", type: "state", data: { state: state.state } });
-            } else if (srcId === "ask") {
-              upstreamNodes.push({ id: "ask", type: "ask", data: { next: state.next } });
-            } else {
-              const routeMatch = state.routes.find((r) => r.id === srcId || `route-${r.id}` === srcId);
-              if (routeMatch) {
-                upstreamNodes.push({ id: srcId, type: "route", data: { route: routeMatch } });
-              } else {
-                const customMatch = state.customCards.find((c) => c.id === srcId);
-                if (customMatch) {
-                  upstreamNodes.push({
-                    id: customMatch.id,
-                    type: customMatch.type,
-                    data: customMatch.data,
-                  });
-                }
-              }
-            }
-          }
+          const upstreamNodes = upstreamIds
+            .map((srcId) => resolveNodeContext(srcId, state))
+            .filter((n): n is ResolvedNodeContext => Boolean(n));
 
           const synthesized = synthesizeCardFromInputs(
             targetCard.type as ToolType,
@@ -984,6 +965,158 @@ export function createSiftStore(providedStorage?: StateStorage) {
 
 export const useSiftStore = createSiftStore();
 
+export interface ResolvedNodeContext {
+  id: string;
+  type: ToolType;
+  label: string;
+  data: Record<string, any>;
+  route?: Route;
+  step?: RouteStep;
+  plan?: PlatformPlan;
+}
+
+export function resolveNodeContext(
+  nodeId: string,
+  store: {
+    rawBrief?: string;
+    state?: any;
+    history?: any[];
+    routes?: Route[];
+    platformPlans?: PlatformPlan[];
+    customCards?: CustomCard[];
+  },
+): ResolvedNodeContext | null {
+  // 1. 00 Brief
+  if (nodeId === "brief") {
+    return {
+      id: "brief",
+      type: "brief",
+      label: "00 简报解析",
+      data: {
+        goal: store.state?.brief?.goal || store.rawBrief || "设计任务简报",
+        rawBrief: store.rawBrief || "",
+        state: store.state,
+      },
+    };
+  }
+
+  // 2. 02 Strategy Baseline (02 策略基准 - ID can be "direction" or "state")
+  if (nodeId === "direction" || nodeId === "state") {
+    const intent = store.state?.direction?.intent?.text;
+    return {
+      id: "direction",
+      type: "state",
+      label: intent ? `02 策略基准 (${intent.slice(0, 10)})` : "02 策略基准",
+      data: {
+        state: store.state,
+      },
+    };
+  }
+
+  // 3. 01 Visual Crossroads / Ask (01 视觉抉择 - ID can be "ask", "turn-*", "round-*")
+  if (
+    nodeId === "ask" ||
+    nodeId.startsWith("turn-") ||
+    nodeId.startsWith("round-")
+  ) {
+    return {
+      id: nodeId,
+      type: "ask",
+      label: "01 视觉抉择",
+      data: {
+        history: store.history,
+      },
+    };
+  }
+
+  // 4. 03 Style Themes (03 风格主题 - standard routes: "route-{id}" or "{id}")
+  const matchedRoute = store.routes?.find(
+    (r) => r.id === nodeId || `route-${r.id}` === nodeId,
+  );
+  if (matchedRoute) {
+    return {
+      id: nodeId,
+      type: "route",
+      label: `主题：${matchedRoute.themeName || matchedRoute.title}`,
+      data: { route: matchedRoute },
+      route: matchedRoute,
+    };
+  }
+
+  // 5. 04 Steps (04 视点推进 - standard steps: "step-{routeId}")
+  if (nodeId.startsWith("step-")) {
+    const routeId = nodeId.replace(/^step-/, "");
+    const parentRoute = store.routes?.find(
+      (r) => r.id === routeId || `route-${r.id}` === routeId,
+    );
+    const step = parentRoute?.steps?.[0];
+    const stepTitle = step?.title ? cleanStepLabel(step.title) : "视点推进";
+    return {
+      id: nodeId,
+      type: "step",
+      label: `04 视点推进 · ${stepTitle}`,
+      data: {
+        route: parentRoute,
+        step,
+        stepId: step?.id,
+      },
+      route: parentRoute,
+      step,
+    };
+  }
+
+  // 6. 05 Platform Plans (05 灵感检索 - standard plans: "plan-{stepId}")
+  if (nodeId.startsWith("plan-")) {
+    const stepId = nodeId.replace(/^plan-/, "");
+    const plan = store.platformPlans?.find(
+      (p) => p.stepId === stepId || p.id === nodeId,
+    );
+    return {
+      id: nodeId,
+      type: "platformPlan",
+      label: "05 灵感检索",
+      data: { plan },
+      plan,
+    };
+  }
+
+  // 7. Custom Cards
+  const custom = store.customCards?.find((c) => c.id === nodeId);
+  if (custom) {
+    let label = custom.title || "自定义卡片";
+    if (custom.type === "route") {
+      const customRoute = custom.data?.route;
+      label = `主题：${custom.title || customRoute?.themeName || "风格主题"}`;
+    } else if (custom.type === "step") {
+      const customStep = custom.data?.step || custom.data?.route?.steps?.[0];
+      const stepTitle = customStep?.title ? cleanStepLabel(customStep.title) : "";
+      label = `04 视点推进${stepTitle ? ` · ${stepTitle}` : ""}`;
+    } else if (custom.type === "platformPlan") {
+      label = "05 灵感检索";
+    } else if (custom.type === "image") {
+      label = `参考图：${custom.data?.fileName || custom.title || "意向图"}`;
+    } else if (custom.type === "note") {
+      label = `便签：${custom.title || "设计手记"}`;
+    } else if (custom.type === "state") {
+      label = "02 策略基准";
+    } else if (custom.type === "brief") {
+      label = "00 简报解析";
+    } else if (custom.type === "ask") {
+      label = "01 视觉抉择";
+    }
+
+    return {
+      id: custom.id,
+      type: custom.type as ToolType,
+      label,
+      data: custom.data || {},
+      route: custom.data?.route,
+    };
+  }
+
+  return null;
+}
+
 export interface UpstreamSummary {
   count: number;
   labels: string[];
@@ -995,7 +1128,15 @@ export interface UpstreamSummary {
 
 export function getUpstreamSummary(
   cardId: string,
-  store: { customEdges: CustomEdgeInput[]; routes: Route[]; customCards: CustomCard[] },
+  store: {
+    customEdges: CustomEdgeInput[];
+    routes: Route[];
+    customCards: CustomCard[];
+    platformPlans?: PlatformPlan[];
+    state?: any;
+    rawBrief?: string;
+    history?: any[];
+  },
 ): UpstreamSummary {
   const edges = store.customEdges.filter((e) => e.target === cardId);
   const upstreamIds = Array.from(new Set(edges.map((e) => e.source)));
@@ -1006,39 +1147,22 @@ export function getUpstreamSummary(
   let hasStep = false;
 
   for (const srcId of upstreamIds) {
-    if (srcId === "brief") {
-      labels.push("00 简报解析");
-      hasBrief = true;
-    } else if (srcId === "ask") {
-      labels.push("01 视觉抉择");
-    } else if (srcId === "state") {
-      labels.push("02 策略基准");
+    const resolved = resolveNodeContext(srcId, store);
+    if (!resolved) {
+      labels.push("未识别上游");
+      continue;
+    }
+
+    labels.push(resolved.label);
+
+    if (resolved.type === "route") {
+      themesCount++;
+    } else if (resolved.type === "state") {
       hasStrategy = true;
-    } else {
-      const route = store.routes.find((r) => r.id === srcId || `route-${r.id}` === srcId);
-      if (route) {
-        labels.push(`主题：${route.themeName || route.title}`);
-        themesCount++;
-      } else {
-        const custom = store.customCards.find((c) => c.id === srcId);
-        if (custom) {
-          if (custom.type === "route") {
-            labels.push(`主题：${custom.title || custom.data?.route?.themeName || "风格主题"}`);
-            themesCount++;
-          } else if (custom.type === "step") {
-            labels.push("04 视点推进");
-            hasStep = true;
-          } else if (custom.type === "platformPlan") {
-            labels.push("05 灵感检索");
-          } else if (custom.type === "image") {
-            labels.push(`参考图：${custom.data?.fileName || "意向图"}`);
-          } else if (custom.type === "note") {
-            labels.push(`便签：${custom.title || "灵感"}`);
-          } else {
-            labels.push(custom.title || "自定义卡片");
-          }
-        }
-      }
+    } else if (resolved.type === "brief") {
+      hasBrief = true;
+    } else if (resolved.type === "step") {
+      hasStep = true;
     }
   }
 

@@ -146,7 +146,11 @@ export function deriveThemeFromStrategy(state: any, rawBrief?: string): Route {
   const goal = state?.brief?.goal || rawBrief?.slice(0, 20) || "视觉系统探索";
   const intent = state?.direction?.intent?.text || "极简与功能性平衡";
   const priorities = state?.direction?.priorities || [];
-  const prioritySummary = priorities.length > 0 ? priorities[0] : "质感与比例";
+  const firstPriority = priorities.length > 0 ? priorities[0] : null;
+  const prioritySummary =
+    typeof firstPriority === "string"
+      ? firstPriority
+      : firstPriority?.text || "质感与比例";
 
   return {
     id: routeId,
@@ -347,9 +351,12 @@ export function deriveNoteFromNode(
     const intent = state?.direction?.intent?.text || "核心策略方向";
     const priorities = state?.direction?.priorities || [];
     const avoid = state?.direction?.avoid || [];
+    const toText = (item: any) =>
+      typeof item === "string" ? item : item?.text || String(item || "");
+
     return {
       title: `便签 · 策略红线准则`,
-      content: `【核心主张】：${intent}\n\n【设计坚持】：\n${priorities.map((p: string) => `✓ ${p}`).join("\n") || "无"}\n\n【避免雷区】：\n${avoid.map((a: string) => `✗ ${a}`).join("\n") || "无"}\n\n【执行批注】：\n• `,
+      content: `【核心主张】：${intent}\n\n【设计坚持】：\n${priorities.map((p: any) => `✓ ${toText(p)}`).join("\n") || "无"}\n\n【避免雷区】：\n${avoid.map((a: any) => `✗ ${toText(a)}`).join("\n") || "无"}\n\n【执行批注】：\n• `,
       color: "emerald",
     };
   }
