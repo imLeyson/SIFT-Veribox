@@ -104,6 +104,27 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
     [id, customEdges, routes, customCards],
   );
 
+  // Clean, instantly recognizable theme title (must be called unconditionally!)
+  const heroTitle = useMemo(() => {
+    if (route.themeName && route.themeName.trim()) {
+      return route.themeName.replace(/[【】]/g, "").replace(/\s*·\s*/g, " · ").trim();
+    }
+    const raw = route.title || "设计主题";
+    const match = raw.match(/【(.*?)】(.*)/);
+    if (match) {
+      const part1 = match[1].trim();
+      const part2 = match[2].trim();
+      return part2 ? `${part1}与${part2}` : part1;
+    }
+    return raw.replace(/[【】]/g, "").trim();
+  }, [route.themeName, route.title]);
+
+  // Consolidated craft description (must be called unconditionally!)
+  const visualCraftText = useMemo(() => {
+    const rawCraft = route.focusDimension || route.startingPoint || route.pros;
+    return toInspirationCopy(cleanText(rawCraft));
+  }, [route.focusDimension, route.startingPoint, route.pros]);
+
   // Blank / Empty State Card
   if (isEmpty) {
     const hasUpstream = upstream.count > 0;
@@ -242,30 +263,9 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
         ? "策略推导"
         : `主题方向 0${index + 1}`;
 
-  // Clean, instantly recognizable theme title
-  const heroTitle = useMemo(() => {
-    if (route.themeName && route.themeName.trim()) {
-      return route.themeName.replace(/[【】]/g, "").replace(/\s*·\s*/g, " · ").trim();
-    }
-    const raw = route.title || "设计主题";
-    const match = raw.match(/【(.*?)】(.*)/);
-    if (match) {
-      const part1 = match[1].trim();
-      const part2 = match[2].trim();
-      return part2 ? `${part1}与${part2}` : part1;
-    }
-    return raw.replace(/[【】]/g, "").trim();
-  }, [route.themeName, route.title]);
-
   const snapshotText = toInspirationCopy(cleanText(route.visualSnapshot || route.purpose));
   const coreProblemText = toInspirationCopy(cleanText(route.coreProblem));
   const consText = toInspirationCopy(cleanText(route.cons));
-
-  // Consolidated craft description (prioritize focusDimension, fallback to startingPoint)
-  const visualCraftText = useMemo(() => {
-    const rawCraft = route.focusDimension || route.startingPoint || route.pros;
-    return toInspirationCopy(cleanText(rawCraft));
-  }, [route.focusDimension, route.startingPoint, route.pros]);
 
   const routeSteps = Array.isArray(route?.steps) && route.steps.length > 0 ? route.steps : (DEFAULT_FALLBACK_ROUTE.steps ?? []);
 

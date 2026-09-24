@@ -4,6 +4,8 @@ import { renderToString } from "react-dom/server";
 import { ReactFlowProvider } from "@xyflow/react";
 import { useSiftStore } from "./convergence-store";
 import { RouteNode } from "@/components/flow/nodes/RouteNode";
+import { StepNode } from "@/components/flow/nodes/StepNode";
+import { PlatformPlanNode } from "@/components/flow/nodes/PlatformPlanNode";
 import type { Route } from "@/types/routes";
 
 describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
@@ -178,5 +180,57 @@ describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
     expect(planCard.data?.isEmpty).toBe(false);
     expect(planCard.data?.plan).toBeDefined();
     expect(planCard.data?.plan.primarySources.length).toBeGreaterThan(0);
+
+    // 3. Render StepNode (both when empty and when synthesized)
+    expect(() => {
+      renderToString(
+        React.createElement(
+          ReactFlowProvider,
+          null,
+          React.createElement(StepNode, {
+            id: stepCard.id,
+            data: { ...stepCard.data, isEmpty: true },
+            selected: false,
+          } as any)
+        )
+      );
+      renderToString(
+        React.createElement(
+          ReactFlowProvider,
+          null,
+          React.createElement(StepNode, {
+            id: stepCard.id,
+            data: stepCard.data,
+            selected: false,
+          } as any)
+        )
+      );
+    }).not.toThrow();
+
+    // 4. Render PlatformPlanNode (both when empty and when synthesized)
+    expect(() => {
+      renderToString(
+        React.createElement(
+          ReactFlowProvider,
+          null,
+          React.createElement(PlatformPlanNode, {
+            id: planCard.id,
+            data: { ...planCard.data, isEmpty: true },
+            selected: false,
+          } as any)
+        )
+      );
+      renderToString(
+        React.createElement(
+          ReactFlowProvider,
+          null,
+          React.createElement(PlatformPlanNode, {
+            id: planCard.id,
+            data: planCard.data,
+            selected: false,
+          } as any)
+        )
+      );
+    }).not.toThrow();
   });
 });

@@ -58,6 +58,7 @@ export function StepNode({ id, data, selected }: NodeProps) {
 
   const [showThemeTrace, setShowThemeTrace] = useState(false);
   const [localStepId, setLocalStepId] = useState<string | null>(null);
+  const [copiedStep, setCopiedStep] = useState(false);
 
   const isEmpty = Boolean((data as any)?.isEmpty);
 
@@ -179,8 +180,6 @@ export function StepNode({ id, data, selected }: NodeProps) {
     (p) => p.stepId === currentStep.id,
   );
   const hasNextStep = activeIdx < steps.length - 1;
-
-  const [copiedStep, setCopiedStep] = useState(false);
 
   const handleCopyStep = async (e: React.MouseEvent) => {
     e.stopPropagation();
