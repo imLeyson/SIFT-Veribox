@@ -172,9 +172,34 @@ export type SiftStore = Session & {
   reset: () => void;
 };
 
+export function safeId(prefix = ""): string {
+  let rand = "";
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    try {
+      rand = crypto.randomUUID().slice(0, 8);
+    } catch {
+      rand = Math.random().toString(36).slice(2, 10);
+    }
+  } else {
+    rand = Math.random().toString(36).slice(2, 10);
+  }
+  return prefix ? `${prefix}${rand}` : rand;
+}
+
+export function safeUuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      // fallback
+    }
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function emptySession(): Session {
   return {
-    sessionId: crypto.randomUUID(),
+    sessionId: safeUuid(),
     rawBrief: "",
     briefImages: [],
     state: null,
@@ -627,7 +652,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
           });
         },
         addCustomCard: (card) => {
-          const id = card.id ?? `card-${crypto.randomUUID().slice(0, 8)}`;
+          const id = card.id ?? safeId("card-");
           const newCard: CustomCard = {
             id,
             type: card.type,
@@ -760,7 +785,14 @@ export function createSiftStore(providedStorage?: StateStorage) {
 
           let nextRoutes = state.routes;
           if (synthesized.data?.route) {
-            const newRoute = synthesized.data.route as Route;
+            const rawRoute = synthesized.data.route as Route;
+            // Harmonize route id with target card id for direct edge/step consistency
+            const newRoute: Route = {
+              ...rawRoute,
+              id: targetCard.type === "route" ? (rawRoute.id || targetCard.id) : rawRoute.id,
+            };
+            synthesized.data.route = newRoute;
+
             if (!nextRoutes.some((r) => r.id === newRoute.id)) {
               nextRoutes = [...nextRoutes, newRoute];
             } else {
@@ -792,13 +824,13 @@ export function createSiftStore(providedStorage?: StateStorage) {
           const state = get();
           const custom = state.customCards.find((c) => c.id === id);
           if (custom) {
-            const newId = `card-${crypto.randomUUID().slice(0, 8)}`;
+            const newId = safeId("card-");
             let duplicatedData = custom.data ? { ...custom.data } : undefined;
             let newRouteToSync: Route | null = null;
 
             if (custom.type === "route" && custom.data?.route) {
               const oldRoute = custom.data.route as Route;
-              const newRouteId = `route-branch-${crypto.randomUUID().slice(0, 8)}`;
+              const newRouteId = safeId("route-branch-");
               newRouteToSync = {
                 ...oldRoute,
                 id: newRouteId,
@@ -834,8 +866,8 @@ export function createSiftStore(providedStorage?: StateStorage) {
             (r) => `route-${r.id}` === id || r.id === id,
           );
           if (route) {
-            const newCardId = `card-${crypto.randomUUID().slice(0, 8)}`;
-            const newRouteId = `route-branch-${crypto.randomUUID().slice(0, 8)}`;
+            const newCardId = safeId("card-");
+            const newRouteId = safeId("route-branch-");
             const duplicatedRoute: Route = {
               ...route,
               id: newRouteId,
@@ -864,7 +896,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
           }
 
           const pos = state.positions[id] ?? { x: 400, y: 100 };
-          const newId = `card-${crypto.randomUUID().slice(0, 8)}`;
+          const newId = safeId("card-");
           const duplicated: CustomCard = {
             id: newId,
             type: "note",

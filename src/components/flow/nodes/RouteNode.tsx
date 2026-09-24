@@ -267,6 +267,8 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
     return toInspirationCopy(cleanText(rawCraft));
   }, [route.focusDimension, route.startingPoint, route.pros]);
 
+  const routeSteps = Array.isArray(route?.steps) && route.steps.length > 0 ? route.steps : (DEFAULT_FALLBACK_ROUTE.steps ?? []);
+
   // Designer Tool: Copy theme spec to clipboard
   const handleCopySpec = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -276,7 +278,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
       `核心视觉手法：${visualCraftText}`,
       `设计取舍与权衡：${coreProblemText}`,
       `防跑偏提醒：${consText}`,
-      `后续探索视点：\n${route.steps.map((st, i) => `  0${i + 1} ${cleanStepLabel(st.title)}：${st.question}`).join("\n")}`,
+      `后续探索视点：\n${routeSteps.map((st, i) => `  0${i + 1} ${cleanStepLabel(st.title)}：${st.question}`).join("\n")}`,
     ].join("\n\n");
     try {
       await navigator.clipboard.writeText(text);
@@ -363,7 +365,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
             <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-indigo-50/80 border border-indigo-200/80 text-[11px] text-indigo-900">
               <div className="flex items-center gap-1.5 font-medium truncate min-w-0 pr-2">
                 <Sparkles className="h-3 w-3 text-indigo-600 shrink-0" />
-                <span className="truncate">已连 {upstream.count} 个上游：{upstream.labels.join(" + ")}</span>
+                <span className="truncate">已连 {upstream.count} 个上游：{(upstream.labels ?? []).join(" + ")}</span>
               </div>
               <button
                 type="button"
@@ -430,7 +432,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
               后续切入视点（04 探索方向）
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {route.steps.map((st, i) => (
+              {routeSteps.map((st, i) => (
                 <span
                   key={st.id}
                   className="inline-flex items-center gap-1 rounded-md bg-stone-50 border border-line/70 px-2 py-0.5 text-[10.5px] text-stone-700"

@@ -372,9 +372,17 @@ function FlowInner() {
     }
 
     // 03: Style Themes (Col 3, stacked vertically top to bottom!)
+    // Only render primary pipeline routes here; custom route cards are rendered in customCards section
+    const customRouteIds = new Set(
+      customCards
+        .filter((c) => c.type === "route")
+        .map((c) => (c.data?.route?.id as string) || c.id),
+    );
+
     const routesStartX = START_X + 3 * COL_PITCH;
-    if (routes.length > 0) {
-      routes.forEach((route, idx) => {
+    const primaryRoutes = routes.filter((r) => !customRouteIds.has(r.id));
+    if (primaryRoutes.length > 0) {
+      primaryRoutes.forEach((route, idx) => {
         const routeNodeId = `route-${route.id}`;
         if (!isDeleted(routeNodeId)) {
           const isRouteActive = route.id === selectedRouteId;
@@ -387,7 +395,7 @@ function FlowInner() {
             },
             data: { route, index: idx },
           });
-          if (!isDeleted("direction")) {
+          if (hasState && !isDeleted("direction")) {
             edges.push({
               id: `direction-${routeNodeId}`,
               source: "direction",
@@ -487,7 +495,7 @@ function FlowInner() {
           parentStepNodeId = `step-${plan.routeId}`;
         } else {
           const matchingRoute =
-            routes.find((r) => r.steps.some((st) => st.id === plan.stepId)) ??
+            routes.find((r) => r.steps?.some((st) => st.id === plan.stepId)) ??
             customCards.find((c) =>
               c.data?.route?.steps?.some((st: any) => st.id === plan.stepId),
             )?.data?.route;
@@ -547,6 +555,12 @@ function FlowInner() {
       }
     }
 
+    // Critical React Flow Safety: Ensure EVERY edge's source and target exist in nodes
+    const nodeIds = new Set(nodes.map((n) => n.id));
+    const validEdges = edges.filter(
+      (e) => nodeIds.has(e.source) && nodeIds.has(e.target),
+    );
+
     return {
       nodes: nodes.map((n) => ({
         ...n,
@@ -555,7 +569,7 @@ function FlowInner() {
         deletable: true,
         connectable: true,
       })),
-      edges,
+      edges: validEdges,
     };
   }, [
     history,
@@ -575,6 +589,14 @@ function FlowInner() {
   useEffect(() => {
     setNodes(graph.nodes);
   }, [graph.nodes, setNodes]);
+
+  // Synchronously guard edges against the currently rendered node set to avoid React Flow transition frame crashes
+  const activeNodeIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes]);
+  const safeEdges = useMemo(() => {
+    return graph.edges.filter(
+      (e) => activeNodeIds.has(e.source) && activeNodeIds.has(e.target),
+    );
+  }, [graph.edges, activeNodeIds]);
 
   // Connect Handler (Handle to Handle)
   const onConnect = useCallback(
@@ -1048,7 +1070,7 @@ function FlowInner() {
 
       <ReactFlow
         nodes={nodes}
-        edges={graph.edges}
+        edges={safeEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onNodeDragStop={(_e, node) => setPosition(node.id, node.position)}

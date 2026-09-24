@@ -22,14 +22,23 @@ export function StateNode({ id, selected }: NodeProps) {
   } = useSiftStore();
   const [editing, setEditing] = useState(false);
 
-  const visibleRoutes = routes.filter(
-    (r) => !deletedNodeIds.includes(`route-${r.id}`) && !deletedNodeIds.includes(r.id),
+  const customRouteIds = new Set(
+    customCards
+      .filter((c) => c.type === "route")
+      .map((c) => (c.data?.route?.id as string) || c.id),
+  );
+  const visiblePrimaryRoutes = routes.filter(
+    (r) =>
+      !customRouteIds.has(r.id) &&
+      !deletedNodeIds.includes(`route-${r.id}`) &&
+      !deletedNodeIds.includes(r.id),
   );
   const visibleCustomRoutes = customCards.filter(
     (c) => c.type === "route" && !deletedNodeIds.includes(c.id),
   );
-  const totalVisibleThemes = visibleRoutes.length + visibleCustomRoutes.length;
-  const deletedThemeCount = routes.length - visibleRoutes.length;
+  const totalVisibleThemes = visiblePrimaryRoutes.length + visibleCustomRoutes.length;
+  const primaryRoutesTotal = routes.filter((r) => !customRouteIds.has(r.id));
+  const deletedThemeCount = primaryRoutesTotal.length - visiblePrimaryRoutes.length;
   const hasDeletedThemes = deletedThemeCount > 0;
 
   if (!state) {
