@@ -3,6 +3,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { InfiniteCanvas } from "./flow/InfiniteCanvas";
+import { CanvasErrorBoundary } from "./flow/CanvasErrorBoundary";
 import { ThinkingProgress } from "./canvas/ThinkingProgress";
 import { DossierModal } from "./dossier/DossierModal";
 import { FileDown } from "lucide-react";
@@ -112,7 +113,9 @@ export function Workspace() {
         </div>
       )}
       <div className="relative min-h-0 flex-1">
-        <InfiniteCanvas onOpenDossier={() => setDossierOpen(true)} />
+        <CanvasErrorBoundary>
+          <InfiniteCanvas onOpenDossier={() => setDossierOpen(true)} />
+        </CanvasErrorBoundary>
       </div>
       <DossierModal
         isOpen={dossierOpen}

@@ -206,7 +206,7 @@ export function StickyNoteNode({ id, data }: NodeProps) {
                 }
               }}
               className="flex items-center gap-1 text-[10px] font-medium text-stone-700 bg-white/80 hover:bg-white px-2 py-0.5 rounded-full border border-black/10 transition-all cursor-pointer shadow-2xs"
-              title={`根据已连接的 ${upstream.labels.join("、")} 提取备忘`}
+              title={`根据已连接的 ${(upstream.labels ?? []).join("、")} 提取备忘`}
             >
               <Sparkles className="h-2.5 w-2.5 text-amber-600" />
               <span>提取备忘 ({upstream.count})</span>

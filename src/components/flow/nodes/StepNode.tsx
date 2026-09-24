@@ -99,7 +99,7 @@ export function StepNode({ id, data, selected }: NodeProps) {
                     已关联 {upstream.count} 个设计上下文
                   </h4>
                   <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
-                    {upstream.labels.map((lbl, i) => (
+                    {(upstream.labels ?? []).map((lbl, i) => (
                       <span
                         key={i}
                         className="rounded-md bg-white px-2 py-0.5 text-[10px] font-medium text-purple-700 border border-purple-100 shadow-2xs"
@@ -271,7 +271,7 @@ export function StepNode({ id, data, selected }: NodeProps) {
             <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-purple-50/80 border border-purple-200/80 text-[11px] text-purple-900">
               <div className="flex items-center gap-1.5 font-medium truncate min-w-0 pr-2">
                 <Sparkles className="h-3 w-3 text-purple-600 shrink-0" />
-                <span className="truncate">已连 {upstream.count} 个上游：{upstream.labels.join(" + ")}</span>
+                <span className="truncate">已连 {upstream.count} 个上游：{(upstream.labels ?? []).join(" + ")}</span>
               </div>
               <button
                 type="button"

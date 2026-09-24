@@ -131,10 +131,12 @@ export function PlatformPlanNode({
   const handleCopyAllKeywords = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const currentPlan = data?.plan ?? DEFAULT_FALLBACK_PLAN;
-    const lines = currentPlan.primarySources
+    const sources = Array.isArray(currentPlan.primarySources) ? currentPlan.primarySources : [];
+    const lines = sources
       .filter((s) => !sourceInteractions[`${currentPlan.stepId}_${s.id}`]?.skipped)
       .map((s) => {
-        const topKw = s.keywords[0]?.calibratedQuery || s.keywords[0]?.keyword || "";
+        const keywords = Array.isArray(s.keywords) ? s.keywords : [];
+        const topKw = keywords[0]?.calibratedQuery || keywords[0]?.keyword || "";
         return `[${s.platform}] ${topKw}`;
       })
       .join("\n");
@@ -187,7 +189,7 @@ export function PlatformPlanNode({
                     已关联 {upstream.count} 个设计上下文
                   </h4>
                   <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
-                    {upstream.labels.map((lbl, i) => (
+                    {(upstream.labels ?? []).map((lbl, i) => (
                       <span
                         key={i}
                         className="rounded-md bg-white px-2 py-0.5 text-[10px] font-medium text-amber-800 border border-amber-200/80 shadow-2xs"
@@ -247,9 +249,10 @@ export function PlatformPlanNode({
   }
 
   const plan = data?.plan ?? DEFAULT_FALLBACK_PLAN;
+  const primarySources = Array.isArray(plan?.primarySources) ? plan.primarySources : [];
 
   const route = routes.find((r) => r.id === plan.routeId || r.id === selectedRouteId);
-  const step = route?.steps.find((st) => st.id === plan.stepId);
+  const step = route?.steps?.find((st) => st.id === plan.stepId);
   const stepTitle = step ? step.title : "探索搜索方案";
   const briefAnchor = getBriefAnchor(rawBrief, state?.brief.goal);
   const convergenceAnchor = getConvergenceAnchor(state);
@@ -272,7 +275,7 @@ export function PlatformPlanNode({
         onRegenerate={upstream.count > 0 ? () => synthesizeCard(id) : undefined}
         badge={
           <span className="text-[10px] font-mono text-stone-400">
-            {plan.primarySources.length} 处检索渠道
+            {primarySources.length} 处检索渠道
           </span>
         }
         selected={selected}
@@ -284,12 +287,13 @@ export function PlatformPlanNode({
                 灵感检索渠道与检索词
               </span>
               <span className="text-[9.5px] font-mono text-stone-400">
-                {plan.primarySources.length} 个渠道
+                {primarySources.length} 个渠道
               </span>
             </div>
             <div className="space-y-1">
-              {plan.primarySources.slice(0, 3).map((source) => {
-                const topKw = source.keywords[0]?.calibratedQuery || source.keywords[0]?.keyword || "";
+              {primarySources.slice(0, 3).map((source) => {
+                const keywords = Array.isArray(source.keywords) ? source.keywords : [];
+                const topKw = keywords[0]?.calibratedQuery || keywords[0]?.keyword || "";
                 return (
                   <div
                     key={source.id}
@@ -319,16 +323,16 @@ export function PlatformPlanNode({
         <div className="space-y-3 text-xs">
           {/* Upstream context indicator and re-generate button */}
           {upstream.count > 0 && (
-            <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900">
+            <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-950">
               <div className="flex items-center gap-1.5 font-medium truncate min-w-0 pr-2">
                 <Search className="h-3 w-3 text-amber-700 shrink-0" />
-                <span className="truncate">已连 {upstream.count} 个上游：{upstream.labels.join(" + ")}</span>
+                <span className="truncate">已连 {upstream.count} 个上游：{(upstream.labels ?? []).join(" + ")}</span>
               </div>
               <button
                 type="button"
                 onClick={() => synthesizeCard(id)}
                 className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-semibold transition-colors cursor-pointer shadow-xs"
-                title="根据当前连线上游重新生成检索方案"
+                title="根据当前连线重新生成检索方案"
               >
                 <RefreshCw className="h-3 w-3" />
                 <span>重新生成</span>
@@ -385,7 +389,7 @@ export function PlatformPlanNode({
 
           {/* Primary Sources List */}
           <div className="space-y-2.5">
-            {plan.primarySources.map((source, idx) => {
+            {primarySources.map((source, idx) => {
               const key = `${plan.stepId}_${source.id}`;
               const interaction = sourceInteractions[key] ?? {};
               const isSkipped = interaction.skipped;

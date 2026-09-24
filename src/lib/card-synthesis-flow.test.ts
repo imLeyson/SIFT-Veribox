@@ -133,4 +133,50 @@ describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
     expect(renderedHtml).toContain("设计取舍与权衡");
     expect(renderedHtml).toContain("防跑偏提醒");
   });
+
+  it("safely synthesizes step node and platform plan node without crashes", () => {
+    // 1. Add custom Step card connected to route
+    const stepCardId = useSiftStore.getState().addCustomCard({
+      id: "card-step-test",
+      type: "step",
+      title: "空白视点待推导",
+      position: { x: 1300, y: 300 },
+      data: { isEmpty: true },
+    });
+
+    useSiftStore.getState().addCustomEdge({
+      id: "edge-r1-step",
+      source: "route-r1",
+      target: stepCardId,
+    });
+
+    const stepSuccess = useSiftStore.getState().synthesizeCard(stepCardId);
+    expect(stepSuccess).toBe(true);
+
+    const stepCard = useSiftStore.getState().customCards.find((c) => c.id === stepCardId)!;
+    expect(stepCard.data?.isEmpty).toBe(false);
+
+    // 2. Add custom PlatformPlan card connected to Step card
+    const planCardId = useSiftStore.getState().addCustomCard({
+      id: "card-plan-test",
+      type: "platformPlan",
+      title: "空白方案待推导",
+      position: { x: 1700, y: 300 },
+      data: { isEmpty: true },
+    });
+
+    useSiftStore.getState().addCustomEdge({
+      id: "edge-step-plan",
+      source: stepCardId,
+      target: planCardId,
+    });
+
+    const planSuccess = useSiftStore.getState().synthesizeCard(planCardId);
+    expect(planSuccess).toBe(true);
+
+    const planCard = useSiftStore.getState().customCards.find((c) => c.id === planCardId)!;
+    expect(planCard.data?.isEmpty).toBe(false);
+    expect(planCard.data?.plan).toBeDefined();
+    expect(planCard.data?.plan.primarySources.length).toBeGreaterThan(0);
+  });
 });
