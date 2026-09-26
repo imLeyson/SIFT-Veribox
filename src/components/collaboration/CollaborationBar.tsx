@@ -156,20 +156,20 @@ export function CollaborationBar() {
 
       {/* Popover Dropdown Panel */}
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1.5 z-50 w-76 rounded-xl bg-white p-2.5 shadow-xl border border-stone-200 text-xs text-stone-800 animate-in fade-in zoom-in-95 duration-100 select-none space-y-2.5">
+        <div className="absolute right-0 top-full mt-1.5 z-50 w-80 rounded-xl bg-white p-2.5 shadow-xl border border-stone-200 text-xs text-stone-800 animate-in fade-in zoom-in-95 duration-100 select-none space-y-2.5">
           {/* Room Header & Invite Action */}
           <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-            <div>
+            <div className="min-w-0 pr-2">
               <div className="flex items-center gap-1.5">
-                <Radio className="h-3 w-3 text-emerald-500" />
-                <span className="font-semibold text-stone-900 text-xs">
+                <Radio className="h-3 w-3 text-emerald-500 shrink-0" />
+                <span className="font-semibold text-stone-900 text-xs shrink-0">
                   协同房间
                 </span>
-                <span className="text-[10px] font-mono text-stone-500 bg-stone-100 px-1 py-0.2 rounded">
-                  {roomId.slice(0, 12)}
+                <span className="text-[10px] font-mono text-stone-500 bg-stone-100 px-1 py-0.5 rounded truncate max-w-[110px]">
+                  {roomId.slice(0, 14)}
                 </span>
               </div>
-              <span className="text-[10px] text-stone-400 block mt-0.5">
+              <span className="text-[10px] text-stone-400 block mt-0.5 truncate">
                 实时光标、卡片拓扑与视角同步
               </span>
             </div>
@@ -177,7 +177,7 @@ export function CollaborationBar() {
             <button
               type="button"
               onClick={handleCopyLink}
-              className="flex items-center gap-1 px-2 py-1 rounded-md bg-stone-900 hover:bg-stone-800 text-white font-medium text-[11px] transition-colors cursor-pointer shadow-2xs shrink-0"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-stone-900 hover:bg-stone-800 text-white font-medium text-[11px] transition-colors cursor-pointer shadow-2xs shrink-0"
               title="复制专属协同链接分享给协作者"
             >
               {copied ? (
