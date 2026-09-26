@@ -32,10 +32,29 @@ export function CollaborationBar() {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(localPeer.name);
 
+  const [showJoinInput, setShowJoinInput] = useState(false);
+  const [joinRoomInput, setJoinRoomInput] = useState("");
+
   const popoverRef = useRef<HTMLDivElement>(null);
   const { setCenter, getNode } = useReactFlow();
 
   const roomId = collabManager.getRoomId();
+
+  const handleJoinRoom = (e: React.FormEvent) => {
+    e.preventDefault();
+    const target = joinRoomInput.trim();
+    if (!target) return;
+
+    collabManager.switchRoom(target);
+
+    // Update URL query param cleanly without reload
+    const url = new URL(window.location.href);
+    url.searchParams.set("room", target);
+    window.history.pushState({}, "", url.toString());
+
+    setShowJoinInput(false);
+    setJoinRoomInput("");
+  };
 
   useEffect(() => {
     return collabManager.subscribePeers((updated) => {
@@ -157,41 +176,75 @@ export function CollaborationBar() {
       {/* Popover Dropdown Panel */}
       {isOpen && (
         <div className="absolute right-0 top-full mt-1.5 z-50 w-80 rounded-xl bg-white p-2.5 shadow-xl border border-stone-200 text-xs text-stone-800 animate-in fade-in zoom-in-95 duration-100 select-none space-y-2.5">
-          {/* Room Header & Invite Action */}
-          <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-            <div className="min-w-0 pr-2">
-              <div className="flex items-center gap-1.5">
-                <Radio className="h-3 w-3 text-emerald-500 shrink-0" />
-                <span className="font-semibold text-stone-900 text-xs shrink-0">
-                  协同房间
-                </span>
-                <span className="text-[10px] font-mono text-stone-500 bg-stone-100 px-1 py-0.5 rounded truncate max-w-[110px]">
-                  {roomId.slice(0, 14)}
-                </span>
+          {/* Room Header & Actions */}
+          <div className="border-b border-stone-100 pb-2 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 pr-2">
+                <div className="flex items-center gap-1.5">
+                  <Radio className="h-3 w-3 text-emerald-500 shrink-0" />
+                  <span className="font-semibold text-stone-900 text-xs shrink-0">
+                    协同房间
+                  </span>
+                  <span className="text-[10px] font-mono text-stone-600 bg-stone-100 px-1.5 py-0.5 rounded truncate max-w-[105px]">
+                    {roomId}
+                  </span>
+                </div>
               </div>
-              <span className="text-[10px] text-stone-400 block mt-0.5 truncate">
-                实时光标、卡片拓扑与视角同步
-              </span>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowJoinInput((prev) => !prev)}
+                  className="px-1.5 py-1 rounded text-[10px] text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
+                  title="输入已有房间号加入"
+                >
+                  {showJoinInput ? "取消" : "加入房间"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="flex items-center gap-1 px-2 py-1 rounded-md bg-stone-900 hover:bg-stone-800 text-white font-medium text-[11px] transition-colors cursor-pointer shadow-2xs"
+                  title="复制专属协同链接分享给协作者"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-3 w-3 text-emerald-400" />
+                      <span>已复制</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3" />
+                      <span>邀请</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleCopyLink}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-stone-900 hover:bg-stone-800 text-white font-medium text-[11px] transition-colors cursor-pointer shadow-2xs shrink-0"
-              title="复制专属协同链接分享给协作者"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-3 w-3 text-emerald-400" />
-                  <span>已复制</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3 w-3" />
-                  <span>邀请</span>
-                </>
-              )}
-            </button>
+            {showJoinInput ? (
+              <form onSubmit={handleJoinRoom} className="flex gap-1 pt-0.5">
+                <input
+                  type="text"
+                  placeholder="输入房间 ID (如 proj-xxxx)"
+                  value={joinRoomInput}
+                  onChange={(e) => setJoinRoomInput(e.target.value)}
+                  className="flex-1 rounded border border-stone-300 bg-stone-50 px-2 py-1 text-xs outline-none focus:bg-white focus:border-stone-400"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  disabled={!joinRoomInput.trim()}
+                  className="px-2.5 py-1 rounded bg-stone-900 text-white text-[11px] font-medium disabled:opacity-40 cursor-pointer"
+                >
+                  进入
+                </button>
+              </form>
+            ) : (
+              <span className="text-[10px] text-stone-400 block">
+                复制链接发送给队友，打开链接即可自动联机
+              </span>
+            )}
           </div>
 
           {/* My Profile Card */}
