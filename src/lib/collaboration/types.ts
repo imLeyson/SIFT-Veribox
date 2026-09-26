@@ -19,7 +19,33 @@ export type CollaborationOpType =
   | "edge:delete"
   | "card:synthesize"
   | "full:sync:request"
-  | "full:sync";
+  | "full:sync"
+  | "canvas:sync";
+
+export interface CanvasSyncSnapshot {
+  sessionId?: string;
+  rawBrief?: string;
+  briefImages?: string[];
+  state?: any;
+  next?: any;
+  history?: any[];
+  routes?: any[];
+  recommendedRouteId?: string | null;
+  selectedRouteId?: string | null;
+  activeStepId?: string | null;
+  exploredRouteIds?: string[];
+  explorationStage?: any;
+  platformPlans?: any[];
+  customCards?: any[];
+  customEdges?: any[];
+  positions?: Record<string, { x: number; y: number }>;
+  deletedNodeIds?: string[];
+  collapsedNodeIds?: string[];
+  cardTags?: Record<string, any>;
+  stepNotes?: Record<string, string[]>;
+  completedCriteria?: Record<string, string[]>;
+  updatedAt?: number;
+}
 
 export interface BaseCollaborationOp {
   id: string;
@@ -71,6 +97,10 @@ export type CollaborationOp =
   | (BaseCollaborationOp & {
       type: "full:sync";
       snapshot: any;
+    })
+  | (BaseCollaborationOp & {
+      type: "canvas:sync";
+      snapshot: CanvasSyncSnapshot;
     });
 
 export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;

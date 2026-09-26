@@ -151,4 +151,115 @@ describe("Multi-user Real-time Collaboration Engine", () => {
     expect(dataA2.ops[0].nodeId).toBe("card-route-1");
     expect(dataA2.ops[0].userId).toBe("user-b");
   });
+
+  it("persists room canvas snapshot and delivers it to newly joined collaborator", async () => {
+    const roomId = "room-snapshot-test-01";
+
+    const hostPeer = {
+      id: "peer-host",
+      name: "主设计师",
+      color: "#6366f1",
+      role: "视觉设计" as const,
+      lastActive: Date.now(),
+    };
+
+    const hostSnapshot = {
+      rawBrief: "智能复古咖啡机外观概念设计",
+      routes: [
+        {
+          id: "route-retro-modern",
+          name: "复古未来主义",
+          tagline: "精致金属线条与圆润复古倒角的有机结合",
+          description: "采用手工打磨铜拉丝与哑光米白喷涂",
+          keywords: ["复古", "铜拉丝", "咖啡文化"],
+          steps: [],
+        },
+      ],
+      customCards: [
+        {
+          id: "card-note-1",
+          type: "note" as const,
+          title: "CMF要点",
+          content: "机身侧翼采用深胡桃木实木饰条",
+          position: { x: 500, y: 240 },
+        },
+      ],
+      positions: {
+        "route-retro-modern": { x: 1200, y: 350 },
+        "card-note-1": { x: 500, y: 240 },
+      },
+      updatedAt: Date.now(),
+    };
+
+    // Host sends heartbeat with full canvas snapshot
+    const hostReq = new Request("http://localhost/api/collaboration/room", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        roomId,
+        peer: hostPeer,
+        ops: [],
+        since: 0,
+        snapshot: hostSnapshot,
+      }),
+    });
+
+    const hostRes = await handleRoomApi(hostReq);
+    expect(hostRes.status).toBe(200);
+    const hostData = await hostRes.json();
+    expect(hostData.snapshot).toBeDefined();
+    expect(hostData.snapshot.rawBrief).toBe("智能复古咖啡机外观概念设计");
+    expect(hostData.snapshot.routes.length).toBe(1);
+
+    // Collaborator joins room with empty state
+    const collabPeer = {
+      id: "peer-collaborator",
+      name: "协同工程师",
+      color: "#10b981",
+      role: "CMF工程" as const,
+      lastActive: Date.now(),
+    };
+
+    const collabReq = new Request("http://localhost/api/collaboration/room", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        roomId,
+        peer: collabPeer,
+        ops: [],
+        since: 0,
+        // Collaborator initially has empty/no snapshot
+      }),
+    });
+
+    const collabRes = await handleRoomApi(collabReq);
+    expect(collabRes.status).toBe(200);
+    const collabData = await collabRes.json();
+
+    // Collaborator MUST receive host's snapshot to immediately populate their canvas
+    expect(collabData.snapshot).toBeDefined();
+    expect(collabData.snapshot.rawBrief).toBe("智能复古咖啡机外观概念设计");
+    expect(collabData.snapshot.routes[0].id).toBe("route-retro-modern");
+    expect(collabData.snapshot.customCards[0].id).toBe("card-note-1");
+    expect(collabData.snapshot.positions["card-note-1"].x).toBe(500);
+
+    // Collaborator sending an empty snapshot must NOT wipe out the room's snapshot
+    const emptySyncReq = new Request("http://localhost/api/collaboration/room", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        roomId,
+        peer: collabPeer,
+        ops: [],
+        since: 0,
+        snapshot: { rawBrief: "", routes: [], customCards: [] },
+      }),
+    });
+
+    const emptyRes = await handleRoomApi(emptySyncReq);
+    const emptyData = await emptyRes.json();
+    expect(emptyData.snapshot.rawBrief).toBe("智能复古咖啡机外观概念设计");
+    expect(emptyData.snapshot.routes.length).toBe(1);
+  });
 });
+

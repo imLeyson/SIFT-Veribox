@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import type { CollaboratorPeer, CollaborationOp } from "@/lib/collaboration/types";
+import type { CollaboratorPeer, CollaborationOp, CanvasSyncSnapshot } from "@/lib/collaboration/types";
 
 interface RoomState {
   roomId: string;
   peers: Map<string, CollaboratorPeer>;
   ops: CollaborationOp[];
+  snapshot?: CanvasSyncSnapshot;
   updatedAt: number;
 }
 
@@ -23,6 +24,18 @@ function getOrCreateRoom(roomId: string): RoomState {
     rooms.set(roomId, room);
   }
   return room;
+}
+
+function hasContent(snap?: CanvasSyncSnapshot): boolean {
+  if (!snap) return false;
+  return Boolean(
+    (snap.rawBrief && snap.rawBrief.trim().length > 0) ||
+    snap.state ||
+    (snap.routes && snap.routes.length > 0) ||
+    (snap.customCards && snap.customCards.length > 0) ||
+    (snap.platformPlans && snap.platformPlans.length > 0) ||
+    (snap.positions && Object.keys(snap.positions).length > 0)
+  );
 }
 
 // Clean up stale rooms and peers (>20 seconds of inactivity)
@@ -50,7 +63,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { roomId, peer, ops, since } = body;
+  const { roomId, peer, ops, since, snapshot } = body;
   if (!roomId || typeof roomId !== "string") {
     return NextResponse.json({ error: "roomId is required" }, { status: 400 });
   }
@@ -65,6 +78,17 @@ export async function POST(request: Request) {
       ...peer,
       lastActive: now,
     });
+  }
+
+  // 1.5. Update room canvas snapshot if provided and has content
+  if (snapshot && typeof snapshot === "object") {
+    if (!room.snapshot || hasContent(snapshot)) {
+      room.snapshot = {
+        ...room.snapshot,
+        ...snapshot,
+        updatedAt: now,
+      };
+    }
   }
 
   // 2. Append new ops from client
@@ -96,6 +120,8 @@ export async function POST(request: Request) {
     roomId,
     peers: activePeers,
     ops: deltaOps,
+    snapshot: room.snapshot || null,
     serverTime: now,
   });
 }
+

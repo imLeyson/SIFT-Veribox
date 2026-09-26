@@ -4,6 +4,7 @@ import {
   CollaboratorPeer,
   CollaborationOp,
   CollaborationOpInput,
+  CanvasSyncSnapshot,
   PRESET_AVATAR_COLORS,
   PRESET_ROLES,
 } from "./types";
@@ -121,8 +122,12 @@ class CollaborationManager {
   private peerListeners = new Set<PeerListener>();
   private opListeners = new Set<OpListener>();
   private pendingOps: CollaborationOp[] = [];
+  private pendingSnapshot: CanvasSyncSnapshot | null = null;
+  private lastAppliedSnapshotTimestamp = 0;
+  private lastMoveThrottleTime = 0;
   private heartbeatTimer: any = null;
   private peerCleanupTimer: any = null;
+  private syncDebounceTimer: any = null;
   private lastPolledTimestamp = 0;
   private isProcessingRemoteOp = false;
 
@@ -151,6 +156,41 @@ class CollaborationManager {
           ...payload,
         });
       });
+
+      // Automatically sync canvas state on meaningful changes with debounce
+      try {
+        useSiftStore.subscribe(() => {
+          if (this.isProcessingRemoteOp) return;
+          if (!this.hasMeaningfulCanvasState()) return;
+
+          if (this.syncDebounceTimer) clearTimeout(this.syncDebounceTimer);
+          this.syncDebounceTimer = setTimeout(() => {
+            if (this.isProcessingRemoteOp) return;
+            const snapshot = this.getCanvasSnapshot();
+            this.pendingSnapshot = snapshot;
+
+            // Broadcast canvas sync to tabs
+            if (this.broadcastChannel) {
+              try {
+                this.broadcastChannel.postMessage({
+                  type: "canvas:sync",
+                  snapshot,
+                });
+              } catch {
+                // ignore
+              }
+            }
+
+            // Also broadcast canvas:sync op for server queue
+            this.broadcastOp({
+              type: "canvas:sync",
+              snapshot,
+            });
+          }, 250);
+        });
+      } catch {
+        // ignore in environments without store subscription support
+      }
     }
   }
 
@@ -180,12 +220,107 @@ class CollaborationManager {
     };
   }
 
+  public getCanvasSnapshot(): CanvasSyncSnapshot {
+    if (!isBrowser()) return {};
+    const s = useSiftStore.getState();
+    return {
+      sessionId: s.sessionId,
+      rawBrief: s.rawBrief,
+      briefImages: s.briefImages,
+      state: s.state,
+      next: s.next,
+      history: s.history,
+      routes: s.routes,
+      recommendedRouteId: s.recommendedRouteId,
+      selectedRouteId: s.selectedRouteId,
+      activeStepId: s.activeStepId,
+      exploredRouteIds: s.exploredRouteIds,
+      explorationStage: s.explorationStage,
+      platformPlans: s.platformPlans,
+      customCards: s.customCards,
+      customEdges: s.customEdges,
+      positions: s.positions,
+      deletedNodeIds: s.deletedNodeIds,
+      collapsedNodeIds: s.collapsedNodeIds,
+      cardTags: s.cardTags,
+      stepNotes: s.stepNotes,
+      completedCriteria: s.completedCriteria,
+      updatedAt: Date.now(),
+    };
+  }
+
+  public hasMeaningfulCanvasState(snap?: CanvasSyncSnapshot): boolean {
+    const s = snap || (isBrowser() ? useSiftStore.getState() : null);
+    if (!s) return false;
+    return Boolean(
+      (s.rawBrief && s.rawBrief.trim().length > 0) ||
+      s.state ||
+      (s.routes && s.routes.length > 0) ||
+      (s.customCards && s.customCards.length > 0) ||
+      (s.platformPlans && s.platformPlans.length > 0) ||
+      (s.positions && Object.keys(s.positions).length > 0)
+    );
+  }
+
+  public applyCanvasSnapshot(snapshot: CanvasSyncSnapshot, _source = "remote") {
+    if (!snapshot || typeof snapshot !== "object" || !isBrowser()) return;
+
+    // Do not overwrite valid local state with an empty incoming snapshot
+    if (!this.hasMeaningfulCanvasState(snapshot)) {
+      if (this.hasMeaningfulCanvasState()) return;
+    }
+
+    this.isProcessingRemoteOp = true;
+    try {
+      useSiftStore.setState((prev) => {
+        const mergedPositions = {
+          ...prev.positions,
+          ...(snapshot.positions || {}),
+        };
+
+        return {
+          ...(snapshot.sessionId ? { sessionId: snapshot.sessionId } : {}),
+          ...(snapshot.rawBrief !== undefined ? { rawBrief: snapshot.rawBrief } : {}),
+          ...(snapshot.briefImages !== undefined ? { briefImages: snapshot.briefImages } : {}),
+          ...(snapshot.state !== undefined ? { state: snapshot.state } : {}),
+          ...(snapshot.next !== undefined ? { next: snapshot.next } : {}),
+          ...(snapshot.history !== undefined ? { history: snapshot.history } : {}),
+          ...(snapshot.routes !== undefined ? { routes: snapshot.routes } : {}),
+          ...(snapshot.recommendedRouteId !== undefined ? { recommendedRouteId: snapshot.recommendedRouteId } : {}),
+          ...(snapshot.selectedRouteId !== undefined ? { selectedRouteId: snapshot.selectedRouteId } : {}),
+          ...(snapshot.activeStepId !== undefined ? { activeStepId: snapshot.activeStepId } : {}),
+          ...(snapshot.exploredRouteIds !== undefined ? { exploredRouteIds: snapshot.exploredRouteIds } : {}),
+          ...(snapshot.explorationStage !== undefined ? { explorationStage: snapshot.explorationStage } : {}),
+          ...(snapshot.platformPlans !== undefined ? { platformPlans: snapshot.platformPlans } : {}),
+          ...(snapshot.customCards !== undefined ? { customCards: snapshot.customCards } : {}),
+          ...(snapshot.customEdges !== undefined ? { customEdges: snapshot.customEdges } : {}),
+          positions: mergedPositions,
+          ...(snapshot.deletedNodeIds !== undefined ? { deletedNodeIds: snapshot.deletedNodeIds } : {}),
+          ...(snapshot.collapsedNodeIds !== undefined ? { collapsedNodeIds: snapshot.collapsedNodeIds } : {}),
+          ...(snapshot.cardTags !== undefined ? { cardTags: snapshot.cardTags } : {}),
+          ...(snapshot.stepNotes !== undefined ? { stepNotes: snapshot.stepNotes } : {}),
+          ...(snapshot.completedCriteria !== undefined ? { completedCriteria: snapshot.completedCriteria } : {}),
+        };
+      });
+
+      this.lastAppliedSnapshotTimestamp = snapshot.updatedAt || Date.now();
+    } catch (err) {
+      console.warn("[Collab] Failed to apply canvas snapshot:", err);
+    } finally {
+      setTimeout(() => {
+        this.isProcessingRemoteOp = false;
+      }, 100);
+    }
+  }
+
   public switchRoom(newRoomId: string) {
     if (this.currentRoomId === newRoomId) return;
     this.currentRoomId = newRoomId;
     this.peersMap.clear();
     this.pendingOps = [];
+    this.pendingSnapshot = null;
     this.lastPolledTimestamp = 0;
+    this.lastAppliedSnapshotTimestamp = 0;
 
     if (this.broadcastChannel) {
       try {
@@ -209,10 +344,35 @@ class CollaborationManager {
 
         if (data.type === "presence-heartbeat") {
           this.handleRemotePresence(data.peer);
+        } else if (data.type === "full:sync:request") {
+          if (this.hasMeaningfulCanvasState()) {
+            try {
+              this.broadcastChannel?.postMessage({
+                type: "full:sync:response",
+                snapshot: this.getCanvasSnapshot(),
+              });
+            } catch {
+              // ignore
+            }
+          }
+        } else if (data.type === "full:sync:response" || data.type === "canvas:sync") {
+          if (data.snapshot) {
+            this.applyCanvasSnapshot(data.snapshot, "broadcast");
+          }
         } else if (data.op) {
           this.handleRemoteOp(data.op);
         }
       };
+
+      // Request full canvas sync from any already-open tab
+      try {
+        this.broadcastChannel.postMessage({
+          type: "full:sync:request",
+          requesterId: this.localPeer.id,
+        });
+      } catch {
+        // ignore
+      }
     } catch {
       this.broadcastChannel = null;
     }
@@ -230,7 +390,7 @@ class CollaborationManager {
       isSelf: true,
     };
 
-    // 1. Tab-to-Tab via BroadcastChannel
+    // Tab-to-Tab via BroadcastChannel
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({
@@ -243,6 +403,18 @@ class CollaborationManager {
     }
 
     this.notifyPeerListeners();
+  }
+
+  public broadcastNodeMove(nodeId: string, position: { x: number; y: number }, force = false) {
+    const now = Date.now();
+    if (!force && now - this.lastMoveThrottleTime < 40) return;
+    this.lastMoveThrottleTime = now;
+
+    this.broadcastOp({
+      type: "node:move",
+      nodeId,
+      position,
+    });
   }
 
   public broadcastOp(opData: CollaborationOpInput) {
@@ -322,33 +494,35 @@ class CollaborationManager {
           break;
         }
         case "card:synthesize": {
-          // If remote peer triggered synthesis, update the target card
           store.updateCustomCard(op.cardId, op.synthesized);
           break;
         }
+        case "canvas:sync": {
+          if (op.snapshot) {
+            this.applyCanvasSnapshot(op.snapshot, "canvas:sync");
+          }
+          break;
+        }
         case "full:sync:request": {
-          // Existing peer responds by broadcasting current canvas snapshot
-          try {
-            const raw = localStorage.getItem("sift-convergence-v3");
-            if (raw) {
-              this.broadcastOp({
-                type: "full:sync",
-                snapshot: raw,
-              });
-            }
-          } catch {
-            // ignore
+          if (this.hasMeaningfulCanvasState()) {
+            this.broadcastOp({
+              type: "full:sync",
+              snapshot: this.getCanvasSnapshot(),
+            });
           }
           break;
         }
         case "full:sync": {
-          // Newly joined peer receives canvas snapshot
-          if (op.snapshot && typeof op.snapshot === "string") {
-            try {
-              localStorage.setItem("sift-convergence-v3", op.snapshot);
-              void useSiftStore.persist.rehydrate();
-            } catch {
-              // ignore
+          if (op.snapshot) {
+            if (typeof op.snapshot === "string") {
+              try {
+                const parsed = JSON.parse(op.snapshot);
+                this.applyCanvasSnapshot(parsed?.state || parsed, "full:sync");
+              } catch {
+                // ignore
+              }
+            } else if (typeof op.snapshot === "object") {
+              this.applyCanvasSnapshot(op.snapshot, "full:sync");
             }
           }
           break;
@@ -365,7 +539,9 @@ class CollaborationManager {
         }
       }
     } finally {
-      this.isProcessingRemoteOp = false;
+      setTimeout(() => {
+        this.isProcessingRemoteOp = false;
+      }, 100);
     }
   }
 
@@ -407,13 +583,21 @@ class CollaborationManager {
       const opsToSend = [...this.pendingOps];
       this.pendingOps = [];
 
+      const snapshotToSend =
+        this.pendingSnapshot ||
+        (this.hasMeaningfulCanvasState() ? this.getCanvasSnapshot() : undefined);
+      this.pendingSnapshot = null;
+
       try {
-        const payload = {
+        const payload: any = {
           roomId: this.currentRoomId,
           peer: this.localPeer,
           ops: opsToSend,
           since: this.lastPolledTimestamp,
         };
+        if (snapshotToSend) {
+          payload.snapshot = snapshotToSend;
+        }
 
         const res = await fetch("/api/collaboration/room", {
           method: "POST",
@@ -437,6 +621,17 @@ class CollaborationManager {
             });
           }
 
+          // If room has canvas snapshot on server, apply if local is empty or server is newer
+          if (data.snapshot && typeof data.snapshot === "object") {
+            const isLocalEmpty = !this.hasMeaningfulCanvasState();
+            const serverUpdatedAt = data.snapshot.updatedAt || 0;
+            const isServerNewer = serverUpdatedAt > this.lastAppliedSnapshotTimestamp;
+
+            if (isLocalEmpty || (isServerNewer && !snapshotToSend)) {
+              this.applyCanvasSnapshot(data.snapshot, "server-heartbeat");
+            }
+          }
+
           if (typeof data.serverTime === "number") {
             this.lastPolledTimestamp = data.serverTime;
           }
@@ -453,6 +648,7 @@ class CollaborationManager {
   }
 
   public destroy() {
+    if (this.syncDebounceTimer) clearTimeout(this.syncDebounceTimer);
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     if (this.peerCleanupTimer) clearInterval(this.peerCleanupTimer);
     if (this.broadcastChannel) {
@@ -467,3 +663,4 @@ class CollaborationManager {
 
 // Singleton instance
 export const collabManager = new CollaborationManager();
+

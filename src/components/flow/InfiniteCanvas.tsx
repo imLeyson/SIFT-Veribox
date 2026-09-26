@@ -1133,8 +1133,12 @@ function FlowInner() {
         onNodesChange={onNodesChange}
         onNodeDrag={(_e, node) => {
           collabManager.broadcastPresence(node.position, node.id);
+          collabManager.broadcastNodeMove(node.id, node.position);
         }}
-        onNodeDragStop={(_e, node) => setPosition(node.id, node.position)}
+        onNodeDragStop={(_e, node) => {
+          setPosition(node.id, node.position);
+          collabManager.broadcastNodeMove(node.id, node.position, true);
+        }}
         onConnect={onConnect}
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
