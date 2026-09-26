@@ -17,6 +17,7 @@ import {
   getLocalPeer,
   updateLocalPeer,
   getCurrentRoomId,
+  useFollowingPeer,
 } from "@/lib/collaboration/collab-manager";
 import {
   CollaboratorPeer,
@@ -37,6 +38,7 @@ export function CollaborationBar() {
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const { setCenter, getNode } = useReactFlow();
+  const followingPeer = useFollowingPeer();
 
   const roomId = collabManager.getRoomId();
 
@@ -108,22 +110,23 @@ export function CollaborationBar() {
   };
 
   const handleFollowPeer = (peer: CollaboratorPeer) => {
-    if (peer.cursor) {
-      setCenter(peer.cursor.x, peer.cursor.y, { duration: 600, zoom: 0.85 });
-      setIsOpen(false);
-      return;
-    }
-
-    if (peer.activeNodeId) {
-      const node = getNode(peer.activeNodeId);
-      if (node) {
-        setCenter(node.position.x + 150, node.position.y + 100, {
-          duration: 600,
-          zoom: 0.85,
-        });
-        setIsOpen(false);
+    if (followingPeer?.id === peer.id) {
+      collabManager.setFollowingPeerId(null);
+    } else {
+      collabManager.setFollowingPeerId(peer.id);
+      if (peer.cursor) {
+        void setCenter(peer.cursor.x, peer.cursor.y, { duration: 500, zoom: 0.85 });
+      } else if (peer.activeNodeId) {
+        const node = getNode(peer.activeNodeId);
+        if (node) {
+          void setCenter(node.position.x + 150, node.position.y + 100, {
+            duration: 500,
+            zoom: 0.85,
+          });
+        }
       }
     }
+    setIsOpen(false);
   };
 
   return (
@@ -146,9 +149,17 @@ export function CollaborationBar() {
             {activePeers.slice(0, 3).map((p) => (
               <div
                 key={p.id}
-                className="h-4 w-4 rounded-full border border-white text-[9px] font-bold text-white flex items-center justify-center shadow-xs"
+                onClick={(e) => {
+                  if (!p.isSelf) {
+                    e.stopPropagation();
+                    handleFollowPeer(p);
+                  }
+                }}
+                className={`h-4 w-4 rounded-full border border-white text-[9px] font-bold text-white flex items-center justify-center shadow-xs cursor-pointer transition-transform hover:scale-125 ${
+                  followingPeer?.id === p.id ? "ring-2 ring-indigo-500 ring-offset-1 scale-110" : ""
+                }`}
                 style={{ backgroundColor: p.color }}
-                title={`${p.name} (${p.role})`}
+                title={`${p.name} (${p.role})${!p.isSelf ? " · 点击跟随视角" : ""}`}
               >
                 {p.name.slice(0, 1)}
               </div>
@@ -157,6 +168,7 @@ export function CollaborationBar() {
         ) : (
           <Users className="h-3.5 w-3.5 text-stone-500" />
         )}
+
 
         <span>
           {isMultiplayer ? `${activePeers.length} 人在线` : "协同"}
@@ -376,11 +388,15 @@ export function CollaborationBar() {
                     <button
                       type="button"
                       onClick={() => handleFollowPeer(p)}
-                      className="shrink-0 text-[10px] text-indigo-600 hover:text-indigo-800 px-1.5 py-0.5 rounded border border-indigo-200/80 hover:bg-indigo-50 transition-colors cursor-pointer flex items-center gap-0.5"
-                      title="平移画布镜头跟随该成员"
+                      className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border transition-all cursor-pointer flex items-center gap-1 ${
+                        followingPeer?.id === p.id
+                          ? "bg-indigo-600 border-indigo-600 text-white font-semibold shadow-xs"
+                          : "text-indigo-600 hover:text-indigo-800 border-indigo-200/80 hover:bg-indigo-50"
+                      }`}
+                      title={followingPeer?.id === p.id ? "点击退出视角跟随" : "实时跟随该成员的设计视角"}
                     >
-                      <Compass className="h-2.5 w-2.5" />
-                      <span>跟随</span>
+                      <Compass className={`h-2.5 w-2.5 ${followingPeer?.id === p.id ? "animate-spin" : ""}`} />
+                      <span>{followingPeer?.id === p.id ? "跟随中" : "跟随"}</span>
                     </button>
                   )}
                 </div>

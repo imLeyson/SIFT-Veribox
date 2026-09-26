@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { StickyNote, Trash2, GripHorizontal, Sparkles } from "lucide-react";
 import { useSiftStore, getUpstreamSummary } from "@/lib/convergence-store";
+import { collabManager, useRemoteCollaboratorsOnNode } from "@/lib/collaboration/collab-manager";
 
 const COLOR_VARIANTS = {
   amber: {
@@ -159,10 +160,34 @@ export function StickyNoteNode({ id, data }: NodeProps) {
   const lineCount = (content.match(/\n/g) || []).length + 1;
   const estimatedRows = Math.max(5, Math.min(35, lineCount + Math.ceil(content.length / 28)));
 
+  const remoteCollaborators = useRemoteCollaboratorsOnNode(id);
+  const isBeingEdited = remoteCollaborators.length > 0;
+  const primaryEditor = remoteCollaborators[0];
+
   return (
     <article
       className={`card relative w-[330px] max-w-[440px] overflow-hidden rounded-2xl border shadow-sm backdrop-blur-xs transition-all duration-200 hover:shadow-md ${theme.bg} ${theme.border}`}
+      style={
+        isBeingEdited
+          ? {
+              outline: `2px solid ${primaryEditor.color}`,
+              outlineOffset: "2px",
+              boxShadow: `0 0 0 4px ${primaryEditor.color}25, 0 10px 25px -5px rgba(0, 0, 0, 0.1)`,
+            }
+          : undefined
+      }
     >
+      {/* Floating Collaborator Activity Pill */}
+      {isBeingEdited && (
+        <div
+          className="absolute -top-3 right-6 z-30 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-md transition-all animate-in fade-in zoom-in-90 duration-200 select-none"
+          style={{ backgroundColor: primaryEditor.color }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+          <span>{primaryEditor.name} 正在协同</span>
+        </div>
+      )}
+
       <Handle
         type="target"
         position={Position.Left}
@@ -247,7 +272,11 @@ export function StickyNoteNode({ id, data }: NodeProps) {
           type="text"
           value={title}
           onChange={(e) => handleTitleChange(e.target.value)}
-          onBlur={handleTitleBlur}
+          onFocus={() => collabManager.setActiveNode(id)}
+          onBlur={() => {
+            handleTitleBlur();
+            collabManager.setActiveNode(null);
+          }}
           placeholder="便签标题…"
           className={`w-full bg-transparent text-xs font-semibold focus:outline-hidden border-b border-transparent hover:border-black/10 focus:border-black/20 pb-0.5 ${theme.text}`}
         />
@@ -255,7 +284,11 @@ export function StickyNoteNode({ id, data }: NodeProps) {
         <textarea
           value={content}
           onChange={(e) => handleContentChange(e.target.value)}
-          onBlur={handleContentBlur}
+          onFocus={() => collabManager.setActiveNode(id)}
+          onBlur={() => {
+            handleContentBlur();
+            collabManager.setActiveNode(null);
+          }}
           placeholder="随手记录你的灵感、设计手记、评审反馈或排版约束…"
           rows={estimatedRows}
           className={`w-full bg-transparent text-xs leading-relaxed focus:outline-hidden placeholder:text-stone-400/70 whitespace-pre-wrap break-words resize-y ${theme.text}`}

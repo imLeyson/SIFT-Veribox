@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { GripHorizontal, Copy, Trash2, ChevronDown, ChevronUp, RefreshCw, Bookmark, Check, Star, MessageSquare } from "lucide-react";
 import { useSiftStore, type CardTag } from "@/lib/convergence-store";
+import { useRemoteCollaboratorsOnNode } from "@/lib/collaboration/collab-manager";
 
 export type CardTagType = CardTag;
 
@@ -216,10 +217,39 @@ export function NodeShell({
     spotlightClass = CARD_TAG_CONFIG[currentTag]?.activeClass ?? "";
   }
 
+  const remoteCollaborators = useRemoteCollaboratorsOnNode(nodeId);
+  const isBeingEdited = remoteCollaborators.length > 0;
+  const primaryEditor = remoteCollaborators[0];
+
   return (
     <article
       className={`vb-node card relative transition-all duration-200 ${className ?? "w-[380px]"} ${selected ? "vb-node-selected" : ""} ${spotlightClass}`}
+      style={
+        isBeingEdited
+          ? {
+              outline: `2px solid ${primaryEditor.color}`,
+              outlineOffset: "2px",
+              boxShadow: `0 0 0 4px ${primaryEditor.color}25, 0 10px 25px -5px rgba(0, 0, 0, 0.1)`,
+            }
+          : undefined
+      }
     >
+      {/* Floating Collaborator Activity Pill */}
+      {isBeingEdited && (
+        <div
+          className="absolute -top-3 right-6 z-30 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-md transition-all animate-in fade-in zoom-in-90 duration-200 select-none"
+          style={{ backgroundColor: primaryEditor.color }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+          <span>{primaryEditor.name}</span>
+          {primaryEditor.role && (
+            <span className="opacity-85 text-[8.5px] border-l border-white/30 pl-1 font-normal">
+              {primaryEditor.role}
+            </span>
+          )}
+        </div>
+      )}
+
       <Handle
         type="target"
         position={Position.Left}

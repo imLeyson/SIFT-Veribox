@@ -21,7 +21,7 @@ import {
   resolveNodeContext,
   type CustomCard,
 } from "@/lib/convergence-store";
-import { collabManager } from "@/lib/collaboration/collab-manager";
+import { collabManager, useFollowingPeer } from "@/lib/collaboration/collab-manager";
 import { MultiplayerCursors } from "@/components/collaboration/MultiplayerCursors";
 import { nodeTypes } from "./nodeTypes";
 import { CanvasToolBar, type ToolType } from "./CanvasToolBar";
@@ -281,7 +281,9 @@ function FlowInner() {
   const collapsedNodeIds = useSiftStore((s) => s.collapsedNodeIds);
   const collapseAllNodes = useSiftStore((s) => s.collapseAllNodes);
 
-  const { fitView, screenToFlowPosition, getViewport } = useReactFlow();
+  const { fitView, screenToFlowPosition, getViewport, setCenter, getNode } = useReactFlow();
+  const followingPeer = useFollowingPeer();
+  const draggingNodeIdRef = useRef<string | null>(null);
 
   const [panOnDrag, setPanOnDrag] = useState(true);
   const connectingNodeIdRef = useRef<string | null>(null);
@@ -548,8 +550,45 @@ function FlowInner() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
   useEffect(() => {
-    setNodes(graph.nodes);
+    setNodes((prevNodes) => {
+      return graph.nodes.map((newNode) => {
+        // If local user is currently dragging this node, preserve its smooth in-flight position
+        if (draggingNodeIdRef.current === newNode.id) {
+          const existing = prevNodes.find((n) => n.id === newNode.id);
+          if (existing) {
+            return { ...newNode, position: existing.position };
+          }
+        }
+        return newNode;
+      });
+    });
   }, [graph.nodes, setNodes]);
+
+  // Real-time Follow Mode Camera Synchronizer
+  useEffect(() => {
+    if (!followingPeer) return;
+    if (followingPeer.cursor) {
+      void setCenter(followingPeer.cursor.x, followingPeer.cursor.y, {
+        duration: 300,
+        zoom: 0.85,
+      });
+    } else if (followingPeer.activeNodeId) {
+      const node = getNode(followingPeer.activeNodeId);
+      if (node) {
+        void setCenter(node.position.x + 180, node.position.y + 120, {
+          duration: 300,
+          zoom: 0.85,
+        });
+      }
+    }
+  }, [
+    followingPeer,
+    followingPeer?.cursor?.x,
+    followingPeer?.cursor?.y,
+    followingPeer?.activeNodeId,
+    setCenter,
+    getNode,
+  ]);
 
   // Keep the active stage readable after route generation and route selection.
   // React Flow renders the new nodes one frame after the store changes, so this
@@ -1131,13 +1170,26 @@ function FlowInner() {
         edges={safeEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
+        onNodeClick={(_e, node) => {
+          collabManager.setActiveNode(node.id);
+        }}
+        onNodeDragStart={(_e, node) => {
+          draggingNodeIdRef.current = node.id;
+          collabManager.setActiveNode(node.id);
+        }}
         onNodeDrag={(_e, node) => {
           collabManager.broadcastPresence(node.position, node.id);
           collabManager.broadcastNodeMove(node.id, node.position);
         }}
         onNodeDragStop={(_e, node) => {
+          draggingNodeIdRef.current = null;
           setPosition(node.id, node.position);
           collabManager.broadcastNodeMove(node.id, node.position, true);
+        }}
+        onMoveStart={(_e, eventType) => {
+          if (eventType && followingPeer) {
+            collabManager.setFollowingPeerId(null);
+          }
         }}
         onConnect={onConnect}
         onConnectStart={onConnectStart}
@@ -1161,6 +1213,7 @@ function FlowInner() {
         onPaneClick={() => {
           setContextMenuPos(null);
           setSpawnMenuPos(null);
+          collabManager.setActiveNode(null);
         }}
         nodesConnectable={true}
         edgesReconnectable={true}
@@ -1190,6 +1243,25 @@ function FlowInner() {
         <Controls showInteractive={false} position="bottom-left" />
         <MultiplayerCursors />
       </ReactFlow>
+
+      {/* Floating Follow Mode Status Banner */}
+      {followingPeer && (
+        <div className="pointer-events-auto absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2.5 rounded-full bg-stone-900/95 text-white px-4 py-2 shadow-2xl backdrop-blur-md text-xs font-medium border border-white/20 animate-in fade-in slide-in-from-top-3 duration-200 select-none">
+          <span
+            className="h-2 w-2 rounded-full animate-ping shrink-0"
+            style={{ backgroundColor: followingPeer.color }}
+          />
+          <span>正在跟随 {followingPeer.name} ({followingPeer.role}) 的设计视角</span>
+          <button
+            type="button"
+            onClick={() => collabManager.setFollowingPeerId(null)}
+            className="ml-1 text-white/80 hover:text-white px-2.5 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-[11px] transition-colors cursor-pointer"
+          >
+            退出跟随
+          </button>
+        </div>
+      )}
+
 
       {/* Floating Figma-like Tool Bar */}
       <CanvasToolBar

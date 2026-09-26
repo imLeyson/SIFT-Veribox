@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   CollaboratorPeer,
   CollaborationOp,
@@ -128,6 +129,10 @@ class CollaborationManager {
   private heartbeatTimer: any = null;
   private peerCleanupTimer: any = null;
   private syncDebounceTimer: any = null;
+  private flushPendingTimer: any = null;
+  private isFlushing = false;
+  private followingPeerId: string | null = null;
+  private followListeners = new Set<(peer: CollaboratorPeer | null) => void>();
   private lastPolledTimestamp = 0;
   private isProcessingRemoteOp = false;
 
@@ -378,6 +383,50 @@ class CollaborationManager {
     }
   }
 
+  public scheduleFlush(delayMs = 30) {
+    if (!isBrowser()) return;
+    if (this.flushPendingTimer) clearTimeout(this.flushPendingTimer);
+    this.flushPendingTimer = setTimeout(() => {
+      void this.flushNow();
+    }, delayMs);
+  }
+
+  public setActiveNode(nodeId: string | null) {
+    if (this.localPeer.activeNodeId === nodeId) return;
+    this.localPeer.activeNodeId = nodeId;
+    this.broadcastPresence(this.localPeer.cursor || null, nodeId);
+    this.scheduleFlush(20);
+  }
+
+  public setFollowingPeerId(peerId: string | null) {
+    this.followingPeerId = peerId;
+    this.notifyFollowListeners();
+  }
+
+  public getFollowingPeer(): CollaboratorPeer | null {
+    if (!this.followingPeerId) return null;
+    return this.peersMap.get(this.followingPeerId) || null;
+  }
+
+  public subscribeFollowingPeer(listener: (peer: CollaboratorPeer | null) => void): () => void {
+    this.followListeners.add(listener);
+    listener(this.getFollowingPeer());
+    return () => {
+      this.followListeners.delete(listener);
+    };
+  }
+
+  private notifyFollowListeners() {
+    const peer = this.getFollowingPeer();
+    this.followListeners.forEach((fn) => {
+      try {
+        fn(peer);
+      } catch {
+        // ignore
+      }
+    });
+  }
+
   public broadcastPresence(
     cursor: { x: number; y: number } | null,
     activeNodeId?: string | null,
@@ -385,7 +434,7 @@ class CollaborationManager {
     this.localPeer = {
       ...this.localPeer,
       cursor,
-      activeNodeId,
+      activeNodeId: activeNodeId !== undefined ? activeNodeId : this.localPeer.activeNodeId,
       lastActive: Date.now(),
       isSelf: true,
     };
@@ -407,7 +456,7 @@ class CollaborationManager {
 
   public broadcastNodeMove(nodeId: string, position: { x: number; y: number }, force = false) {
     const now = Date.now();
-    if (!force && now - this.lastMoveThrottleTime < 40) return;
+    if (!force && now - this.lastMoveThrottleTime < 35) return;
     this.lastMoveThrottleTime = now;
 
     this.broadcastOp({
@@ -415,6 +464,7 @@ class CollaborationManager {
       nodeId,
       position,
     });
+    this.scheduleFlush(force ? 0 : 60);
   }
 
   public broadcastOp(opData: CollaborationOpInput) {
@@ -436,6 +486,9 @@ class CollaborationManager {
         // ignore
       }
     }
+
+    // Schedule immediate fast flush to server for cross-machine collaborators
+    this.scheduleFlush(20);
   }
 
   private handleRemotePresence(peer: CollaboratorPeer) {
@@ -446,11 +499,15 @@ class CollaborationManager {
       lastActive: Date.now(),
     });
     this.notifyPeerListeners();
+    if (this.followingPeerId === peer.id) {
+      this.notifyFollowListeners();
+    }
   }
 
   private handleRemoteOp(op: CollaborationOp) {
     if (!op || op.userId === this.localPeer.id) return;
     if (op.roomId && op.roomId !== this.currentRoomId) return;
+
 
     // Notify listeners
     this.opListeners.forEach((fn) => fn(op));
@@ -577,79 +634,108 @@ class CollaborationManager {
   }
 
   private startHeartbeat() {
-    const doHeartbeat = async () => {
-      if (!isBrowser() || document.hidden) return;
+    if (!isBrowser()) return;
+    void this.flushNow();
+  }
 
-      const opsToSend = [...this.pendingOps];
-      this.pendingOps = [];
+  public async flushNow() {
+    if (!isBrowser() || this.isFlushing) return;
+    this.isFlushing = true;
 
-      const snapshotToSend =
-        this.pendingSnapshot ||
-        (this.hasMeaningfulCanvasState() ? this.getCanvasSnapshot() : undefined);
-      this.pendingSnapshot = null;
+    if (this.flushPendingTimer) {
+      clearTimeout(this.flushPendingTimer);
+      this.flushPendingTimer = null;
+    }
+    if (this.heartbeatTimer) {
+      clearTimeout(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
 
-      try {
-        const payload: any = {
-          roomId: this.currentRoomId,
-          peer: this.localPeer,
-          ops: opsToSend,
-          since: this.lastPolledTimestamp,
-        };
-        if (snapshotToSend) {
-          payload.snapshot = snapshotToSend;
-        }
+    const opsToSend = [...this.pendingOps];
+    this.pendingOps = [];
 
-        const res = await fetch("/api/collaboration/room", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+    const snapshotToSend =
+      this.pendingSnapshot ||
+      (this.hasMeaningfulCanvasState() ? this.getCanvasSnapshot() : undefined);
+    this.pendingSnapshot = null;
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.peers && Array.isArray(data.peers)) {
-            data.peers.forEach((p: CollaboratorPeer) => {
-              if (p.id !== this.localPeer.id) {
-                this.handleRemotePresence(p);
-              }
-            });
-          }
-
-          if (data.ops && Array.isArray(data.ops)) {
-            data.ops.forEach((op: CollaborationOp) => {
-              this.handleRemoteOp(op);
-            });
-          }
-
-          // If room has canvas snapshot on server, apply if local is empty or server is newer
-          if (data.snapshot && typeof data.snapshot === "object") {
-            const isLocalEmpty = !this.hasMeaningfulCanvasState();
-            const serverUpdatedAt = data.snapshot.updatedAt || 0;
-            const isServerNewer = serverUpdatedAt > this.lastAppliedSnapshotTimestamp;
-
-            if (isLocalEmpty || (isServerNewer && !snapshotToSend)) {
-              this.applyCanvasSnapshot(data.snapshot, "server-heartbeat");
-            }
-          }
-
-          if (typeof data.serverTime === "number") {
-            this.lastPolledTimestamp = data.serverTime;
-          }
-        }
-      } catch {
-        // offline or network hiccup; local BroadcastChannel continues to work
+    try {
+      const payload: any = {
+        roomId: this.currentRoomId,
+        peer: this.localPeer,
+        ops: opsToSend,
+        since: this.lastPolledTimestamp,
+      };
+      if (snapshotToSend) {
+        payload.snapshot = snapshotToSend;
       }
-    };
 
-    // Run first heartbeat immediately
-    void doHeartbeat();
-    // Poll every 1.5 seconds for cross-machine sync
-    this.heartbeatTimer = setInterval(doHeartbeat, 1500);
+      const res = await fetch("/api/collaboration/room", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.peers && Array.isArray(data.peers)) {
+          data.peers.forEach((p: CollaboratorPeer) => {
+            if (p.id !== this.localPeer.id) {
+              this.handleRemotePresence(p);
+            }
+          });
+        }
+
+        if (data.ops && Array.isArray(data.ops)) {
+          data.ops.forEach((op: CollaborationOp) => {
+            this.handleRemoteOp(op);
+          });
+        }
+
+        // If room has canvas snapshot on server, apply if local is empty or server is newer
+        if (data.snapshot && typeof data.snapshot === "object") {
+          const isLocalEmpty = !this.hasMeaningfulCanvasState();
+          const serverUpdatedAt = data.snapshot.updatedAt || 0;
+          const isServerNewer = serverUpdatedAt > this.lastAppliedSnapshotTimestamp;
+
+          if (isLocalEmpty || (isServerNewer && !snapshotToSend)) {
+            this.applyCanvasSnapshot(data.snapshot, "server-heartbeat");
+          }
+        }
+
+        if (typeof data.serverTime === "number") {
+          this.lastPolledTimestamp = data.serverTime;
+        }
+      }
+    } catch {
+      // offline or network hiccup; local BroadcastChannel continues to work
+    } finally {
+      this.isFlushing = false;
+      this.scheduleNextHeartbeat();
+    }
+  }
+
+  private scheduleNextHeartbeat() {
+    if (!isBrowser()) return;
+    if (this.heartbeatTimer) clearTimeout(this.heartbeatTimer);
+
+    let interval = 2500;
+    if (document.hidden) {
+      interval = 7000;
+    } else if (this.peersMap.size > 0) {
+      // High-cadence adaptive poll (450ms) when other collaborators are present in room
+      interval = 450;
+    }
+
+    this.heartbeatTimer = setTimeout(() => {
+      void this.flushNow();
+    }, interval);
   }
 
   public destroy() {
     if (this.syncDebounceTimer) clearTimeout(this.syncDebounceTimer);
-    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    if (this.flushPendingTimer) clearTimeout(this.flushPendingTimer);
+    if (this.heartbeatTimer) clearTimeout(this.heartbeatTimer);
     if (this.peerCleanupTimer) clearInterval(this.peerCleanupTimer);
     if (this.broadcastChannel) {
       try {
@@ -663,4 +749,39 @@ class CollaborationManager {
 
 // Singleton instance
 export const collabManager = new CollaborationManager();
+
+/**
+ * Hook to observe remote collaborators actively selecting or editing a specific node
+ */
+export function useRemoteCollaboratorsOnNode(nodeId: string | undefined): CollaboratorPeer[] {
+  const [peers, setPeers] = useState<CollaboratorPeer[]>([]);
+
+  useEffect(() => {
+    if (!nodeId) return;
+    return collabManager.subscribePeers((allPeers) => {
+      const active = allPeers.filter(
+        (p) => !p.isSelf && p.activeNodeId === nodeId && Date.now() - p.lastActive < 10000,
+      );
+      setPeers(active);
+    });
+  }, [nodeId]);
+
+  return peers;
+}
+
+/**
+ * Hook to observe current Follow Mode state
+ */
+export function useFollowingPeer(): CollaboratorPeer | null {
+  const [peer, setPeer] = useState<CollaboratorPeer | null>(() => collabManager.getFollowingPeer());
+
+  useEffect(() => {
+    return collabManager.subscribeFollowingPeer((p) => {
+      setPeer(p);
+    });
+  }, []);
+
+  return peer;
+}
+
 
