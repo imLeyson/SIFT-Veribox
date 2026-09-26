@@ -29,8 +29,8 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
   lines.push(`> 项目：**${goalTitle}**  `);
   lines.push(`> 生成时间：${now} · 工具：SIFT 视觉策略工作台\n`);
 
-  // Section 00: Brief & System 1 Diagnostics
-  lines.push(`## 00 原始设计任务 (Brief)`);
+  // Section 0: Brief & System 1 Diagnostics
+  lines.push(`## 0 原始设计任务 (Brief)`);
   lines.push(`\`\`\`text\n${rawBrief?.trim() || "暂无输入 Brief"}\n\`\`\`\n`);
   if (rawBrief?.trim()) {
     const diag = evaluateBriefIntentSync(rawBrief);
@@ -46,9 +46,9 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     lines.push(`- **设计载体/品类**：${state.brief.deliverable || "未明确"}\n`);
   }
 
-  // Section 01: Direction & Convergence
+  // Section 1: Direction & Convergence
   if (state) {
-    lines.push(`## 01 方向收敛与设计边界 (Convergence)`);
+    lines.push(`## 1 方向收敛与设计边界 (Convergence)`);
     if (state.direction.intent?.text) {
       lines.push(`### 🎯 核心设计意图\n${state.direction.intent.text}\n`);
     }
@@ -81,7 +81,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       lines.push("");
     }
 
-    if (state.uncertainties.length > 0) {
+    if (state.uncertainties && state.uncertainties.length > 0) {
       lines.push(`### ❓ 待定与暂缓未决项`);
       state.uncertainties.forEach((u) => {
         const tag = u.status === "deferred" ? "【暂缓】" : "【待验证】";
@@ -91,9 +91,9 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     }
   }
 
-  // Section 02: Selected Theme
+  // Section 2: Selected Theme
   if (selectedRoute) {
-    lines.push(`## 02 选定设计主题 (Chosen Design Theme)`);
+    lines.push(`## 2 选定设计主题 (Chosen Design Theme)`);
     const themeHeading = selectedRoute.themeName
       ? `${selectedRoute.themeName} — ${selectedRoute.title}`
       : selectedRoute.title;
@@ -124,8 +124,8 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     lines.push(`- **视觉亮点**：${selectedRoute.pros}`);
     lines.push(`- **防跑偏提示**：${selectedRoute.cons}\n`);
 
-    // Section 03: Steps & Research
-    lines.push(`## 03 视点切入与检索编排 (Visual Viewpoints & Research Plan)`);
+    // Section 3: Steps & Research
+    lines.push(`## 3 视点切入与检索编排 (Visual Viewpoints & Research Plan)`);
 
     selectedRoute.steps.forEach((st, idx) => {
       const isCurrent = st.id === activeStepId;
@@ -133,7 +133,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       const totalCrit = st.acceptanceCriteria?.length ?? 0;
       const notes = stepNotes[st.id] ?? [];
 
-      lines.push(`### Step 0${idx + 1} · ${st.title} ${isCurrent ? "*(当前推进中)*" : ""}`);
+      lines.push(`### Step ${idx + 1} · ${st.title} ${isCurrent ? "*(当前推进中)*" : ""}`);
       lines.push(`- **核心问题**：${st.question}`);
       lines.push(`- **探索目的**：${st.purpose}`);
 
@@ -190,6 +190,61 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       lines.push(`- **核心问题**：${r.coreProblem}`);
       lines.push(`- **视觉亮点 / 防跑偏**：${r.pros} / ${r.cons}\n`);
     });
+  }
+
+  // Module 3: Collaborative Decision Funnel & Tagged Cards
+  const cardTags = store.cardTags ?? {};
+  const customCards = store.customCards ?? [];
+  const taggedIds = Object.keys(cardTags);
+
+  if (taggedIds.length > 0) {
+    const primaryCards: string[] = [];
+    const reviewCards: string[] = [];
+    const serendipityCards: string[] = [];
+    const stashedCards: string[] = [];
+
+    taggedIds.forEach((id) => {
+      const tag = cardTags[id];
+      let cardLabel = id;
+      const custom = customCards.find((c) => c.id === id);
+      if (custom) {
+        cardLabel = custom.title || custom.content?.slice(0, 40) || custom.type;
+        if (custom.type === "imageGen" && custom.data?.prompt) {
+          const titlePart = custom.title ? `《${custom.title}》` : "";
+          cardLabel = `【概念出图】${titlePart} ${custom.data.prompt.slice(0, 45)}...`;
+        } else if (custom.type === "platformPlan") {
+          cardLabel = `【灵感检索计划】${custom.title || "去噪检索语法"}`;
+        }
+      } else if (id.startsWith("route-")) {
+        const r = routes.find((rt) => rt.id === id || `route-${rt.id}` === id);
+        cardLabel = r ? `【风格主题】《${r.themeName || r.title}》` : id;
+      }
+
+      if (tag === "primary") primaryCards.push(cardLabel);
+      else if (tag === "review") reviewCards.push(cardLabel);
+      else if (tag === "serendipity") serendipityCards.push(cardLabel);
+      else if (tag === "stashed") stashedCards.push(cardLabel);
+    });
+
+    if (primaryCards.length > 0 || reviewCards.length > 0 || serendipityCards.length > 0) {
+      lines.push(`## 团队协同标记与决策漏斗 (Collaborative Review & Decision Funnel)\n`);
+      if (primaryCards.length > 0) {
+        lines.push(`### ⭐️ 核心主选方案 (Primary Candidates)`);
+        primaryCards.forEach((c) => lines.push(`- ⭐️ **${c}**`));
+        lines.push("");
+      }
+      if (reviewCards.length > 0) {
+        lines.push(`### ❓ 待团队/导师重点表决 (Items for Review)`);
+        reviewCards.forEach((c) => lines.push(`- ❓ **${c}**`));
+        lines.push("");
+      }
+      if (serendipityCards.length > 0) {
+        lines.push(`### 💡 突破性意外灵感 (Serendipitous Sparks)`);
+        serendipityCards.forEach((c) => lines.push(`- 💡 **${c}**`));
+        lines.push("");
+      }
+      lines.push("---\n");
+    }
   }
 
   lines.push(`\n---\n*由 SIFT 视觉策略工作台生成 · 前期策略与灵感方案提案*`);

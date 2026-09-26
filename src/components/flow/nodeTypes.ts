@@ -7,6 +7,7 @@ import { StepNode } from "./nodes/StepNode";
 import { PlatformPlanNode } from "./nodes/PlatformPlanNode";
 import { StickyNoteNode } from "./nodes/StickyNoteNode";
 import { ImageNode } from "./nodes/ImageNode";
+import { ImageGenNode } from "./nodes/ImageGenNode";
 
 export const nodeTypes = {
   brief: BriefInputNode,
@@ -17,4 +18,5 @@ export const nodeTypes = {
   platformPlan: PlatformPlanNode,
   note: StickyNoteNode,
   image: ImageNode,
+  imageGen: ImageGenNode,
 } satisfies NodeTypes;

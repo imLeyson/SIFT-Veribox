@@ -24,7 +24,6 @@ import {
 import { nodeTypes } from "./nodeTypes";
 import { CanvasToolBar, type ToolType } from "./CanvasToolBar";
 import type { Route, PlatformPlan } from "@/types/routes";
-import { cleanStepLabel } from "@/types/routes";
 import { synthesizeCardFromInputs } from "@/lib/card-synthesis";
 import { processImageForCanvas } from "@/lib/image-utils";
 import {
@@ -33,12 +32,12 @@ import {
   HelpCircle,
   ShieldCheck,
   Sparkles,
-  Layers,
   Search,
   StickyNote,
   Image as ImageIcon,
   LayoutGrid,
   X,
+  Wand2,
 } from "lucide-react";
 
 const QUICK_SPAWN_OPTIONS: {
@@ -47,12 +46,12 @@ const QUICK_SPAWN_OPTIONS: {
   icon: React.ComponentType<{ className?: string }>;
   color: string;
 }[] = [
-  { type: "brief", label: "00 简报解析", icon: FileText, color: "text-stone-700 bg-stone-100" },
-  { type: "ask", label: "01 视觉抉择", icon: HelpCircle, color: "text-sky-700 bg-sky-100" },
-  { type: "state", label: "02 策略基准", icon: ShieldCheck, color: "text-emerald-700 bg-emerald-100" },
-  { type: "route", label: "03 风格主题", icon: Sparkles, color: "text-indigo-700 bg-indigo-100" },
-  { type: "step", label: "04 视点推进", icon: Layers, color: "text-purple-700 bg-purple-100" },
-  { type: "platformPlan", label: "05 灵感检索", icon: Search, color: "text-amber-700 bg-amber-100" },
+  { type: "brief", label: "0 简报解析", icon: FileText, color: "text-stone-700 bg-stone-100" },
+  { type: "ask", label: "1 视觉抉择", icon: HelpCircle, color: "text-sky-700 bg-sky-100" },
+  { type: "state", label: "2 策略基准", icon: ShieldCheck, color: "text-emerald-700 bg-emerald-100" },
+  { type: "route", label: "3 风格主题", icon: Sparkles, color: "text-indigo-700 bg-indigo-100" },
+  { type: "platformPlan", label: "灵感检索", icon: Search, color: "text-amber-700 bg-amber-100" },
+  { type: "imageGen", label: "画面生成", icon: Wand2, color: "text-violet-700 bg-violet-100" },
   { type: "note", label: "设计便签", icon: StickyNote, color: "text-amber-600 bg-amber-50" },
   { type: "image", label: "参考图片", icon: ImageIcon, color: "text-blue-600 bg-blue-50" },
 ];
@@ -127,6 +126,25 @@ function deriveNewCardWithContext({
       };
     }
 
+    if (type === "imageGen") {
+      return {
+        card: {
+          id: `card-imagegen-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+          type: "imageGen",
+          position: targetPos,
+          title: "空白画面生成待推导",
+          data: {
+            isEmpty: true,
+            prompt: "",
+            negativePrompt: "",
+            aspectRatio: "3:4",
+            stylePreset: "realistic",
+            imageUrl: null,
+          },
+        },
+      };
+    }
+
     if (type === "note") {
       return {
         card: {
@@ -163,11 +181,19 @@ function deriveNewCardWithContext({
     if (type === "brief") {
       return {
         card: {
-          id: `card-brief-${Date.now().toString(36)}`,
+          id: `card-brief-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
           type: "brief",
           position: targetPos,
-          title: "简报解析",
-          data: {},
+          title: "0 简报解析",
+          data: {
+            rawBrief: "",
+            briefImages: [],
+            status: "idle",
+            state: null,
+            next: null,
+            error: null,
+            isEmpty: false,
+          },
         },
       };
     }
@@ -221,7 +247,7 @@ function deriveNewCardWithContext({
       data: {
         ...synthesized.data,
         index: routes.length,
-        isEmpty: type === "route" || type === "step" || type === "platformPlan",
+        isEmpty: !sourceNodeId && (type === "route" || type === "step" || type === "platformPlan" || type === "imageGen"),
       },
     },
   };
@@ -235,8 +261,8 @@ function FlowInner() {
   const sessionId = useSiftStore((s) => s.sessionId);
   const setPosition = useSiftStore((s) => s.setPosition);
   const routes = useSiftStore((s) => s.routes);
+  const recommendedRouteId = useSiftStore((s) => s.recommendedRouteId);
   const selectedRouteId = useSiftStore((s) => s.selectedRouteId);
-  const exploredRouteIds = useSiftStore((s) => s.exploredRouteIds ?? []);
   const platformPlans = useSiftStore((s) => s.platformPlans);
   const customCards = useSiftStore((s) => s.customCards);
   const customEdges = useSiftStore((s) => s.customEdges);
@@ -249,6 +275,9 @@ function FlowInner() {
   const deleteNodeById = useSiftStore((s) => s.deleteNodeById);
   const deleteCustomEdge = useSiftStore((s) => s.deleteCustomEdge);
   const updateCustomCard = useSiftStore((s) => s.updateCustomCard);
+  const synthesizeCard = useSiftStore((s) => s.synthesizeCard);
+  const collapsedNodeIds = useSiftStore((s) => s.collapsedNodeIds);
+  const collapseAllNodes = useSiftStore((s) => s.collapseAllNodes);
 
   const { fitView, screenToFlowPosition, getViewport } = useReactFlow();
 
@@ -411,71 +440,8 @@ function FlowInner() {
       });
     }
 
-    // 04: Step Workbench Nodes (Col 4 - Multiple explored themes in parallel!)
-    const stepsStartX = START_X + 4 * COL_PITCH;
-    const rawExplored =
-      exploredRouteIds.length > 0
-        ? exploredRouteIds
-        : selectedRouteId
-          ? [selectedRouteId]
-          : [];
-    const activeExploredRouteIds = Array.from(new Set(rawExplored));
-    const createdStepNodeIds = new Set<string>();
-
-    activeExploredRouteIds.forEach((rId, rIdx) => {
-      const stepNodeId = `step-${rId}`;
-      if (isDeleted(stepNodeId) || isDeleted("steps")) return;
-
-      let routeObj = routes.find((r) => r.id === rId);
-      if (!routeObj) {
-        const custom = customCards.find(
-          (c) => c.id === rId || c.data?.route?.id === rId,
-        );
-        if (custom?.data?.route) routeObj = custom.data.route as Route;
-      }
-      if (!routeObj) return;
-
-      createdStepNodeIds.add(stepNodeId);
-
-      const fallbackY = START_Y + rIdx * 580;
-      nodes.push({
-        id: stepNodeId,
-        type: "step",
-        position:
-          positions[stepNodeId] ??
-          (rIdx === 0 && positions.steps
-            ? positions.steps
-            : {
-                x: stepsStartX,
-                y: fallbackY,
-              }),
-        data: {
-          route: routeObj,
-          routeId: routeObj.id,
-        },
-      });
-
-      const sourceRouteNodeId =
-        nodes.find((n) => n.id === `route-${rId}`)?.id ??
-        nodes.find((n) => (n.data as any)?.route?.id === rId)?.id ??
-        (nodes.some((n) => n.id === rId) ? rId : `route-${rId}`);
-
-      if (
-        !isDeleted(sourceRouteNodeId) &&
-        nodes.some((n) => n.id === sourceRouteNodeId)
-      ) {
-        edges.push({
-          id: `${sourceRouteNodeId}-${stepNodeId}`,
-          source: sourceRouteNodeId,
-          target: stepNodeId,
-          animated: true,
-          style: { stroke: "#4f46e5", strokeWidth: 2 },
-        });
-      }
-    });
-
-    // 05: Platform Plans (Col 5, connected to their respective Step node!)
-    const planStartX = START_X + 5 * COL_PITCH;
+    // 04: Platform Plans (directly connected to the selected 3 风格主题)
+    const planStartX = START_X + 4 * COL_PITCH;
     platformPlans.forEach((plan, planIdx) => {
       const planNodeId = `plan-${plan.stepId}`;
       if (!isDeleted(planNodeId)) {
@@ -489,40 +455,34 @@ function FlowInner() {
           data: { plan },
         });
 
-        // Connect to the matching step node
-        let parentStepNodeId: string | undefined;
-        if (plan.routeId && createdStepNodeIds.has(`step-${plan.routeId}`)) {
-          parentStepNodeId = `step-${plan.routeId}`;
-        } else {
-          const matchingRoute =
-            routes.find((r) => r.steps?.some((st) => st.id === plan.stepId)) ??
-            customCards.find((c) =>
-              c.data?.route?.steps?.some((st: any) => st.id === plan.stepId),
-            )?.data?.route;
-          if (
-            matchingRoute &&
-            createdStepNodeIds.has(`step-${matchingRoute.id}`)
-          ) {
-            parentStepNodeId = `step-${matchingRoute.id}`;
-          } else if (createdStepNodeIds.size > 0) {
-            parentStepNodeId = Array.from(createdStepNodeIds)[0];
-          }
-        }
+        // Connect directly to the matching route node
+        const rId = plan.routeId;
+        const matchingRoute =
+          (rId && routes.find((r) => r.id === rId)) ??
+          routes.find((r) => r.steps?.some((st) => st.id === plan.stepId)) ??
+          routes[0];
 
-        if (parentStepNodeId && !isDeleted(parentStepNodeId)) {
-          edges.push({
-            id: `${parentStepNodeId}-${planNodeId}`,
-            source: parentStepNodeId,
-            target: planNodeId,
-            animated: true,
-            style: { stroke: "#d97706", strokeWidth: 2 },
-          });
+        if (matchingRoute) {
+          const sourceRouteNodeId =
+            nodes.find((n) => n.id === `route-${matchingRoute.id}`)?.id ??
+            nodes.find((n) => (n.data as any)?.route?.id === matchingRoute.id)?.id ??
+            `route-${matchingRoute.id}`;
+
+          if (!isDeleted(sourceRouteNodeId) && nodes.some((n) => n.id === sourceRouteNodeId)) {
+            edges.push({
+              id: `${sourceRouteNodeId}-${planNodeId}`,
+              source: sourceRouteNodeId,
+              target: planNodeId,
+              animated: true,
+              style: { stroke: "#d97706", strokeWidth: 2 },
+            });
+          }
         }
       }
     });
 
-    // Custom Cards & Sticky Notes (Col 6, stacked vertically)
-    const notesStartX = START_X + 6 * COL_PITCH;
+    // Custom Cards & Sticky Notes (Col 5, stacked vertically)
+    const notesStartX = START_X + 5 * COL_PITCH;
     customCards.forEach((card, cIdx) => {
       if (!isDeleted(card.id)) {
         nodes.push({
@@ -578,7 +538,6 @@ function FlowInner() {
     positions,
     routes,
     selectedRouteId,
-    exploredRouteIds,
     platformPlans,
     customCards,
     customEdges,
@@ -589,6 +548,29 @@ function FlowInner() {
   useEffect(() => {
     setNodes(graph.nodes);
   }, [graph.nodes, setNodes]);
+
+  // Keep the active stage readable after route generation and route selection.
+  // React Flow renders the new nodes one frame after the store changes, so this
+  // effect waits for the target node to exist before moving the viewport.
+  const lastFocusedStageRef = useRef<string | null>(null);
+  useEffect(() => {
+    const routeId = recommendedRouteId ?? routes[0]?.id;
+    if (!routeId) return;
+
+    const targetId = `route-${routeId}`;
+    const focusKey = `${sessionId}:route:${routeId}`;
+    if (lastFocusedStageRef.current === focusKey) return;
+    if (!nodes.some((node) => node.id === targetId)) return;
+
+    lastFocusedStageRef.current = focusKey;
+    void fitView({
+      nodes: [{ id: targetId }],
+      duration: 350,
+      padding: 0.45,
+      minZoom: 0.75,
+      maxZoom: 1.15,
+    });
+  }, [fitView, nodes, recommendedRouteId, routes, sessionId]);
 
   // Synchronously guard edges against the currently rendered node set to avoid React Flow transition frame crashes
   const activeNodeIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes]);
@@ -616,7 +598,7 @@ function FlowInner() {
         return;
       }
 
-      // 2. Otherwise add the connection wire (no direct auto-generation)
+      // 2. Otherwise add the connection wire
       const edgeId = `edge-${connection.source}-${connection.target}-${Date.now().toString(36)}`;
       addCustomEdge({
         id: edgeId,
@@ -625,8 +607,13 @@ function FlowInner() {
         animated: true,
         style: { stroke: "#6366f1", strokeWidth: 2 },
       });
+
+      // 3. Auto-synthesize target card (e.g. 03 -> 04, 04 -> 05, or Theme Blending)
+      setTimeout(() => {
+        synthesizeCard(connection.target);
+      }, 40);
     },
-    [addCustomEdge, deleteCustomEdge, customEdges],
+    [addCustomEdge, deleteCustomEdge, customEdges, synthesizeCard],
   );
 
   // Drag-to-spawn Handlers (FigJam style)
@@ -848,6 +835,58 @@ function FlowInner() {
     return () => window.removeEventListener("paste", handlePaste);
   }, [addCustomCard, screenToFlowPosition, setPosition]);
 
+  // Keyboard shortcut: Press 'g' / 'G' to collapse/expand selected nodes or branch (Chain Grouping)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (
+        (e.key === "g" || e.key === "G") &&
+        !["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName) &&
+        !e.metaKey &&
+        !e.ctrlKey
+      ) {
+        const selectedNodes = nodes.filter((n) => n.selected);
+        if (selectedNodes.length === 0) return;
+
+        e.preventDefault();
+        const selectedIds = selectedNodes.map((n) => n.id);
+        const currentCollapsed = useSiftStore.getState().collapsedNodeIds;
+
+        // If any selected node is a route node, include its downstream branch nodes as well
+        const allTargetIds = new Set<string>(selectedIds);
+        selectedNodes.forEach((node) => {
+          if (node.type === "route") {
+            const queue = [node.id];
+            while (queue.length > 0) {
+              const curr = queue.shift()!;
+              for (const edge of customEdges) {
+                if (edge.source === curr && !allTargetIds.has(edge.target)) {
+                  allTargetIds.add(edge.target);
+                  queue.push(edge.target);
+                }
+              }
+            }
+          }
+        });
+
+        const targetList = Array.from(allTargetIds);
+        const allAreCollapsed = targetList.every((id) =>
+          currentCollapsed.includes(id),
+        );
+
+        if (allAreCollapsed) {
+          const next = currentCollapsed.filter((id) => !allTargetIds.has(id));
+          collapseAllNodes(next);
+        } else {
+          const next = Array.from(new Set([...currentCollapsed, ...targetList]));
+          collapseAllNodes(next);
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [nodes, customEdges, collapseAllNodes]);
+
   // Drag-and-Drop Image Files onto Canvas Handler
   const handleDragOver = useCallback((e: React.DragEvent) => {
     if (e.dataTransfer.types.includes("Files")) {
@@ -913,9 +952,11 @@ function FlowInner() {
       ask: 1,
       state: 2,
       route: 3,
+      platformPlan: 4,
       step: 4,
-      platformPlan: 5,
+      imageGen: 5,
       note: 6,
+      stickyNote: 6,
       image: 7,
     };
 
@@ -932,6 +973,7 @@ function FlowInner() {
       route: 520,
       step: 560,
       platformPlan: 600,
+      imageGen: 580,
       stickyNote: 280,
       note: 280,
     };
@@ -1157,31 +1199,64 @@ function FlowInner() {
             </button>
           </div>
           <div className="space-y-0.5">
-            {QUICK_SPAWN_OPTIONS.map((opt) => {
-              const Icon = opt.icon;
-              return (
-                <button
-                  key={opt.type}
-                  type="button"
-                  onClick={() => {
-                    handleAddCard(
-                      opt.type,
-                      { x: spawnMenuPos.flowX, y: spawnMenuPos.flowY },
-                      spawnMenuPos.sourceNodeId,
-                    );
-                    setSpawnMenuPos(null);
-                  }}
-                  className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-white/10 transition-colors cursor-pointer text-stone-200 hover:text-white"
-                >
-                  <div
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${opt.color}`}
+            {(() => {
+              const srcId = spawnMenuPos.sourceNodeId;
+              const isFromTheme =
+                srcId &&
+                (srcId.startsWith("route-") ||
+                  routes.some((r) => r.id === srcId || `route-${r.id}` === srcId) ||
+                  customCards.some((c) => c.id === srcId && c.type === "route"));
+
+              const sortedOptions = isFromTheme
+                ? [
+                    ...QUICK_SPAWN_OPTIONS.filter((o) => o.type === "imageGen"),
+                    ...QUICK_SPAWN_OPTIONS.filter((o) => o.type === "platformPlan"),
+                    ...QUICK_SPAWN_OPTIONS.filter((o) => o.type === "note"),
+                    ...QUICK_SPAWN_OPTIONS.filter((o) => o.type === "route"),
+                    ...QUICK_SPAWN_OPTIONS.filter(
+                      (o) => !["imageGen", "platformPlan", "note", "route"].includes(o.type),
+                    ),
+                  ]
+                : QUICK_SPAWN_OPTIONS;
+
+              return sortedOptions.map((opt) => {
+                const Icon = opt.icon;
+                const isRecommended = isFromTheme && (opt.type === "imageGen" || opt.type === "platformPlan");
+                return (
+                  <button
+                    key={opt.type}
+                    type="button"
+                    onClick={() => {
+                      handleAddCard(
+                        opt.type,
+                        { x: spawnMenuPos.flowX, y: spawnMenuPos.flowY },
+                        spawnMenuPos.sourceNodeId,
+                      );
+                      setSpawnMenuPos(null);
+                    }}
+                    className={`w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs transition-colors cursor-pointer text-stone-200 hover:text-white ${
+                      isRecommended
+                        ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/30"
+                        : "hover:bg-white/10"
+                    }`}
                   >
-                    <Icon className="h-3 w-3" />
-                  </div>
-                  <span className="font-medium text-[11px]">{opt.label}</span>
-                </button>
-              );
-            })}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${opt.color}`}
+                      >
+                        <Icon className="h-3 w-3" />
+                      </div>
+                      <span className="font-medium text-[11px] truncate">{opt.label}</span>
+                    </div>
+                    {isRecommended && (
+                      <span className="shrink-0 text-[9px] font-mono text-amber-300 bg-amber-900/60 px-1.5 py-0.5 rounded border border-amber-500/40">
+                        推荐
+                      </span>
+                    )}
+                  </button>
+                );
+              });
+            })()}
           </div>
         </div>
       )}

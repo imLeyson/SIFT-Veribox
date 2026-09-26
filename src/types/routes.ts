@@ -23,6 +23,10 @@ export type Route = {
   feasibility?: "high" | "medium" | "challenging";
   focusDimension?: string;
   alignmentScore?: number;
+  sensoryMetaphor?: string;
+  brainstormSparks?: string[];
+  paletteTension?: string;
+  materialMood?: string;
 };
 
 export type PlatformKeywordDimension = "form" | "craft" | "mood" | "reality";

@@ -2,64 +2,68 @@ import type { Route, RouteStep } from "@/types/routes";
 import { completeJson } from "./llm";
 import type { z } from "zod";
 import type { RoutesInputSchema } from "./routes-schema";
+import { sanitizeAntiTeleology } from "./convergence-live";
 
 type RoutesInput = z.infer<typeof RoutesInputSchema>;
 
 const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监（Design Director）与实战派视觉策略搭档。
 当前设计任务的方向（Design State）已经收敛并由用户正式确认。
-你的任务是基于设计界成熟的 Creative Territories（创意领地）提案模型（借鉴 Pentagram / Wolff Olins 的商业提案实践），为该任务生成正好 3 条互不相同、正交互补、画面感极强的【设计主题（Design Themes）】。
+你的任务是基于设计策略提案方法，为该任务生成正好 3 条互不相同、彼此有依据且画面感极强的【设计主题（Design Themes）】。
 
 【最高准则 · 核心品类与设计载体绝对锁死（严禁上下文漂移）】：
 1. 绝对锚定用户需求的核心品类主体与交付载体（如“可持续材料产品”、“生活器物”、“实体包装”、“UI/SaaS”、“品牌全案”等）！收敛问答中确认的调性（如“白色”、“极简”、“高级”）只是修饰词，绝不能篡位成核心主体！
 2. 严禁品类错位：严禁将“可持续材料与实体器物”做成“平面品牌纸厂打样”或“瑞士网格排版标签”，严禁将“UI界面”做成“实体包装盒”！
 3. 所有 3 个设计主题（Theme）、快照（Snapshot）和切入视点（Steps），必须全部深度服务于【该设计任务的具体载体】。
 
-关键原则与语言风格（彻底去除 AI 感，标题一眼看懂，内容聚焦设计思考）：
-1. 标题必须是一眼看懂的具象设计主题（不高大上也不 low，杜绝虚空套话）：
-   - 必须提供 themeName：4–8 字一眼看懂的直观设计主题名。
-   - 命名规范为【具象视觉媒介/材质/元素】+【明确设计手法/形态】的大白话组合。
-   - 严禁虚空公关套话（绝对禁止使用“物性转化、空间解构、多维赋能、生态感知、心流共鸣、交融升华”等 AI 词汇）！
-   - 严禁敷衍平庸词（绝对禁止使用“现代风、白色简约、好看的包装、高端大气、主题一”等空洞废话）！
-   - 优秀示范：
-     * 包装类：「素雅棉纸与无墨压凹」、「严谨网格与档案排版」、「极简几何与视觉大色块」
-     * 产品材料类：「原生纤维与微颗粒肌理」、「柔和弧度与温润器型」、「机能卡扣与日常实用」
-     * UI/数字类：「暗黑界面与精细冷灰」、「高密信息与数据栅格」、「单色极简与穿透中枢」
-     * 品牌/VI类：「温润棉感与克制留白」、「模块网格与双语排印」、「极简剪影与超级符号」
-   - title：直接简练陈述具体手法，不嵌套多层中括号。
+关键原则与双层主题命名架构（彻底去除 AI 感与套路复读，打造设计总监级提案质感）：
+1. 采用【双层概念架构】（Flagship Concept Code + Craft Formula Subtitle）：
+   - themeName（旗舰概念代号）：4–6 字具有文学感、通感画面与物理锚点的书名号代号《...》，可搭配简短英文 Studio Tag（如：《寂静凝灰》 Silent Tuff、《零度墨痕》 Zero-Ink、《夜航座舱》 Night Flight HUD）。
+     * 【物理锚点守则（Physical Anchor Guardrail）】：概念代号必须包含具体的物理材质、地质、器物、光线、光机电或实体构件隐喻（如“凝灰、墨痕、座舱、晶格、卵石、冷轧、原浆、生灵、标尺”）。
+     * 【严禁虚空公关套话与网红奶茶词汇】：绝对禁止使用“时光、岁月、初见、温馨、星河、物性转化、空间解构、多维赋能、生态感知、心流共鸣、交融升华”等虚无 AI 词汇！
+     * 【严禁敷衍平庸词】：绝对禁止使用“现代风、白色简约、好看的包装、高端大气、主题一”等空洞废话！
+     * 品类典范：
+       - 可持续材料/产品：《寂静凝灰》 Silent Tuff / 《掌心温存》 Poetic Organism / 《冷轧秩序》 Precision Architecture
+       - 实体包装/容器：《零度墨痕》 Zero-Ink / 《风土标尺》 Swiss Telemetry / 《暗室静物》 Dark Chamber Still
+       - 品牌/VI：《温润生灵》 Gentle Companion / 《守护档案》 Guardian Ledger / 《负形印记》 Negative Silhouette
+       - UI/数字系统：《夜航座舱》 Night Flight HUD / 《数据晶格》 Telemetry Grid / 《穿透中枢》 Pulse Console
+       - 咖啡包装：《泥土本色》 Terra Raw / 《产地纪实》 Origin Dossier / 《豆标重锤》 Geometric Bean
+   - title（工法配方副标）：必须采用【主打材质/CMF × 结构/倒角/工法】的配方对撞结构（如“再生纤维微孔阻尼 × 1px 细拉丝冷铝倒角”、“300g 原浆棉纸 × 45° 侧光深压凹”）。
+     * 必须以“ × ”作为材质与工法维度的连接符，不嵌套多层中括号【】。
+     * 材质在左，工法在右，直接陈述具体物性手段。
 
-2. 内容上去除重复内容，留下最重要的帮助设计师思考的内容：
-   - visualSnapshot：1–2 句具象大白话描绘“最终画面/实物长什么样”，画面感极强且紧扣当前品类主体与材质，严禁使用“一眼看懂”、“让人一目了然”等轻佻AI套话！
-   - focusDimension：核心视觉手法（工艺、排版或构成规则）。
-   - coreProblem：设计取舍与权衡（说明主动放弃了什么、押注了什么，呼应用户收敛确立的 Priorities 与 Avoid，这是设计师决策最有价值的思考！）。
-   - cons：防跑偏提醒（探索该方向时需警惕的调性陷阱或审美红线）。
-   - 严禁各字段互相复读抄袭！各字段必须提供不同维度的设计参考价值。
+2. 动态创意方向（禁止固定套用）：
+   - 根据 Brief、交付载体、目标受众和已确认的优先级，自主发现 3 个真正适合当前任务的切入方向；
+   - 三个方向必须有清晰差异，可以分别聚焦材料、行为、叙事、信息结构、场景、工艺或其他与任务相关的因素；
+   - 不得默认使用固定的“物性本真 / 诗意人本 / 工业精密”三分法，也不得为了凑齐三类而牵强套用。
 
-3. 严格单推荐规则：
+3. 去除机械复读原则（Anti-Repetition Rule）：
+   - 严禁同一名词（如“原生”、“纤维”、“肌理”）在同一张卡片的 themeName、title、startingPoint、focusDimension、visualSnapshot 中重复出现 3 次以上！
+   - 各字段分工明确：
+     * themeName：概念通感代号；
+     * title：CMF材质 × 结构工艺对撞；
+     * visualSnapshot：1–2 句具象大白话描绘“最终画面/实物长什么样”，画面感极强且紧扣当前品类主体与材质，严禁使用“一眼看懂”、“让人一目了然”等轻佻AI套话；
+     * focusDimension：核心视觉手法（工艺、排版或构成规则）；
+     * coreProblem：设计取舍与权衡（说明主动放弃了什么、押注了什么，呼应用户收敛确立的 Priorities 与 Avoid，这是设计师决策最有价值的思考！）；
+     * cons：防跑偏提醒（探索该方向时需警惕的调性陷阱或审美红线）。
+
+4. 严格单推荐规则：
    - 3 个主题中，只能有且仅有 1 个主题被选为推荐主题（recommendedRouteId 指向它），且只有该主题能填写 recommendedReason；其余两个探索主题的 recommendedReason 必须填 null！
    - 推荐理由必须自然中肯，严禁机械套用“针对前期对于想要...的纠结”等刻板模板！
 
-跨设计品类自适应的三条正交创意领地（Creative Territories · 严禁生搬硬套）：
-必须严格根据当前任务的【核心载体与设计领域】自适应演绎 3 条正交路径：
-1. 【实体产品 / 可持续材料 / 生活器物类】（如宠物毛发回收再生新材料、家居生活器物、硬件产品等）：
-   - 领地一【原生质感与物性转化】：聚焦材料本身的真实转化、再生纤维压合肌理、微气孔触感、原生杂色与自然漫反射光泽，拒绝塑料假感；
-   - 领地二【情感隐喻与器物形态】：聚焦三维造型语言、柔和有机曲线、微握持触觉弧度、日常陪伴感与抚慰心理语义；
-   - 领地三【现代机能与日常共生】：聚焦功能性构件、精妙微卡扣/结合部、克制线条比例，与现代家居/办公环境和谐共生。
-2. 【实体包装与容器类】（如茶叶包装、美妆瓶盒、食品礼盒等）：
-   - 领地一【材质触感与原生肌理】：特种纸质感、无墨深压凹、触觉光影与开箱呼吸感；
-   - 领地二【排版秩序与信息结构】：双栏网格、中西文字阶对比、档案式风味或配方清单；
-   - 领地三【视觉符号与桌面静物】：极简几何图形、桌面静物美感与秒级辨识焦点。
-3. 【数字界面与交互系统类】（如 SaaS、控制台、生产力工具等）：
-   - 领地一【工程美学与暗黑微质感】：1px 冷灰描边、深色层级、细腻微渐变；
-   - 领地二【栅格法则与高密度架构】：8px 栅格、紧凑字阶、多态组件与高效率数据流；
-   - 领地三【穿透焦点与核心控制中枢】：状态色彩、单一穿透式视觉焦点。
-4. 【品牌全案与视觉识别类】（如品牌VI系统、平面视觉规范等）：
-   - 领地一【品牌基调与温润触感】：材质微肌理、低饱和温润色系、干净留白；
-   - 领地二【排版规范与秩序权威】：模块化网格、严谨双语排印、专业守护规范；
-   - 领地三【视觉重锤与超级符号】：极简几何轮廓、正负空间动物/品牌剪影、瞬间记忆。
+5. 【核心禁令 · 严禁目的论臆断与伪因果套话（Anti-Teleology Guardrail · 铁律）】：
+   - 严禁出现“XX负责YY”、“为了实现0.5秒识别”、“大色块负责货架辨识度”、“圆角增强亲和力”、“高饱和增强儿童吸引力”等任何强加因果的陈词滥调！
+   - 严禁无中生有主体：若用户需求未提及“IP”、“吉祥物”、“开窗”、“插画”等具体要素，主题方案严禁擅自为其预设职能（绝不能出现“IP 负责儿童情绪吸引”等无端臆想）！
+   - coreProblem 必须聚焦【纯形式/构图/CMF/工艺之间的物理与美学矛盾】（例如：“在高饱和撞色大色块的强烈视觉张力下，如何确保品牌字标的绝对图底反差与倒角转折的纯净度？”），绝对禁止写成“如何实现货架辨识度与儿童吸引力”等空洞商业套话。
+   - visualSnapshot 必须是具象客观的视觉画面，紧扣材质、光影、形体与构成，不写主观心理自嗨。
 
-严格字段契约：
-- themeName: 4–8 字响亮直观的大主题名（紧扣品类主体与手法）。
-- title: 必须采用【视觉抓手/工艺手法】具体手法名 格式。
+跨设计品类动态发现创意方向（严禁生搬硬套）：
+必须根据当前任务的核心载体、受众、使用场景和已确认约束，自主提出 3 条差异化路径。
+每条路径都要有自己的视觉命题和具体依据；可从材质、形态、行为、信息结构、叙事、文化语义、空间场景或工艺细节中选择切入点，但只使用真正适合当前任务的因素。
+
+严格字段契约（保证每条主题都有清晰依据与视觉定调）：
+- themeName: 4–6 字概念代号《...》可附带英文 Studio Tag（如：《寂静凝灰》 Silent Tuff）。
+- title: 视觉切入或工艺手法简述（如：再生纤维微孔 × 1px 细拉丝冷铝倒角）。
+- sensoryMetaphor: 1 句物料与光影画面的审美提炼（如：“未经精抛的暖灰微孔表面，被冷冽的铝合金倒角精密收口，在光线下呈现哑光漫反射”）。
 - visualSnapshot: 1–2 句具象大白话描绘“最终画面/实物长什么样”，画面感极强且紧扣当前品类主体与材质。
 - focusDimension: 视觉核心切入点。
 - startingPoint: 独特的探索起点（简短精炼）。
@@ -68,7 +72,7 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
 - pros: 视觉亮点 / 灵感抓手（画面、构图、色彩或材质上最出彩的审美特质）。
 - cons: 防跑偏提示 / 注意边界（探索该方向时需警惕的调性陷阱或审美红线）。
 - feasibility: "high" | "medium" | "challenging"。
-- timeframe: 探索打样周期（如"0.5–1 天"、"1–2 天"）。
+- timeframe: 探索打样周期（如"1–2 天"、"2–3 天"）。
 - recommendedReason: 仅在推荐主题填写自然中肯的设计解题理由（直接陈述为什么该方案最能达成设计意图并平衡落地，严禁使用“针对前期对于...的纠结”等模板套话！），其余两个探索主题严格填 null。
 - steps: 恰好 3 个前期灵感切入视点（Visual Inspiration Angles，紧扣品类与主题）：
   * 核心定位：SIFT 只做【前期视觉灵感探索与审美收敛】，不做后期落地生产工程！
@@ -83,18 +87,19 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
   "routes": [
     {
       "id": "route_1",
-      "themeName": "原生纤维 · 触感转化",
-      "title": "【再生纤维与微气孔】原生温润触感",
-      "visualSnapshot": "回收再生纤维压合成微孔哑光表面，保留天然毛色微杂质与漫反射暖意，触感温润微糙，在侧光下呈现物料本真质感",
-      "focusDimension": "原生材料转化与微触感",
-      "startingPoint": "再生纤维原生肌理与微气孔触感",
-      "coreProblem": "放弃二次精细涂层掩盖，把视觉与触觉质感押在再生纤维本身的微颗粒肌理与自然漫反射上",
-      "purpose": "以回收纤维本身的物性转化与微气孔触感构建真实耐看的产品肌理体验",
-      "pros": "材料原生肌理独特且具辨识度，自然光下呈现温润微光泽，环保与品质感兼具",
-      "cons": "纤维若压合过于致密会失去透性质感，过于松散又显粗糙，需把控好纤维密度与微孔平衡",
+      "themeName": "《与任务相关的概念代号》",
+      "title": "与任务相关的视觉手法 × 具体结构或工艺",
+      "sensoryMetaphor": "用一句具体的材质、形态、光影或场景描述画面",
+      "visualSnapshot": "描述最终画面或实体效果，避免抽象口号",
+      "focusDimension": "当前主题最核心的视觉切入点",
+      "startingPoint": "从前置内容中提炼出的探索起点",
+      "coreProblem": "本主题主动放弃与重点押注之间的视觉取舍",
+      "purpose": "要观察和比较的视觉表现",
+      "pros": "具体的视觉亮点或灵感抓手",
+      "cons": "需要警惕的视觉偏差",
       "feasibility": "high",
-      "timeframe": "0.5–1 天",
-      "recommendedReason": "从再生纤维本身的物性肌理切入最能彰显可持续材料的真实质感，兼具环保说服力与亲肤温度",
+      "timeframe": "1–2 天",
+      "recommendedReason": "说明该主题为什么最贴合当前 Brief 和已确认方向",
       "steps": [
         {
           "id": "step_1_1",
@@ -158,24 +163,24 @@ export function normalizeLiveRoutesPayload(
   const subjectLabel = rawGoal ? rawGoal.slice(0, 10) : "设计案";
 
   let defaultStarts = [
-    "特种纸微触感与无墨压凹",
-    "双栏网格与微字阶层级",
-    "高对比几何符号视觉锤",
+    "原浆棉纸微触感与侧光深压凹",
+    "双栏网格与微字阶档案标尺",
+    "几何大色块与视觉重锤",
   ];
   let defaultDimensions = [
-    "特种纸肌理与深压凹工艺",
-    "双栏网格与微字阶层级",
-    "高对比几何符号视觉锤",
+    "棉纸物料肌理与深压凹工艺",
+    "双栏网格与微字阶排印体系",
+    "几何负空间与局部哑光微UV",
   ];
   let defaultThemeNames = [
-    "素雅棉纸与无墨压凹",
-    "严谨网格与档案排版",
-    "极简几何与视觉大色块",
+    "《零度墨痕》 Zero-Ink",
+    "《风土标尺》 Swiss Telemetry",
+    "《暗室静物》 Dark Chamber Still",
   ];
   let defaultTitles = [
-    "素雅棉纸与无墨压凹",
-    "严谨网格与档案排版",
-    "极简几何与视觉大色块",
+    "300g 原浆棉纸 × 45° 侧光深压凹",
+    "双栏微字阶排印 × 产地风味档案",
+    "几何负空间大色块 × 局部哑光微UV",
   ];
   let defaultSnapshots = [
     "大面积纯白原浆棉纸留白，正面仅单色侧光深压凹，无多余插画，在 45 度侧光下靠压凹阴影显出极简雕塑感。",
@@ -190,7 +195,7 @@ export function normalizeLiveRoutesPayload(
   let defaultPurposes = [
     "以大面积素雅纸感与微光影细节构建耐看且具触觉温度的视觉体验",
     "以清晰理性的排版动线与字阶层次打造高效信息传达系统",
-    "以高反差与极简几何视觉重锤实现秒级记忆锁定",
+    "以高反差与极简几何视觉重锤构建纯粹的版面焦点",
   ];
   let defaultPros = [
     "大面积留白在复杂环境中形成纯粹视觉真空，靠棉纸触感与压凹阴影呈现沉静雕塑感",
@@ -202,30 +207,35 @@ export function normalizeLiveRoutesPayload(
     "网格若缺乏对比变化容易显得呆板僵硬，需把控好核心字阶的动态层级",
     "符号若提炼不够纯粹容易落入俗套，必须保持几何轮廓的极端克制与张力",
   ];
+  let defaultSensoryMetaphors = [
+    "大面积未漂白高克重棉纸，在 45° 侧光下沉下一道近乎静止的 1.5mm 深压凹光影",
+    "精密冷灰双栏网格，黑白字符如权威档案标尺般克制排列，散发理性秩序感",
+    "纯粹几何负空间在暗调中切出一记清脆的视觉重锤，瞬间锚定视觉焦点",
+  ];
 
   if (isProductOrMaterial) {
     defaultStarts = [
-      "原生毛发纤维与微颗粒肌理",
-      "温润弧线与手握微触感",
-      "极简机能构件与日常融入",
+      "再生纤维物性转化与微孔阻尼",
+      "自然卵石连续曲率与手握抚慰度",
+      "高强度复合料与结合部卡扣细节",
     ];
     defaultDimensions = [
-      "原生材料转化与微触感",
-      "情感陪伴语义与器物形态",
+      "材料微孔漫反射与金属精密收口",
+      "情感陪伴语义与有机器物形态",
       "现代机能美学与日常共生",
     ];
     defaultThemeNames = [
-      "原生纤维与微颗粒肌理",
-      "柔和弧度与温润器型",
-      "机能卡扣与日常实用",
+      "《寂静凝灰》 Silent Tuff",
+      "《掌心温存》 Poetic Organism",
+      "《冷轧秩序》 Precision Architecture",
     ];
     defaultTitles = [
-      "原生纤维与微颗粒肌理",
-      "柔和弧度与温润器型",
-      "机能卡扣与日常实用",
+      "再生纤维微孔阻尼 × 1px 细拉丝冷铝倒角",
+      "自然卵石连续曲率 × 隐式握持凹槽",
+      "高强度再生复合料 × 模块化卡扣微咬合",
     ];
     defaultSnapshots = [
-      "回收再生纤维压合成微孔哑光表面，保留天然毛色微杂质与漫反射暖意，触感温润微糙，在侧光下呈现物料本真质感。",
+      "回收再生材料压合成微孔哑光表面，保留天然毛色微杂质与漫反射暖意，冷冽金属倒角利落收口，在侧光下呈现物料本真质感。",
       "柔和流动的有机弧面与微握持凹槽，器型沉静如卵石，置于居家桌面或掌心抚触，通过实体形态传递无声的陪伴温度。",
       "极简克制的几何线条结合精妙微倒角构件，材料与现代铝合金或原木自然嵌合，呈现兼具实用机能与当代家居审美的优雅器物。",
     ];
@@ -249,26 +259,31 @@ export function normalizeLiveRoutesPayload(
       "造型若过于具象容易流于低俗，需保持抽象雕塑般的线条克制",
       "结合部公差若处理不当易显工件粗糙，需严控材质交界面的收口细节",
     ];
+    defaultSensoryMetaphors = [
+      "像一块未经精抛的暖灰凝灰岩，被冷冽的 1px 铝合金倒角精密收口，表面泛着微孔漫反射",
+      "自然圆润如河床卵石，柔和曲面贴合掌心微握凹槽，散发温润无声的陪伴温度",
+      "极简现代几何形态与精妙微卡扣无缝咬合，宛如一件融入当代居所的建筑微缩模型",
+    ];
   } else if (isPetVI) {
     defaultStarts = [
-      "暖调棉感微触感与柔和留白",
-      "理性双栏网格与守护信息层级",
-      "极简几何动物负空间视觉锤",
+      "棉柔纸微触感与浅浮雕无墨微凹",
+      "科学双栏网格与严谨成分标尺",
+      "极简动物负空间与超级符号视觉锤",
     ];
     defaultDimensions = [
-      "温润材质微触感与亲和调性",
-      "科学信息网格与排版秩序",
-      "极简动物符号与高穿透视觉锤",
+      "温润棉柔纸微触感与治愈留白",
+      "科学双栏网格与严谨信息骨架",
+      "极简动物剪影与瞬间穿透符号",
     ];
     defaultThemeNames = [
-      "温润棉感与克制留白",
-      "模块网格与双语排印",
-      "极简剪影与超级符号",
+      "《温润生灵》 Gentle Companion",
+      "《守护档案》 Guardian Ledger",
+      "《负形印记》 Negative Silhouette",
     ];
     defaultTitles = [
-      "温润棉感与克制留白",
-      "模块网格与双语排印",
-      "极简剪影与超级符号",
+      "350g 棉柔纸微触感 × 浅浮雕无墨微压凹",
+      "科学双栏网格 × 严谨成分标尺",
+      "极简几何动物剪影 × 瞬间穿透超级符号",
     ];
     defaultSnapshots = [
       "品牌主视觉以柔和暖白棉质感为底，搭配极简细节与微压凹，不使用花哨卡通涂鸦，呈现安静治愈的陪伴温度。",
@@ -283,7 +298,7 @@ export function normalizeLiveRoutesPayload(
     defaultPurposes = [
       "以柔和低饱和暖白与微肌理构建耐看、亲和且具陪伴温度的整体视觉体验",
       "以模块化网格秩序与双语排印打造严谨科学的专业宠物视觉规范",
-      "以强视觉穿透力的动物几何符号实现 0.5 秒瞬间辨识与跨介质延展",
+      "以强视觉穿透力的几何正负形轮廓构建纯粹符号与跨介质延展",
     ];
     defaultPros = [
       "温润质感与克制留白形成安静治愈的审美空间，耐看且极具呼吸感",
@@ -295,26 +310,31 @@ export function normalizeLiveRoutesPayload(
       "版式若过于冷硬可能降低亲和力；需平衡理性网格与温和陪伴情绪",
       "符号化若过于抽象可能增加识别成本；需确保动物形态特征精准易读",
     ];
+    defaultSensoryMetaphors = [
+      "柔和如冬日羊绒披肩的暖白底色，局部泛着微光泽压印，不着喧闹墨迹却满是抚慰感",
+      "严谨科学的双栏标尺骨架，像一份由兽医与科研人员郑重签发的专业守护档案",
+      "极度洗练的负空间动物剪影，在 1.5 米外如同一记温暖而坚定的视觉重锤",
+    ];
   } else if (isUI) {
     defaultStarts = [
-      "暗黑微质感与 1px 精细网格",
-      "高密度数据表格与字阶骨架",
-      "核心控制台单一视觉锤聚焦",
+      "暗黑微质感与 1px 精细冷灰微层级",
+      "8px 密集数据晶格与紧凑型排布",
+      "硬件级控制台拟态与单一穿透微光",
     ];
     defaultDimensions = [
-      "深色极客美学与细腻微渐变",
-      "信息架构与高密度数据网格",
-      "极简工程视觉符号与控制台",
+      "深色极客美学与 1px 微层级",
+      "信息架构与 8px 密集数据网格",
+      "硬件控制台隐喻与状态微光",
     ];
     defaultThemeNames = [
-      "暗黑界面与精细冷灰",
-      "高密信息与数据栅格",
-      "单色极简与穿透中枢",
+      "《夜航座舱》 Night Flight HUD",
+      "《数据晶格》 Telemetry Grid",
+      "《穿透中枢》 Pulse Console",
     ];
     defaultTitles = [
-      "暗黑界面与精细冷灰",
-      "高密信息与数据栅格",
-      "单色极简与穿透中枢",
+      "暗黑无光基底 × 1px 精细冷灰微层级",
+      "8px 密集数据晶格 × 紧凑型无衬线排布",
+      "硬件级控制台拟态 × 单一穿透状态微光",
     ];
     defaultSnapshots = [
       "深色暗黑背景配合 1px 冷灰描边与细腻微渐变，克制无悬浮光污染，呈现纯粹利落的专业工程美学。",
@@ -324,7 +344,7 @@ export function normalizeLiveRoutesPayload(
     defaultCoreProblems = [
       "放弃浮夸重型 3D 渲染，把视觉质感建立在细腻微质感与 1px 网格秩序上",
       "放弃松散排布，通过紧凑字阶与多态组件实现高密度数据的高效承载",
-      "放弃分散视觉注意力，提炼单一视觉焦点实现秒级状态感知",
+      "放弃分散视觉注意力，提炼单一视觉焦点建立直观状态指示",
     ];
     defaultPurposes = [
       "打造克制纯粹的深色极客生产力工具界面体验",
@@ -341,26 +361,31 @@ export function normalizeLiveRoutesPayload(
       "高密度若缺少呼吸感容易压抑，需善用 8px 栅格留白",
       "微动效若过多会干扰操作，必须遵循物理动效曲线",
     ];
+    defaultSensoryMetaphors = [
+      "夜航座舱般的纯粹冷黑界面，1px 精细冷灰线雕琢着极度克制的数据发光微层级",
+      "严谨遵循 8px 律动的密集数据晶格，信息流如精密机械般从容流动",
+      "整片暗调中心只有 1 处高穿透状态光斑，第一视线直达系统的核心状态指标",
+    ];
   } else if (isCoffee) {
     defaultStarts = [
-      "原浆大地纸感与单色深压凹",
-      "产区风味档案与双栏排印",
-      "极简几何豆标与高对比视觉锤",
+      "粗颗粒原浆牛皮卡与单色深压凹",
+      "瑞士双栏排印与产区风味标尺",
+      "高反差几何色块冲撞与极简豆标",
     ];
     defaultDimensions = [
-      "原生触觉与天然纸张肌理",
-      "风味档案与瑞士排版秩序",
-      "极简几何符号与辨识度",
+      "原浆牛皮卡肌理与风土触觉",
+      "风味档案与瑞士双栏排印",
+      "极简几何豆标与货架视觉锤",
     ];
     defaultThemeNames = [
-      "大地本色 · 原生纸感触觉",
-      "风味档案 · 瑞士理性排印",
-      "极简几何 · 豆标视觉重锤",
+      "《泥土本色》 Terra Raw",
+      "《产地纪实》 Origin Dossier",
+      "《豆标重锤》 Geometric Bean",
     ];
     defaultTitles = [
-      "【原浆棉卡与单色深压凹】风土原生质感",
-      "【双栏网格与风味标尺】产地信息档案",
-      "【几何豆标与色块冲撞】瞬间辨识视觉锤",
+      "380g 粗颗粒原浆牛皮卡 × 单色深压凹烘焙标",
+      "瑞士双栏微字阶排印 × 档案式封签标尺",
+      "高反差几何色块冲撞 × 极简轮廓符号",
     ];
     defaultSnapshots = [
       "粗颗粒大地色系原浆纸留白，正面单色浅压凹烘焙风味细节，无多余装饰，还原咖啡豆风土原生触觉。",
@@ -370,12 +395,12 @@ export function normalizeLiveRoutesPayload(
     defaultCoreProblems = [
       "放弃花哨多色包装贴纸，把视觉质感全押在原浆纸触感与风土肌理上",
       "放弃市面常见网红插画，以严谨瑞士网格呈现产区风味信息档案",
-      "放弃具象写实图案，提炼极简几何豆标超级符号建立瞬间辨识",
+      "放弃繁复写实图案，提炼极简几何豆标符号构建纯粹图形资产",
     ];
     defaultPurposes = [
       "以大地原浆材质与微凹印还原咖啡豆的风土手作触觉",
       "建立如同独立咖啡馆出品档案般的专业排版秩序与信赖感",
-      "以极具冲击力的几何豆标在复杂货架中形成瞬间视觉焦点",
+      "以几何豆标与高对比色块构建纯粹的图底视觉张力",
     ];
     defaultPros = [
       "天然质感让人联想风土本真，质朴温润极耐品味",
@@ -386,6 +411,11 @@ export function normalizeLiveRoutesPayload(
       "纸感若过于粗糙容易显廉价，需挑选优质微颗粒棉卡",
       "排版若过于密集容易像药品说明书，需留足呼吸空间",
       "符号若无咖啡故事支撑容易空洞，需强化豆种与烘焙隐喻",
+    ];
+    defaultSensoryMetaphors = [
+      "粗纤维大地牛皮纸与单色浅压凹烘焙图谱，散发如同产地泥土般的风土原初触觉",
+      "严谨的瑞士双栏风味标尺档案，理性质朴地记录着海拔、处理法与杯测曲线",
+      "极简几何豆标与高对比色块冲撞，在昏暗的独立咖啡吧台上一眼被视觉锁定",
     ];
   }
 
@@ -434,14 +464,14 @@ export function normalizeLiveRoutesPayload(
           question: "品牌守护信息与核心说明如何在版面中形成严谨安心的秩序？",
           purpose: "打磨清晰有力的版式骨架与视觉第一焦点",
           deliverables: ["专业双栏网格排版稿", "核心信息层级样张 3 款"],
-          acceptanceCriteria: ["核心信息在 1 秒内被视觉锁定", "中西文字阶对比分明"],
+          acceptanceCriteria: ["核心信息层级分明视觉清晰", "中西文字阶对比分明"],
         },
         {
           id: `step_${routeIdx + 1}_3`,
           title: "几何动物负空间与符号记忆",
-          question: "在 1.5 米远视与微缩尺寸下，动物几何符号是否具备秒级辨识度？",
+          question: "在微缩尺寸与不同视距下，动物几何符号的轮廓是否依然清晰凝聚？",
           purpose: "验证超级符号的视觉穿透力与跨介质延展表现",
-          deliverables: ["几何动物剪影对照稿", "跨尺寸与远视辨识度测试样张"],
+          deliverables: ["几何动物剪影对照稿", "跨尺寸清晰度测试样张"],
           acceptanceCriteria: ["缩微至 16px 仍能清晰分辨动物特征", "轮廓洗练无多余噪点"],
         },
       ];
@@ -462,7 +492,7 @@ export function normalizeLiveRoutesPayload(
           question: "高密度数据、状态徽标与表格如何在 8px 栅格下保持从容动线？",
           purpose: "构建严谨高效的信息阅读骨架",
           deliverables: ["8px高密度表格排版稿", "多态组件层级规范"],
-          acceptanceCriteria: ["核心数据在 0.5 秒内清晰锁定", "字阶级差舒适"],
+          acceptanceCriteria: ["核心数据在第一眼清晰锁定", "字阶级差舒适"],
         },
         {
           id: `step_${routeIdx + 1}_3`,
@@ -611,20 +641,25 @@ export function normalizeLiveRoutesPayload(
       ? r.feasibility
       : (i === 0 ? "high" : i === 1 ? "high" : "medium") as "high" | "medium" | "challenging";
 
+    const sensoryMetaphor = typeof r.sensoryMetaphor === "string" && r.sensoryMetaphor.trim()
+      ? sanitizeLeakedVariables(r.sensoryMetaphor.trim())
+      : (defaultSensoryMetaphors[i] ?? defaultSensoryMetaphors[0]);
+
     return {
       id: routeId,
-      title,
-      themeName,
-      visualSnapshot,
-      startingPoint: starting,
-      focusDimension: nonEmpty(r.focusDimension, defaultDimensions[i] ?? "视觉美学探索"),
-      coreProblem: nonEmpty(r.coreProblem, defaultCoreProblems[i] ?? defaultCoreProblems[0]),
-      purpose: nonEmpty(r.purpose, defaultPurposes[i] ?? defaultPurposes[0]),
-      pros: nonEmpty(r.pros, defaultPros[i] ?? defaultPros[0]),
-      cons: nonEmpty(r.cons, defaultCons[i] ?? defaultCons[0]),
+      title: sanitizeAntiTeleology(title),
+      themeName: sanitizeAntiTeleology(themeName),
+      visualSnapshot: sanitizeAntiTeleology(visualSnapshot),
+      sensoryMetaphor: sanitizeAntiTeleology(sensoryMetaphor),
+      startingPoint: sanitizeAntiTeleology(starting),
+      focusDimension: sanitizeAntiTeleology(nonEmpty(r.focusDimension, defaultDimensions[i] ?? "视觉美学探索")),
+      coreProblem: sanitizeAntiTeleology(nonEmpty(r.coreProblem, defaultCoreProblems[i] ?? defaultCoreProblems[0])),
+      purpose: sanitizeAntiTeleology(nonEmpty(r.purpose, defaultPurposes[i] ?? defaultPurposes[0])),
+      pros: sanitizeAntiTeleology(nonEmpty(r.pros, defaultPros[i] ?? defaultPros[0])),
+      cons: sanitizeAntiTeleology(nonEmpty(r.cons, defaultCons[i] ?? defaultCons[0])),
       feasibility: feasibilityVal,
-      timeframe: nonEmpty(r.timeframe, "0.5–1 天"),
-      recommendedReason: recReason,
+      timeframe: nonEmpty(r.timeframe, "1–2 天"),
+      recommendedReason: recReason ? sanitizeAntiTeleology(recReason) : null,
       steps,
     };
   });
@@ -637,14 +672,15 @@ export function normalizeLiveRoutesPayload(
       title: defaultTitles[i] ?? `【视觉策略与探索】实战方案 0${i + 1}`,
       themeName: defaultThemeNames[i] ?? `设计主题 0${i + 1}`,
       visualSnapshot: defaultSnapshots[i] ?? "大面积纯净留白，依靠材质微肌理与清晰字阶呈现克制现代美感。",
-      startingPoint: defaultStarts[i] ?? `领地 0${i + 1}`,
+      sensoryMetaphor: defaultSensoryMetaphors[i] ?? defaultSensoryMetaphors[0],
+      startingPoint: defaultStarts[i] ?? `探索切入 0${i + 1}`,
       focusDimension: defaultDimensions[i] ?? "综合美学表现",
       coreProblem: defaultCoreProblems[i] ?? defaultCoreProblems[0],
       purpose: defaultPurposes[i] ?? defaultPurposes[0],
       pros: defaultPros[i] ?? defaultPros[0],
       cons: defaultCons[i] ?? defaultCons[0],
       feasibility: "high",
-      timeframe: "0.5–1 天",
+      timeframe: "1–2 天",
       recommendedReason: null,
       steps: getDefaultSteps(i),
     });

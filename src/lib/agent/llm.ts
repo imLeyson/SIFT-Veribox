@@ -250,3 +250,98 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
     return fn();
   }
 }
+
+export async function completeText(
+  system: string,
+  user: string,
+  images: string[] = [],
+): Promise<string> {
+  if (!API_KEY) throw new Error("未配置 LLM_API_KEY");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    return await withRetry(() =>
+      completeTextOnce(system, user, controller.signal, images),
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function completeTextOnce(
+  system: string,
+  user: string,
+  signal: AbortSignal,
+  images: string[] = [],
+): Promise<string> {
+  let res: Response;
+  let raw: string;
+  const userContent =
+    images.length > 0
+      ? [
+          { type: "text", text: user },
+          ...images.map((img) => ({
+            type: "image_url",
+            image_url: { url: img },
+          })),
+        ]
+      : user;
+
+  try {
+    res = await fetch(`${BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      signal,
+      body: JSON.stringify({
+        model: MODEL,
+        temperature: 0.7,
+        max_tokens: 8192,
+        reasoning_effort: "none",
+        thinking: { type: "disabled" },
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: userContent },
+        ],
+      }),
+    });
+    raw = await res.text();
+  } catch {
+    if (signal.aborted) {
+      throw new Error("模型请求超时，请再试一次");
+    }
+    throw new Error("模型网关网络错误，请再试一次");
+  }
+
+  if (!res.ok) {
+    const err = new Error(`模型请求失败（${res.status}）`);
+    (err as Error & { status?: number }).status = res.status;
+    throw err;
+  }
+  if (!raw.trim()) {
+    throw new Error("模型网关返回为空，请再试一次");
+  }
+
+  let payload: {
+    choices?: {
+      finish_reason?: string;
+      message?: { content?: unknown; reasoning_content?: unknown };
+    }[];
+  };
+  try {
+    payload = JSON.parse(raw) as typeof payload;
+  } catch {
+    throw new Error("模型网关返回了无法解析的内容");
+  }
+
+  const choice = payload.choices?.[0];
+  const message = choice?.message ?? {};
+  const text = [partText(message.content), partText(message.reasoning_content)]
+    .filter((item) => item.trim())
+    .join("\n");
+  const cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, " ").trim();
+  if (!cleaned) throw new Error("模型返回为空");
+  return cleaned;
+}

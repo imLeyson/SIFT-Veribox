@@ -4,9 +4,12 @@ import {
   evolveTheme,
   deriveThemeFromStrategy,
   deriveStepsFromTheme,
+  derivePlanFromTheme,
   derivePlanFromStep,
   deriveNoteFromNode,
   synthesizeCardFromInputs,
+  extractThemeDimensionQueries,
+  generateMockConceptSvg,
 } from "./card-synthesis";
 import type { Route, RouteStep } from "@/types/routes";
 
@@ -71,15 +74,60 @@ describe("Card Synthesis & Upstream Blending", () => {
     const blended = blendThemes(mockThemeA, mockThemeB);
 
     expect(blended.title).toContain("跨界融合");
-    expect(blended.title).toContain("原生木质纤维");
-    expect(blended.title).toContain("现代透明机能");
-    expect(blended.themeName).toBe("原生木质纤维与现代透明机能复合变奏");
-    expect(blended.focusDimension).toContain("原生木纹与纤维微触感 × 高透聚合物与精工卡扣");
+    expect(blended.themeName).toContain("《");
     expect(blended.steps).toHaveLength(3);
-    expect(blended.steps[0].title).toContain("双主题母题杂交与造型骨架试验");
-    expect(blended.steps[1].title).toContain("复合材质微触感与表面过渡试验");
-    expect(blended.steps[2].title).toContain("场景共生与整体系统验证试验");
+    expect(blended.steps[0].title).toContain("母题杂交");
+    expect(blended.steps[1].title).toContain("工艺衔接");
+    expect(blended.steps[2].title).toContain("感官验证");
     expect(blended.alignmentScore).toBeGreaterThanOrEqual(95);
+    expect(blended.sensoryMetaphor).toBeTruthy();
+    expect(blended.visualSnapshot).toBeTruthy();
+  });
+
+  it("authentically blends 《掌心凹谷》 PALM VALLEY and 《卵石序列》 PEBBLE SEQUENCE into a single unified theme", () => {
+    const palmValley: Route = {
+      id: "route-palm",
+      themeName: "《掌心凹谷》 PALM VALLEY",
+      title: "哑光亲肤弹性体包覆 × 整块雕塑弧面掌心凹槽",
+      focusDimension: "整块雕塑弧面掌心凹槽",
+      startingPoint: "以整块雕塑弧面掌心凹槽为切入点",
+      coreProblem: "如何平衡曲面与贴合感？",
+      purpose: "掌心凹谷造型探索",
+      pros: "人机极佳",
+      cons: "分型工艺要求高",
+      recommendedReason: null,
+      alignmentScore: 92,
+      steps: [],
+    };
+    const pebbleSequence: Route = {
+      id: "route-pebble",
+      themeName: "《卵石序列》 PEBBLE SEQUENCE",
+      title: "灰蓝哑光微触感 × 刷头刷颈刷柄三段体量渐变",
+      focusDimension: "三段体量渐变",
+      startingPoint: "以卵石序列为切入点",
+      coreProblem: "如何平衡序列比例？",
+      purpose: "卵石序列造型探索",
+      pros: "体量轻盈",
+      cons: "接缝精度高",
+      recommendedReason: null,
+      alignmentScore: 90,
+      steps: [],
+    };
+
+    const blended = blendThemes(palmValley, pebbleSequence);
+
+    // Concept Name must be a genuine single code, e.g. 《卵石凹谷》 PEBBLE VALLEY
+    expect(blended.themeName).toMatch(/^《[^\s》]+》\s+[A-Z\s]+$/);
+    expect(blended.themeName).not.toContain("与《");
+    expect(blended.themeName).not.toContain("复合变奏");
+
+    // Title must be CMF × Structure formula
+    expect(blended.title).toContain("【跨界融合】");
+    expect(blended.title).toContain("×");
+    expect(blended.title).not.toContain("与《");
+
+    // Steps must be 3 coherent verification steps
+    expect(blended.steps).toHaveLength(3);
   });
 
   it("evolves a single theme into form & craft variations", () => {
@@ -89,6 +137,7 @@ describe("Card Synthesis & Upstream Blending", () => {
     expect(evolved.title).toContain("变奏");
     expect(evolved.themeName).toContain("变奏");
     expect(evolved.steps.length).toBeGreaterThanOrEqual(2);
+    expect(evolved.sensoryMetaphor).toBeTruthy();
   });
 
   it("derives theme from Strategy Benchmark when upstream is state/direction", () => {
@@ -105,6 +154,8 @@ describe("Card Synthesis & Upstream Blending", () => {
     expect(derived.themeName).toContain("克制极简");
     expect(derived.title).toContain("新一代智能极简水杯");
     expect(derived.steps).toHaveLength(3);
+    expect(derived.sensoryMetaphor).toBeTruthy();
+    expect(derived.visualSnapshot).toBeTruthy();
   });
 
   it("derives viewpoint steps from theme", () => {
@@ -120,6 +171,26 @@ describe("Card Synthesis & Upstream Blending", () => {
     expect(dezeen).toBeDefined();
     expect(dezeen?.keywords.length).toBeGreaterThan(0);
     expect(dezeen?.keywords[0].calibratedQuery).toBeDefined();
+  });
+
+  it("derives noise-reduced platform plan directly from theme (Card 3 to Card 4)", () => {
+    const plan = derivePlanFromTheme(mockThemeA);
+    expect(plan.primarySources.length).toBeGreaterThanOrEqual(3);
+    expect(plan.routeId).toBe(mockThemeA.id);
+    const dezeen = plan.primarySources.find((s) => s.platform === "dezeen");
+    expect(dezeen).toBeDefined();
+    expect(dezeen?.reason).toContain("原生木质纤维");
+    const behance = plan.primarySources.find((s) => s.platform === "behance");
+    expect(behance).toBeDefined();
+    const pinterest = plan.primarySources.find((s) => s.platform === "pinterest");
+    expect(pinterest).toBeDefined();
+
+    // Direct synthesis from Card 3 (Route) to Card 4 (PlatformPlan)
+    const synthesized = synthesizeCardFromInputs("platformPlan", [
+      { id: "route-a", type: "route", data: { route: mockThemeA } },
+    ]);
+    expect(synthesized.title).toContain("原生木质纤维 · 灵感检索");
+    expect(synthesized.data?.plan?.primarySources.length).toBe(3);
   });
 
   it("derives structured notes from different upstream node types", () => {
@@ -177,4 +248,53 @@ describe("Card Synthesis & Upstream Blending", () => {
     expect(planSynth.data?.plan).toBeDefined();
     expect(planSynth.data?.isEmpty).toBe(false);
   });
+
+  it("extractThemeDimensionQueries extracts domain-specific bilingual queries", () => {
+    const woodQueries = extractThemeDimensionQueries(mockThemeA);
+    expect(woodQueries.reality.keyword).toContain("wood fiber");
+    expect(woodQueries.reality.meaning).toContain("木质");
+    expect(woodQueries.form.keyword).toContain("curved monolithic");
+    expect(woodQueries.craft.keyword).toContain("raw timber");
+
+    const functionalQueries = extractThemeDimensionQueries(mockThemeB);
+    expect(functionalQueries.reality.keyword).toContain("translucent functional");
+    expect(functionalQueries.form.keyword).toContain("skeletal");
+  });
+
+  it("synthesizeCardFromInputs router handles Ask and State card derivation", () => {
+    const askSynth = synthesizeCardFromInputs("ask", [
+      { id: "brief", type: "brief", data: { rawBrief: "极简智能音箱" } },
+    ]);
+    expect(askSynth.title).toBe("关键视觉抉择");
+    expect(askSynth.data?.questions.length).toBeGreaterThan(0);
+    expect(askSynth.data?.status).toBe("active");
+
+    const stateSynth = synthesizeCardFromInputs("state", [
+      { id: "ask-1", type: "ask", data: { rawBrief: "极简智能音箱", state: { status: "confirmed" } } },
+    ]);
+    expect(stateSynth.title).toBe("核心策略基准");
+    expect(stateSynth.data?.status).toBe("confirmed");
+  });
+
+  it("generateMockConceptSvg supports all aspect ratios and prompt-responsive palettes", () => {
+    // 9:16 portrait
+    const svg916 = generateMockConceptSvg("极简茶壶", "暗黑钛金属哑光磨砂", "9:16", 0);
+    const decoded916 = decodeURIComponent(svg916);
+    expect(decoded916).toContain("viewBox=\"0 0 450 800\"");
+    expect(decoded916).toContain("9:16");
+    expect(decoded916).toContain("#18181b");
+
+    // Warm palette
+    const svgWarm = generateMockConceptSvg("陶艺茶壶", "暖橙色陶土拼贴", "16:9", 1);
+    const decodedWarm = decodeURIComponent(svgWarm);
+    expect(decodedWarm).toContain("viewBox=\"0 0 800 450\"");
+    expect(decodedWarm).toContain("#ea580c");
+
+    // 1:1 square
+    const svgSquare = generateMockConceptSvg("概念耳机", "海洋冰蓝透光", "1:1", 2);
+    const decodedSquare = decodeURIComponent(svgSquare);
+    expect(decodedSquare).toContain("viewBox=\"0 0 600 600\"");
+    expect(decodedSquare).toContain("#2563eb");
+  });
 });
+

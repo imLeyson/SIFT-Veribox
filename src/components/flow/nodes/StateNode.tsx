@@ -2,14 +2,20 @@
 import { useState } from "react";
 import type { NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
+import { CardChatPanel } from "../CardChatPanel";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
-import { hasDirection } from "@/types/convergence";
-import { Check, Sparkles, ArrowRight, RefreshCw, RotateCcw } from "lucide-react";
+import { hasDirection, type DesignState } from "@/types/convergence";
+import { Sparkles, ArrowRight, RefreshCw, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { runIndependentStateRoutes } from "@/lib/independent-chain-runner";
 
-export function StateNode({ id, selected }: NodeProps) {
+export function StateNode({ id, data, selected }: NodeProps) {
+  const isCustomState = Boolean((data as any)?.state);
+  const storeState = useSiftStore((s) => s.state);
+  const storeRawBrief = useSiftStore((s) => s.rawBrief);
+  const [generatingRoutes, setGeneratingRoutes] = useState(false);
+
   const {
-    state,
     next,
     correctionDraft,
     activeRequest,
@@ -21,6 +27,11 @@ export function StateNode({ id, selected }: NodeProps) {
     restoreRoutes,
   } = useSiftStore();
   const [editing, setEditing] = useState(false);
+
+  const state: DesignState | null = isCustomState
+    ? ((data as any).state as DesignState)
+    : storeState;
+  const rawBrief = isCustomState ? ((data as any).rawBrief || "") : storeRawBrief;
 
   const customRouteIds = new Set(
     customCards
@@ -45,9 +56,14 @@ export function StateNode({ id, selected }: NodeProps) {
     return (
       <NodeShell
         nodeId={id}
-        stage="02"
-        kicker="02 策略基准 · 待收敛"
+        stage="2"
+        kicker="2 策略基准"
         title="核心策略基准（草稿）"
+        badge={
+          <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
+            待收敛
+          </span>
+        }
         selected={selected}
       >
         <div className="space-y-3 text-xs leading-relaxed">
@@ -75,18 +91,94 @@ export function StateNode({ id, selected }: NodeProps) {
   const checkpoint = next?.type === "checkpoint";
   const confirmed = state.status === "confirmed";
 
+  const [viewMode, setViewMode] = useState<"card" | "chat">("card");
+
+  const directionStarterChips = [
+    "强化纯粹几何与秩序感",
+    "增加触感温润与亲肤阻尼",
+    "突出人机工效与握持舒适",
+    "坚决规避塑料玩具廉价感",
+  ];
+
+  const handleNextStep = async () => {
+    if (activeRequest) return;
+    if (isCustomState) {
+      setGeneratingRoutes(true);
+      try {
+        await runIndependentStateRoutes({
+          stateCardId: id,
+          rawBrief,
+          state,
+        });
+      } finally {
+        setGeneratingRoutes(false);
+      }
+    } else {
+      if (!confirmed) {
+        await siftActions.confirm();
+      } else {
+        await siftActions.regenerateRoutes();
+      }
+    }
+  };
+
+  const chatPanel = (
+    <CardChatPanel
+      nodeId={id}
+      cardType="state"
+      cardTitle="核心策略基准"
+      cardData={{
+        goal: state?.brief?.goal,
+        hypothesis: state?.currentHypothesis,
+        intent: state?.direction?.intent?.text,
+        priorities: state?.direction?.priorities?.map((p) => p.text),
+        avoid: state?.direction?.avoid?.map((a) => a.text),
+        criteria: state?.direction?.criteria?.map((c) => c.text),
+      }}
+      upstreamContext={{
+        goal: state?.brief?.goal ?? undefined,
+        strategyIntent: state?.direction?.intent?.text ?? undefined,
+        priorities: state?.direction?.priorities?.map((p) => p.text) ?? undefined,
+        avoid: state?.direction?.avoid?.map((a) => a.text) ?? undefined,
+      }}
+      starterChips={[
+        "强化设计假设在工业落地中的可行性",
+        "补充坚决规避的视觉红线",
+        "细化视觉坚持与设计工效",
+      ]}
+      onApplyUpdate={async (patch) => {
+        const feedback = patch.cons || patch.pros || patch.feedback || patch.correction;
+        if (feedback) {
+          setCorrectionDraft(feedback);
+          await siftActions.correct();
+        }
+      }}
+      onClose={() => setViewMode("card")}
+    />
+  );
+
   return (
     <NodeShell
       nodeId={id}
-      stage="02"
-      kicker={
-        confirmed
-          ? "策略基准 · 已锁定"
-          : checkpoint
-            ? "策略基准 · 检查点"
-            : "02 策略基准 · 核心方向收敛"
-      }
+      stage="2"
+      kicker="2 策略基准"
       title="核心策略基准"
+      badge={
+        confirmed ? (
+          <span className="text-[10px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded flex items-center gap-1 shadow-2xs">
+            <span className="text-emerald-600 font-bold">✓</span>
+            <span>已锁定</span>
+          </span>
+        ) : checkpoint ? (
+          <span className="text-[10px] font-medium text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded">
+            检查点
+          </span>
+        ) : (
+          <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
+            核心收敛
+          </span>
+        )
+      }
       selected={selected}
       collapsedContent={
         <div className="space-y-2 text-xs">
@@ -133,6 +225,13 @@ export function StateNode({ id, selected }: NodeProps) {
             <p className="text-xs sm:text-sm font-medium text-ink leading-relaxed font-serif">
               {state.direction.intent.text}
             </p>
+          </div>
+        ) : state.direction.priorities.length > 0 ? (
+          <div className="rounded-xl bg-stone-50/80 border border-line/60 p-2.5 text-[11px] text-stone-600">
+            <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider block mb-0.5">
+              设计驱动
+            </span>
+            <span className="text-stone-700 font-medium">形式与物性约束驱动（主张由后续探索定义）</span>
           </div>
         ) : (
           <p className="text-muted">方向推导中…</p>
@@ -251,154 +350,130 @@ export function StateNode({ id, selected }: NodeProps) {
           </div>
         </details>
 
-        {/* Checkpoint Actions */}
-        {checkpoint && !confirmed && (
-          <div className="border-t border-line/60 pt-3 space-y-2">
-            <div className="grid gap-2 grid-cols-2">
+        {/* Actions Bar: 下一步 & 调整方向 (统一常驻展示，确保随时可推进与微调) */}
+        <div className="border-t border-line/70 pt-2.5 space-y-2">
+          {/* Main Action Pair */}
+          <div className="flex items-center gap-2">
+            {/* 调整方向 Button */}
+            <button
+              type="button"
+              onClick={() => setEditing((prev) => !prev)}
+              disabled={Boolean(activeRequest)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
+                editing
+                  ? "bg-stone-900 text-white border-stone-900 shadow-2xs"
+                  : "bg-white hover:bg-stone-50 border-stone-200/90 text-stone-700 shadow-2xs hover:border-stone-300"
+              }`}
+              title="修改或补充策略方向意见，重新校准设计假设与视觉准则"
+            >
+              <SlidersHorizontal className={`h-3.5 w-3.5 ${editing ? "text-amber-400" : "text-stone-500"}`} />
+              <span>{editing ? "收起调整" : "调整方向"}</span>
+            </button>
+
+            {/* 下一步 Button */}
+            <button
+              type="button"
+              onClick={handleNextStep}
+              disabled={Boolean(activeRequest) || generatingRoutes}
+              className="flex-[1.2] flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-stone-900 hover:bg-stone-800 active:scale-[0.99] text-white text-xs font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              title="确认当前策略基准，进入下一步推导 3 套风格主题"
+            >
+              {generatingRoutes || activeRequest ? (
+                <>
+                  <Sparkles className="h-3.5 w-3.5 animate-spin text-amber-400" />
+                  <span>正在推导主题…</span>
+                </>
+              ) : (
+                <>
+                  <span>
+                    {totalVisibleThemes > 0 && confirmed
+                      ? "换一批风格主题"
+                      : "下一步：推导风格主题"}
+                  </span>
+                  <ArrowRight className="h-3.5 w-3.5 text-stone-300" />
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* If there are deleted themes, offer quick restore */}
+          {hasDeletedThemes && (
+            <div className="flex items-center justify-between text-[11px] text-stone-500 bg-stone-50 rounded-lg px-2.5 py-1.5 border border-stone-200/70">
+              <span>存在 {deletedThemeCount} 个历史删除主题</span>
               <button
                 type="button"
-                className="btn-primary text-xs py-2 flex items-center justify-center gap-1"
-                disabled={
-                  Boolean(activeRequest) ||
-                  editing ||
-                  !hasDirection(state) ||
-                  Boolean(storageWarning)
-                }
-                onClick={siftActions.confirm}
+                onClick={() => restoreRoutes()}
+                className="text-stone-700 hover:text-stone-900 font-semibold cursor-pointer flex items-center gap-1"
+                title="恢复先前删除的主题卡片"
               >
-                <span>确认基准，生成风格主题</span>
-                <ArrowRight className="h-3 w-3" />
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs py-2"
-                disabled={Boolean(activeRequest)}
-                onClick={() => setEditing(true)}
-              >
-                调整意见
+                <RotateCcw className="h-3 w-3" />
+                <span>一键恢复</span>
               </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Confirmed State Actions */}
-        {confirmed && (
-          <div className="border-t border-line/60 pt-2.5">
-            {totalVisibleThemes === 0 ? (
-              <div className="space-y-2">
-                {hasDeletedThemes && (
-                  <div className="flex items-center justify-between text-[11px] text-stone-600 bg-stone-50 rounded-lg px-2.5 py-1.5 border border-stone-200">
-                    <span className="font-medium text-stone-500">
-                      所有风格主题已被移除
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => restoreRoutes()}
-                      className="text-accent hover:underline cursor-pointer flex items-center gap-1 font-semibold"
-                      title="恢复先前生成的风格主题卡片"
-                    >
-                      <RotateCcw className="h-3 w-3" />
-                      <span>恢复已删主题 ({deletedThemeCount})</span>
-                    </button>
-                  </div>
-                )}
+          {/* Inline Direction Adjustment Form */}
+          {editing && (
+            <form
+              className="rounded-xl border border-stone-200 bg-stone-50/70 p-2.5 space-y-2 animate-in fade-in duration-150"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                await siftActions.correct();
+                if (!useSiftStore.getState().correctionDraft) setEditing(false);
+              }}
+            >
+              <div className="flex items-center justify-between text-[10.5px]">
+                <span className="font-semibold text-stone-700">微调策略意见与设计假设</span>
+                <span className="text-stone-400">Enter 或点击更新</span>
+              </div>
+
+              {/* Starter feedback chips for quick adjustment */}
+              <div className="flex flex-wrap gap-1">
+                {directionStarterChips.map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setCorrectionDraft(
+                        correctionDraft ? `${correctionDraft}；${chip}` : chip
+                      );
+                    }}
+                    className="px-2 py-0.5 rounded-md bg-white hover:bg-stone-100 text-stone-600 border border-stone-200 text-[10px] transition-colors cursor-pointer"
+                  >
+                    + {chip}
+                  </button>
+                ))}
+              </div>
+
+              <textarea
+                autoFocus
+                rows={2}
+                maxLength={2000}
+                value={correctionDraft}
+                onChange={(e) => setCorrectionDraft(e.target.value)}
+                placeholder="例如：希望形态更偏向克制纯粹几何，增强掌心握持亲肤质感，避免廉价塑料感…"
+                className="w-full resize-none rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs text-stone-800 outline-none focus:border-stone-400 leading-relaxed placeholder:text-stone-400"
+              />
+
+              <div className="flex items-center justify-end gap-2 pt-0.5">
                 <button
                   type="button"
-                  className="btn-primary w-full text-xs py-2 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-                  disabled={Boolean(activeRequest)}
-                  onClick={() => void siftActions.regenerateRoutes()}
-                  title="基于已锁定的策略基准，推导 3 套全新的风格主题与检索方向"
+                  onClick={() => setEditing(false)}
+                  className="px-2.5 py-1 text-xs text-stone-500 hover:text-stone-800 cursor-pointer"
                 >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>
-                    {activeRequest
-                      ? "正在推导风格主题…"
-                      : hasDeletedThemes
-                        ? "重新推导 3 套风格主题与检索方向"
-                        : "推导 3 套风格主题与检索方向"}
-                  </span>
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  disabled={!correctionDraft.trim() || Boolean(activeRequest)}
+                  className="px-3 py-1 rounded-lg bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 disabled:opacity-40 cursor-pointer shadow-2xs"
+                >
+                  更新策略方向
                 </button>
               </div>
-            ) : (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] text-emerald-800 bg-emerald-50 rounded-lg px-2.5 py-1.5 border border-emerald-200">
-                  <span className="flex items-center gap-1 font-medium">
-                    <Check className="h-3.5 w-3.5 text-emerald-600" />
-                    {totalVisibleThemes === routes.length
-                      ? "风格主题已就绪，于右侧选择画面切入点"
-                      : `已保留 ${totalVisibleThemes} 套风格主题，于右侧选择画面切入点`}
-                  </span>
-                  <ArrowRight className="h-3 w-3 text-emerald-600" />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    className="flex-1 flex items-center justify-center gap-1.5 text-[11px] font-medium text-stone-600 hover:text-ink bg-stone-50 hover:bg-stone-100/80 border border-line/70 rounded-lg py-1.5 transition-colors cursor-pointer"
-                    disabled={Boolean(activeRequest)}
-                    onClick={() => void siftActions.regenerateRoutes()}
-                    title="重新推导一组互不相同的全新风格主题与检索方向"
-                  >
-                    <RefreshCw
-                      className={`h-3 w-3 text-stone-500 ${activeRequest ? "animate-spin" : ""}`}
-                    />
-                    <span>
-                      {activeRequest ? "正在推导全新主题…" : "换一批风格主题与检索方向"}
-                    </span>
-                  </button>
-                  {hasDeletedThemes && (
-                    <button
-                      type="button"
-                      onClick={() => restoreRoutes()}
-                      className="px-2.5 py-1.5 text-[11px] font-medium text-stone-500 hover:text-stone-800 bg-stone-50 hover:bg-stone-100 border border-line/70 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-                      title="恢复先前删除的主题卡片"
-                    >
-                      <RotateCcw className="h-3 w-3" />
-                      <span>恢复 ({deletedThemeCount})</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Inline Editing */}
-        {editing && (
-          <form
-            className="border-t border-line/60 pt-2"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              await siftActions.correct();
-              if (!useSiftStore.getState().correctionDraft) setEditing(false);
-            }}
-          >
-            <textarea
-              autoFocus
-              rows={2}
-              maxLength={2000}
-              value={correctionDraft}
-              onChange={(e) => setCorrectionDraft(e.target.value)}
-              placeholder="修改或补充方向意见…"
-              className="w-full resize-y rounded-lg border border-line bg-cream/70 px-2.5 py-1.5 text-xs text-ink outline-none focus:border-accent"
-            />
-            <div className="mt-1.5 flex gap-2">
-              <button
-                type="submit"
-                disabled={!correctionDraft.trim()}
-                className="btn-primary flex-1 text-xs !py-1"
-              >
-                更新方向
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs !py-1"
-                onClick={() => setEditing(false)}
-              >
-                收起
-              </button>
-            </div>
-          </form>
-        )}
+            </form>
+          )}
+        </div>
       </div>
     </NodeShell>
   );

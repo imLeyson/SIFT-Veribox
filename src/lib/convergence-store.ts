@@ -43,7 +43,7 @@ const SourceInteractionSchema = z.object({
 
 export const CustomCardSchema = z.object({
   id: z.string(),
-  type: z.enum(["brief", "ask", "state", "route", "step", "platformPlan", "note", "image"]),
+  type: z.enum(["brief", "ask", "state", "route", "step", "platformPlan", "imageGen", "note", "image"]),
   title: z.string().optional(),
   content: z.string().optional(),
   color: z.string().optional(),
@@ -63,6 +63,12 @@ export const CustomEdgeSchema = z.object({
 
 export type CustomEdge = z.infer<typeof CustomEdgeSchema>;
 export type CustomEdgeInput = z.input<typeof CustomEdgeSchema>;
+
+export const CardTagSchema = z.enum(["primary", "serendipity", "review", "stashed"]);
+export type CardTag = z.infer<typeof CardTagSchema>;
+
+export const FilterTagSchema = z.enum(["all", "curated", "primary", "serendipity", "review", "stashed"]);
+export type FilterTag = z.infer<typeof FilterTagSchema>;
 
 const SessionSchema = z
   .object({
@@ -104,6 +110,8 @@ const SessionSchema = z
     customEdges: z.array(CustomEdgeSchema).default([]),
     deletedNodeIds: z.array(z.string()).default([]),
     collapsedNodeIds: z.array(z.string()).default([]),
+    cardTags: z.record(z.string(), CardTagSchema).default({}),
+    activeFilterTag: FilterTagSchema.default("all"),
   })
   .superRefine((value, ctx) => {
     if (
@@ -169,6 +177,8 @@ export type SiftStore = Session & {
   toggleNodeCollapse: (id: string) => void;
   collapseAllNodes: (nodeIds: string[]) => void;
   expandAllNodes: () => void;
+  setCardTag: (nodeId: string, tag: CardTag | null) => void;
+  setActiveFilterTag: (tag: FilterTag) => void;
   reset: () => void;
 };
 
@@ -225,6 +235,8 @@ function emptySession(): Session {
     customEdges: [],
     deletedNodeIds: [],
     collapsedNodeIds: [],
+    cardTags: {},
+    activeFilterTag: "all",
   };
 }
 
@@ -404,7 +416,11 @@ export function createSiftStore(providedStorage?: StateStorage) {
         enterCheckpoint: () => get().convergeNow(),
         confirm: () => {
           const state = get().state;
-          if (!state || state.status !== "checkpoint" || !hasDirection(state))
+          if (
+            !state ||
+            (state.status !== "checkpoint" && state.status !== "questioning") ||
+            !hasDirection(state)
+          )
             return;
           set({
             state: {
@@ -800,8 +816,24 @@ export function createSiftStore(providedStorage?: StateStorage) {
             }
           }
 
+          let nextPlatformPlans = state.platformPlans;
+          if (synthesized.data?.plan) {
+            const newPlan = synthesized.data.plan as PlatformPlan;
+            const existingIdx = nextPlatformPlans.findIndex(
+              (p) => p.id === newPlan.id || p.stepId === newPlan.stepId,
+            );
+            if (existingIdx >= 0) {
+              nextPlatformPlans = nextPlatformPlans.map((p, idx) =>
+                idx === existingIdx ? newPlan : p,
+              );
+            } else {
+              nextPlatformPlans = [...nextPlatformPlans, newPlan];
+            }
+          }
+
           set({
             routes: nextRoutes,
+            platformPlans: nextPlatformPlans,
             customCards: state.customCards.map((c) =>
               c.id === cardId
                 ? {
@@ -921,6 +953,18 @@ export function createSiftStore(providedStorage?: StateStorage) {
           set(() => ({
             collapsedNodeIds: [],
           })),
+        setCardTag: (nodeId: string, tag: CardTag | null) =>
+          set((state) => {
+            const next = { ...state.cardTags };
+            if (tag === null) {
+              delete next[nodeId];
+            } else {
+              next[nodeId] = tag;
+            }
+            return { cardTags: next };
+          }),
+        setActiveFilterTag: (tag: FilterTag) =>
+          set({ activeFilterTag: tag }),
         reset: () =>
           set({ ...emptySession(), activeRequest: null, error: null }),
       }),
@@ -956,6 +1000,8 @@ export function createSiftStore(providedStorage?: StateStorage) {
           customEdges,
           deletedNodeIds,
           collapsedNodeIds,
+          cardTags,
+          activeFilterTag,
         }) => ({
           sessionId,
           rawBrief,
@@ -983,6 +1029,8 @@ export function createSiftStore(providedStorage?: StateStorage) {
           customEdges,
           deletedNodeIds,
           collapsedNodeIds,
+          cardTags,
+          activeFilterTag,
         }),
         merge: (saved, current) => {
           if (!saved) return { ...current, storageWarning: readWarning };
@@ -1035,12 +1083,12 @@ export function resolveNodeContext(
     customCards?: CustomCard[];
   },
 ): ResolvedNodeContext | null {
-  // 1. 00 Brief
+  // 1. 0 Brief
   if (nodeId === "brief") {
     return {
       id: "brief",
       type: "brief",
-      label: "00 简报解析",
+      label: "0 简报解析",
       data: {
         goal: store.state?.brief?.goal || store.rawBrief || "设计任务简报",
         rawBrief: store.rawBrief || "",
@@ -1049,20 +1097,20 @@ export function resolveNodeContext(
     };
   }
 
-  // 2. 02 Strategy Baseline (02 策略基准 - ID can be "direction" or "state")
+  // 2. 2 Strategy Baseline (2 策略基准 - ID can be "direction" or "state")
   if (nodeId === "direction" || nodeId === "state") {
     const intent = store.state?.direction?.intent?.text;
     return {
       id: "direction",
       type: "state",
-      label: intent ? `02 策略基准 (${intent.slice(0, 10)})` : "02 策略基准",
+      label: intent ? `2 策略基准 (${intent.slice(0, 10)})` : "2 策略基准",
       data: {
         state: store.state,
       },
     };
   }
 
-  // 3. 01 Visual Crossroads / Ask (01 视觉抉择 - ID can be "ask", "turn-*", "round-*")
+  // 3. 1 Visual Crossroads / Ask (1 视觉抉择 - ID can be "ask", "turn-*", "round-*")
   if (
     nodeId === "ask" ||
     nodeId.startsWith("turn-") ||
@@ -1071,14 +1119,14 @@ export function resolveNodeContext(
     return {
       id: nodeId,
       type: "ask",
-      label: "01 视觉抉择",
+      label: "1 视觉抉择",
       data: {
         history: store.history,
       },
     };
   }
 
-  // 4. 03 Style Themes (03 风格主题 - standard routes: "route-{id}" or "{id}")
+  // 4. 3 Style Themes (3 风格主题 - standard routes: "route-{id}" or "{id}")
   const matchedRoute = store.routes?.find(
     (r) => r.id === nodeId || `route-${r.id}` === nodeId,
   );
@@ -1092,7 +1140,7 @@ export function resolveNodeContext(
     };
   }
 
-  // 5. 04 Steps (04 视点推进 - standard steps: "step-{routeId}")
+  // 5. 4 Steps (4 视点推进 - standard steps: "step-{routeId}")
   if (nodeId.startsWith("step-")) {
     const routeId = nodeId.replace(/^step-/, "");
     const parentRoute = store.routes?.find(
@@ -1103,7 +1151,7 @@ export function resolveNodeContext(
     return {
       id: nodeId,
       type: "step",
-      label: `04 视点推进 · ${stepTitle}`,
+      label: `4 视点推进 · ${stepTitle}`,
       data: {
         route: parentRoute,
         step,
@@ -1114,7 +1162,7 @@ export function resolveNodeContext(
     };
   }
 
-  // 6. 05 Platform Plans (05 灵感检索 - standard plans: "plan-{stepId}")
+  // 6. 4 Platform Plans (4 灵感检索 - standard plans: "plan-{stepId}")
   if (nodeId.startsWith("plan-")) {
     const stepId = nodeId.replace(/^plan-/, "");
     const plan = store.platformPlans?.find(
@@ -1123,7 +1171,7 @@ export function resolveNodeContext(
     return {
       id: nodeId,
       type: "platformPlan",
-      label: "05 灵感检索",
+      label: "灵感检索",
       data: { plan },
       plan,
     };
@@ -1139,19 +1187,21 @@ export function resolveNodeContext(
     } else if (custom.type === "step") {
       const customStep = custom.data?.step || custom.data?.route?.steps?.[0];
       const stepTitle = customStep?.title ? cleanStepLabel(customStep.title) : "";
-      label = `04 视点推进${stepTitle ? ` · ${stepTitle}` : ""}`;
+      label = `视点推进${stepTitle ? ` · ${stepTitle}` : ""}`;
     } else if (custom.type === "platformPlan") {
-      label = "05 灵感检索";
+      label = "灵感检索";
     } else if (custom.type === "image") {
       label = `参考图：${custom.data?.fileName || custom.title || "意向图"}`;
     } else if (custom.type === "note") {
       label = `便签：${custom.title || "设计手记"}`;
     } else if (custom.type === "state") {
-      label = "02 策略基准";
+      label = "2 策略基准";
     } else if (custom.type === "brief") {
-      label = "00 简报解析";
+      label = "0 简报解析";
     } else if (custom.type === "ask") {
-      label = "01 视觉抉择";
+      label = "1 视觉抉择";
+    } else if (custom.type === "imageGen") {
+      label = `画面生成：${custom.title || "意象出图"}`;
     }
 
     return {

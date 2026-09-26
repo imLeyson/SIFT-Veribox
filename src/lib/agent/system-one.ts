@@ -97,6 +97,11 @@ export type BriefIntentEvaluation = {
   domainIcon: string;
   domainDesc: string;
   suggestion: string;
+  sensorySeeds?: {
+    tactile: string;
+    light: string;
+    philosophy: string;
+  };
 };
 
 export type PlatformRoutingDecision = {
@@ -436,6 +441,38 @@ export function evaluateBriefIntentSync(
 
   const meta = DOMAIN_META[domain];
   const suggestion = generateBriefSuggestion(brief, clarity);
+  // Extract sensory aesthetic seeds for design brainstorming
+  const isSust = /可持续|材料|纤维|回收|毛发|器物|物料/.test(text);
+  const isUI = /界面|saas|ui|ux|后台|dashboard|组件/.test(text);
+  const isTeaOrCoffee = /茶|咖啡|冷泡|饮品|烘焙/.test(text);
+  const isBrand = /品牌|vi|视觉锤|超级符号|宠物|动物/.test(text);
+
+  const sensorySeeds = {
+    tactile: isSust
+      ? "原生纤维微气孔与微颗粒阻尼触感"
+      : isUI
+        ? "1px 冷灰精密描边与暗黑微质感"
+        : isTeaOrCoffee
+          ? "特种原浆棉纸微糙触感与无墨深压凹"
+          : isBrand
+            ? "低饱和温润漫反射与克制留白呼吸"
+            : "质朴微颗粒触感与哑光漫反射",
+    light: isUI
+      ? "低眩光自发光柔光与精准状态高光"
+      : isSust || isTeaOrCoffee
+        ? "45° 侧光深压凹光影与天然漫射"
+        : "柔和漫反射环境光与克制阴影",
+    philosophy: isSust
+      ? "材料物性真实流露，拒绝塑料假感"
+      : isUI
+        ? "德式工程理性与 8px 高密数据骨架"
+        : isTeaOrCoffee
+          ? "极简留白雕塑感与风土原生触觉"
+          : isBrand
+            ? "克制陪伴温度与纯粹正负形符号"
+            : "形式追随触觉与本质功能",
+  };
+
   const latencyMs = Math.max(2, Date.now() - start);
 
   return {
@@ -449,6 +486,7 @@ export function evaluateBriefIntentSync(
     domainIcon: meta.icon,
     domainDesc: meta.desc,
     suggestion,
+    sensorySeeds,
   };
 }
 

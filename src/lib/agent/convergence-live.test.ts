@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { completeJson } from "./llm";
 import { runConvergenceTurn } from "./convergence";
 import { mockConvergence } from "./convergence-mock";
-import { liveConvergence, normalizeLivePayload } from "./convergence-live";
+import { liveConvergence, normalizeLivePayload, sanitizeAntiTeleology } from "./convergence-live";
 import { EXAMPLES } from "./examples";
 import type { ConvergenceInput } from "@/types/convergence";
 vi.mock("./llm", () => ({ llmConfigured: () => true, llmModelName: () => "test-live", completeJson: vi.fn() }));
@@ -265,6 +265,66 @@ describe("live contract guards", () => {
     expect(["questioning", "checkpoint"]).toContain(result.state.status);
     expect(["ask", "checkpoint"]).toContain(result.next.type);
   });
+
+  it("sanitizes pseudo-causal teleological clichés into objective design statements", () => {
+    expect(sanitizeAntiTeleology("品牌字标负责 0.5 秒识别")).toBe("品牌字标居于首要视觉层级");
+    expect(sanitizeAntiTeleology("IP 负责儿童情绪吸引")).toBe("核心视觉图形符号");
+    expect(sanitizeAntiTeleology("大面积色块负责货架辨识度")).toBe("大面积色块构建主视觉图底构架");
+    expect(sanitizeAntiTeleology("圆角增强亲和力")).toBe("大半径圆角模切与倒角收口");
+    expect(sanitizeAntiTeleology("高饱和增强儿童吸引力")).toBe("高饱和纯色平涂/专色体系");
+    expect(sanitizeAntiTeleology("在 0.5 秒内识别核心信息")).toBe("在首要视觉层级核心信息");
+    expect(sanitizeAntiTeleology("具备秒级辨识度")).toBe("具备清晰视觉焦点");
+  });
+
+  it("cleanses teleological rationalizations in model payload during normalization", () => {
+    const input = initial();
+    const payload = mockConvergence(input);
+    payload.state.direction.priorities = [
+      { text: "品牌字标负责 0.5 秒识别", basis: "assumption", sourceIds: ["brief"] },
+      { text: "大面积色块负责货架辨识度", basis: "user", sourceIds: ["brief"] },
+      { text: "圆角增强亲和力", basis: "assumption", sourceIds: ["brief"] },
+    ];
+    payload.state.currentHypothesis = "以高饱和增强儿童吸引力，配合圆角增强亲和力";
+    payload.next = {
+      type: "ask",
+      questions: [
+        {
+          id: "q1",
+          uncertaintyId: "u1",
+          prompt: "包装正面如何建立 0.5 秒瞬间识别？",
+          constraintRefs: [],
+          options: [
+            { id: "a", label: "IP 负责儿童情绪吸引" },
+            { id: "b", label: "大面积色块负责货架辨识度" },
+          ],
+        },
+        {
+          id: "q2",
+          uncertaintyId: "u2",
+          prompt: "圆角造型是否用于增强亲和力？",
+          constraintRefs: [],
+          options: [
+            { id: "a", label: "增强亲和力" },
+            { id: "b", label: "纯粹物理安全" },
+          ],
+        },
+      ],
+    };
+
+    const normalized = normalizeLivePayload(payload, input) as typeof payload;
+    expect(normalized.state.direction.priorities[0].text).toBe("品牌字标居于首要视觉层级");
+    expect(normalized.state.direction.priorities[1].text).toBe("大面积色块构建主视觉图底构架");
+    expect(normalized.state.direction.priorities[2].text).toBe("大半径圆角模切与倒角收口");
+    expect(normalized.state.currentHypothesis).toContain("高饱和纯色平涂/专色体系");
+    expect(normalized.state.currentHypothesis).toContain("大半径圆角模切与倒角收口");
+    expect(normalized.state.currentHypothesis).not.toContain("增强亲和力");
+    expect(normalized.state.currentHypothesis).not.toContain("增强儿童吸引力");
+    if (normalized.next.type === "ask") {
+      expect(normalized.next.questions[0].prompt).not.toContain("0.5 秒");
+      expect(normalized.next.questions[0].options[0].label).toBe("核心视觉图形符号");
+    }
+  });
 });
+
 
 

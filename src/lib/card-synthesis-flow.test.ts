@@ -2,10 +2,12 @@ import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
 import { ReactFlowProvider } from "@xyflow/react";
-import { useSiftStore } from "./convergence-store";
+import { useSiftStore } from "@/lib/convergence-store";
 import { RouteNode } from "@/components/flow/nodes/RouteNode";
 import { StepNode } from "@/components/flow/nodes/StepNode";
 import { PlatformPlanNode } from "@/components/flow/nodes/PlatformPlanNode";
+import { ImageGenNode } from "@/components/flow/nodes/ImageGenNode";
+import { CardChatPanel } from "@/components/flow/CardChatPanel";
 import type { Route } from "@/types/routes";
 
 describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
@@ -98,8 +100,8 @@ describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
     expect(updatedCard.data?.isEmpty).toBe(false);
     expect(updatedCard.data?.isBlended).toBe(true);
     expect(updatedCard.data?.route).toBeDefined();
-    expect(updatedCard.data?.route.themeName).toContain("清透浅底 · 风味色块");
-    expect(updatedCard.data?.route.themeName).toContain("原浆纸白 · 微肌理留白");
+    expect(updatedCard.data?.route.themeName).toContain("《");
+    expect(updatedCard.data?.route.startingPoint).toContain("清透浅底");
 
     // 5. Test rendering RouteNode component for the synthesized card
     let renderedHtml = "";
@@ -131,9 +133,8 @@ describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
     expect(renderedHtml).toContain("跨界融合");
     expect(renderedHtml).toContain("清透浅底");
     expect(renderedHtml).toContain("原浆纸白");
-    expect(renderedHtml).toContain("核心视觉手法");
-    expect(renderedHtml).toContain("设计取舍与权衡");
-    expect(renderedHtml).toContain("防跑偏提醒");
+    expect(renderedHtml).toContain("设计取舍");
+    expect(renderedHtml).toContain("避坑提醒");
   });
 
   it("safely synthesizes step node and platform plan node without crashes", () => {
@@ -158,7 +159,7 @@ describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
     const stepCard = useSiftStore.getState().customCards.find((c) => c.id === stepCardId)!;
     expect(stepCard.data?.isEmpty).toBe(false);
 
-    // 2. Add custom PlatformPlan card connected to Step card
+    // 2. Add custom PlatformPlan card connected directly to the route.
     const planCardId = useSiftStore.getState().addCustomCard({
       id: "card-plan-test",
       type: "platformPlan",
@@ -168,8 +169,8 @@ describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
     });
 
     useSiftStore.getState().addCustomEdge({
-      id: "edge-step-plan",
-      source: stepCardId,
+      id: "edge-route-plan",
+      source: "route-r1",
       target: planCardId,
     });
 
@@ -208,29 +209,242 @@ describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
     }).not.toThrow();
 
     // 4. Render PlatformPlanNode (both when empty and when synthesized)
+    const renderedPlanEmpty = renderToString(
+      React.createElement(
+        ReactFlowProvider,
+        null,
+        React.createElement(PlatformPlanNode, {
+          id: planCard.id,
+          data: { ...planCard.data, isEmpty: true },
+          selected: false,
+        } as any)
+      )
+    );
+    expect(renderedPlanEmpty).toContain("灵感检索");
+    expect(renderedPlanEmpty).not.toContain("4 灵感检索");
+
+    const renderedPlanPopulated = renderToString(
+      React.createElement(
+        ReactFlowProvider,
+        null,
+        React.createElement(PlatformPlanNode, {
+          id: planCard.id,
+          data: planCard.data,
+          selected: false,
+        } as any)
+      )
+    );
+    expect(renderedPlanPopulated).toContain("灵感检索");
+    expect(renderedPlanPopulated).not.toContain("4 灵感检索");
+  });
+
+  it("safely synthesizes ImageGen card connected to theme route and renders without crash", () => {
+    // 1. Add custom ImageGen card connected to route r1
+    const imageGenCardId = useSiftStore.getState().addCustomCard({
+      type: "imageGen",
+      title: "空白画面生成待推导",
+      position: { x: 1200, y: 300 },
+      data: { isEmpty: true },
+    });
+
+    useSiftStore.getState().addCustomEdge({
+      id: "edge-r1-imagegen",
+      source: "route-r1",
+      target: imageGenCardId,
+    });
+
+    // 2. User clicks synthesize card
+    const success = useSiftStore.getState().synthesizeCard(imageGenCardId);
+    expect(success).toBe(true);
+
+    const imageGenCard = useSiftStore
+      .getState()
+      .customCards.find((c) => c.id === imageGenCardId)!;
+    expect(imageGenCard.data?.isEmpty).toBe(false);
+    expect(imageGenCard.data?.prompt).toBeDefined();
+    expect(imageGenCard.data?.negativePrompt).toBeDefined();
+    expect(imageGenCard.data?.aspectRatio).toBe("3:4");
+
+    // 3. Render ImageGenNode (both when empty and when synthesized)
+    let renderedEmpty = "";
+    let renderedPopulated = "";
     expect(() => {
-      renderToString(
+      renderedEmpty = renderToString(
         React.createElement(
           ReactFlowProvider,
           null,
-          React.createElement(PlatformPlanNode, {
-            id: planCard.id,
-            data: { ...planCard.data, isEmpty: true },
+          React.createElement(ImageGenNode, {
+            id: "unconnected-imagegen-test",
+            data: { isEmpty: true },
             selected: false,
           } as any)
         )
       );
-      renderToString(
+      renderedPopulated = renderToString(
         React.createElement(
           ReactFlowProvider,
           null,
-          React.createElement(PlatformPlanNode, {
-            id: planCard.id,
-            data: planCard.data,
+          React.createElement(ImageGenNode, {
+            id: imageGenCard.id,
+            data: imageGenCard.data,
             selected: false,
           } as any)
         )
       );
     }).not.toThrow();
+
+    expect(renderedEmpty).toContain("画面生成");
+    expect(renderedEmpty).not.toContain("5 画面生成");
+    expect(renderedEmpty).toContain("从「3 风格主题」连线至此");
+
+    expect(renderedPopulated).toContain("画面生成");
+    expect(renderedPopulated).not.toContain("5 画面生成");
+    expect(renderedPopulated).toContain("画面提示词");
+    expect(renderedPopulated).toContain("推导概念画面");
+    expect(renderedPopulated).toContain("画面比例");
+    expect(renderedPopulated).not.toContain("风格渲染基底");
+
+
+    // 4. Test collapsed state: photo is retained, prompt/negative keywords are folded away
+    useSiftStore.getState().toggleNodeCollapse(imageGenCard.id);
+    expect(useSiftStore.getState().collapsedNodeIds).toContain(imageGenCard.id);
+    const renderedCollapsed = renderToString(
+      React.createElement(
+        ReactFlowProvider,
+        null,
+        React.createElement(ImageGenNode, {
+          id: imageGenCard.id,
+          data: {
+            ...imageGenCard.data,
+            imageUrl: "data:image/svg+xml;utf8,<svg>test-image</svg>",
+            candidates: [
+              {
+                id: "c-1",
+                url: "data:image/svg+xml;utf8,<svg>test-image</svg>",
+                createdAt: 12345,
+                variantIndex: 0,
+              },
+            ],
+          },
+          selected: false,
+        } as any)
+      )
+    );
+
+    // Header & photo are present in collapsed state
+    expect(renderedCollapsed).toContain("画面生成");
+    expect(renderedCollapsed).not.toContain("5 画面生成");
+    expect(renderedCollapsed).toContain("data:image/svg+xml;utf8,&lt;svg&gt;test-image&lt;/svg&gt;");
+    expect(renderedCollapsed).toContain("检视");
+    expect(renderedCollapsed).toContain("方案 01");
+
+
+
+
+
+    // Detailed prompt inputs & controls are hidden in collapsed state
+    expect(renderedCollapsed).not.toContain("画面提示词");
+    expect(renderedCollapsed).not.toContain("画面比例");
+
+    // 5. Test collapsed state with multiple candidates shows version selector
+    const renderedCollapsedMulti = renderToString(
+      React.createElement(
+        ReactFlowProvider,
+        null,
+        React.createElement(ImageGenNode, {
+          id: imageGenCard.id,
+          data: {
+            ...imageGenCard.data,
+            imageUrl: "data:image/svg+xml;utf8,<svg>candidate-2</svg>",
+            candidates: [
+              { id: "c-1", url: "data:image/svg+xml;utf8,<svg>candidate-1</svg>", createdAt: 1, variantIndex: 0 },
+              { id: "c-2", url: "data:image/svg+xml;utf8,<svg>candidate-2</svg>", createdAt: 2, variantIndex: 1 },
+            ],
+            activeCandidateIndex: 1,
+          },
+          selected: false,
+        } as any)
+      )
+    );
+
+    expect(renderedCollapsedMulti).toContain("方案 02");
+    expect(renderedCollapsedMulti).toContain("共 2 版");
+    expect(renderedCollapsedMulti).toContain("data:image/svg+xml;utf8,&lt;svg&gt;candidate-2&lt;/svg&gt;");
+  });
+
+  it("allows standalone direct prompt input and deep customization without upstream constraints", () => {
+    // Standalone card created without upstream connection
+    const customPrompt = "暗黑极简钛合金保温杯，粗哑光微肌理，大理石台面，侧光漫反射，8k超写实商业产品摄影";
+    const standaloneNode = React.createElement(
+      ReactFlowProvider,
+      null,
+      React.createElement(ImageGenNode, {
+        id: "standalone-custom-imagegen",
+        data: {
+          isEmpty: true,
+          customTitle: "《钛金暗黑杯》",
+          prompt: customPrompt,
+          aspectRatio: "9:16",
+          stylePreset: "cinematic",
+          refWeight: 75,
+        },
+        selected: true,
+      } as any)
+    );
+
+    const rendered = renderToString(standaloneNode);
+
+    // Direct custom title & prompt are immediately rendered without blocking
+    expect(rendered).toContain("画面生成");
+    expect(rendered).not.toContain("5 画面生成");
+    expect(rendered).toContain("《钛金暗黑杯》");
+    expect(rendered).toContain("暗黑极简钛合金保温杯");
+    expect(rendered).toContain("9:16");
+    expect(rendered).not.toContain("风格渲染基底");
+    expect(rendered).toContain("推导概念画面");
+  });
+
+  it("keeps the legacy chat panel isolated from active card rendering", () => {
+    // 1. Render CardChatPanel directly
+    let appliedPatch: any = null;
+    const chatHtml = renderToString(
+      React.createElement(CardChatPanel, {
+        nodeId: "test-node",
+        cardType: "imageGen",
+        cardTitle: "《极简冷萃壶》",
+        cardData: { prompt: "极简白瓷冷萃壶" },
+        upstreamContext: { themeName: "重构秩序" },
+        onApplyUpdate: (patch) => {
+          appliedPatch = patch;
+        },
+        onClose: () => {},
+      })
+    );
+
+    // Verify Copilot greeting and starter chips are rendered
+    expect(chatHtml).toContain("卡片协同 Co-pilot");
+    expect(chatHtml).toContain("重构秩序");
+    expect(chatHtml).toContain("快捷建议:");
+    expect(chatHtml).toContain("强化高级影棚 45° 立体侧光");
+    expect(chatHtml).toContain("注入哑光半透骨瓷阻尼触感");
+    expect(chatHtml).toContain("返回卡片");
+
+    // 2. Render ImageGenNode and verify the active card shell has no chat switcher.
+    const imageGenHtml = renderToString(
+      React.createElement(
+        ReactFlowProvider,
+        null,
+        React.createElement(ImageGenNode, {
+          id: "card-chat-test",
+          data: {
+            prompt: "测试提示词",
+            themeName: "重构秩序",
+          },
+          selected: true,
+        } as any)
+      )
+    );
+
+    expect(imageGenHtml).not.toContain("追问");
   });
 });

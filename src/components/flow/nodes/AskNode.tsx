@@ -1,22 +1,176 @@
 "use client";
+import { useState } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { QuestionBlock } from "../QuestionBlock";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
-import { answerText } from "@/types/convergence";
+import { answerText, type Answer, type Question } from "@/types/convergence";
+import { runIndependentAskConvergence } from "@/lib/independent-chain-runner";
 
-export type FlowData = { historyId?: string };
+export type FlowData = {
+  historyId?: string;
+  questions?: Question[];
+  parentBriefId?: string;
+  rawBrief?: string;
+  state?: any;
+  status?: string;
+  answered?: boolean;
+  answers?: Answer[];
+};
+
 export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
   const { history, next, activeRequest } = useSiftStore();
+  const [localDrafts, setLocalDrafts] = useState<Answer[]>([]);
+  const isCustomAsk = Boolean(data.questions);
+
+  // 1. Independent Custom Ask Card
+  if (isCustomAsk && data.questions) {
+    const isRunning = data.status === "running";
+    const isAnswered = Boolean(data.answered || data.status === "completed");
+
+    if (isAnswered) {
+      const answers = data.answers || [];
+      return (
+        <NodeShell
+          nodeId={id}
+          stage="1"
+          kicker="1 视觉抉择"
+          title="已确认的视觉抉择"
+          badge={
+            <span className="text-[10px] font-medium text-sky-800 bg-sky-50 border border-sky-200/80 px-1.5 py-0.5 rounded">
+              ✓ 已确认
+            </span>
+          }
+          selected={selected}
+          collapsedContent={
+            <div className="space-y-1.5 text-xs">
+              <span className="font-semibold text-sky-900 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-sky-600" />
+                已锁定视觉取舍 ({data.questions.length} 项)
+              </span>
+              <p className="text-xs text-stone-600 line-clamp-2">
+                已为当前链路收敛策略基准
+              </p>
+            </div>
+          }
+        >
+          <div className="space-y-2">
+            {data.questions.map((question, idx) => {
+              const ans = answers.find((a) => a.questionId === question.id);
+              return (
+                <div
+                  key={question.id}
+                  className="rounded-xl border border-line/60 bg-white/70 p-2.5 text-xs space-y-1"
+                >
+                  <p className="font-medium text-ink leading-snug">
+                    {idx + 1}. {question.prompt}
+                  </p>
+                  <div className="pt-0.5">
+                    <span className="inline-flex items-center gap-1 rounded bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-900 border border-sky-200/70">
+                      <span>已选：</span>
+                      <span>{ans ? answerText(question, ans) : "默认确认"}</span>
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </NodeShell>
+      );
+    }
+
+    return (
+      <NodeShell
+        nodeId={id}
+        stage="1"
+        kicker="1 视觉抉择"
+        title="关键视觉抉择"
+        badge={
+          <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
+            待抉择
+          </span>
+        }
+        selected={selected}
+        collapsedContent={
+          <div className="space-y-1.5 text-xs">
+            <span className="font-semibold text-sky-900 flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-600" />
+              独立链路分水岭抉择
+            </span>
+            <span className="text-[10px] text-stone-400 font-mono">
+              {data.questions.length} 道核心提问
+            </span>
+          </div>
+        }
+      >
+        <QuestionBlock
+          questions={data.questions}
+          drafts={localDrafts}
+          setDrafts={setLocalDrafts}
+          disabled={isRunning}
+        />
+        <div className="mt-3 border-t border-line/60 pt-2.5 space-y-2">
+          <button
+            type="button"
+            className="btn-primary w-full text-xs py-2 shadow-xs cursor-pointer"
+            disabled={isRunning}
+            onClick={async () => {
+              try {
+                await runIndependentAskConvergence({
+                  askCardId: id,
+                  parentBriefId: data.parentBriefId,
+                  rawBrief: data.rawBrief || "",
+                  state: data.state,
+                  answers: localDrafts,
+                });
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+          >
+            {isRunning ? "正在推进策略…" : "确认抉择，推进策略基准 →"}
+          </button>
+          <button
+            type="button"
+            className="btn-ghost w-full text-xs !py-1.5 text-stone-600 hover:text-ink cursor-pointer"
+            disabled={isRunning}
+            onClick={async () => {
+              try {
+                await runIndependentAskConvergence({
+                  askCardId: id,
+                  parentBriefId: data.parentBriefId,
+                  rawBrief: data.rawBrief || "",
+                  state: data.state,
+                  answers: [],
+                  skipToConverge: true,
+                });
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+          >
+            跳过提问，收敛策略基准 →
+          </button>
+        </div>
+      </NodeShell>
+    );
+  }
+
+  // 2. Main Pipeline Active Question Round
   if (!data.historyId) {
     if (next?.type === "ask") {
       return (
         <NodeShell
           nodeId={id}
-          stage="01"
-          kicker="01 视觉抉择 · 排除模糊地带"
+          stage="1"
+          kicker="1 视觉抉择"
           title="关键视觉抉择"
+          badge={
+            <span className="text-[10px] font-medium text-sky-800 bg-sky-50 border border-sky-200/80 px-1.5 py-0.5 rounded">
+              分水岭抉择
+            </span>
+          }
           selected={selected}
           collapsedContent={
             <div className="space-y-1.5 text-xs">
@@ -59,9 +213,14 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
     return (
       <NodeShell
         nodeId={id}
-        stage="01"
-        kicker="01 视觉抉择 · 探索分支"
+        stage="1"
+        kicker="1 视觉抉择"
         title="关键视觉抉择（探索）"
+        badge={
+          <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
+            探索分支
+          </span>
+        }
         selected={selected}
       >
         <div className="space-y-3 text-xs leading-relaxed">
@@ -85,14 +244,21 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
       </NodeShell>
     );
   }
+
+  // 3. Main Pipeline History Turns
   const turn = history.find((h) => h.id === data.historyId);
   if (!turn) {
     return (
       <NodeShell
         nodeId={id}
-        stage="01"
-        kicker="01 视觉抉择 · 决策记录"
+        stage="1"
+        kicker="1 视觉抉择"
         title="已记录的视觉抉择"
+        badge={
+          <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
+            决策记录
+          </span>
+        }
         selected={selected}
       >
         <p className="text-xs text-stone-500">此轮决策已整合进全局会话上下文。</p>
@@ -124,14 +290,19 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
   return (
     <NodeShell
       nodeId={id}
-      stage="01"
-      kicker={`01 视觉抉择 · R${turn.afterRevision}`}
+      stage="1"
+      kicker="1 视觉抉择"
       title={
         turn.event.type === "correct"
           ? "已补充修改"
           : turn.event.type === "checkpoint"
             ? "检查点选择"
             : "视觉抉择记录"
+      }
+      badge={
+        <span className="text-[10px] font-medium text-sky-800 bg-sky-50 border border-sky-200/80 px-1.5 py-0.5 rounded">
+          {`R${turn.afterRevision}`}
+        </span>
       }
       selected={selected}
       collapsedContent={

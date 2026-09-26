@@ -73,8 +73,8 @@ export function StepNode({ id, data, selected }: NodeProps) {
       <div className="w-[390px] transition-all duration-300 hover:shadow-md">
         <NodeShell
           nodeId={id}
-          stage="04"
-          kicker="04 视点推进 · 空白视点待推导"
+          stage="4"
+          kicker="4 视点推进"
           title={hasUpstream ? `已连接 ${upstream.count} 个上游，等待生成` : "等待连线导入设计主题"}
           badge={
             <span className="text-[10px] font-mono text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
@@ -85,7 +85,7 @@ export function StepNode({ id, data, selected }: NodeProps) {
           collapsedContent={
             <div className="text-xs text-stone-500 py-1 flex items-center gap-1.5">
               <ArrowRight className="h-3.5 w-3.5 text-indigo-400" />
-              <span>{hasUpstream ? `已连 ${upstream.count} 个上游，点击展开生成` : "未关联设计主题，从「03 风格主题」引线连接"}</span>
+              <span>{hasUpstream ? `已连 ${upstream.count} 个上游，点击展开生成` : "未关联设计主题，从「3 风格主题」引线连接"}</span>
             </div>
           }
         >
@@ -130,7 +130,7 @@ export function StepNode({ id, data, selected }: NodeProps) {
                     尚未关联设计主题
                   </h4>
                   <p className="mt-0.5 text-[11px] text-stone-500 leading-relaxed">
-                    从任意「03 风格主题」卡片拖动引线至此卡片，然后点击下方按钮生成
+                    从任意「3 风格主题」卡片拖动引线至此卡片，然后点击下方按钮生成
                   </p>
                 </div>
 
@@ -184,7 +184,7 @@ export function StepNode({ id, data, selected }: NodeProps) {
   const handleCopyStep = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const text = [
-      `【视点 0${activeIdx + 1}】${cleanStepLabel(currentStep.title)}`,
+      `【视点 ${activeIdx + 1}】${cleanStepLabel(currentStep.title)}`,
       `聚焦问题：${currentStep.question}`,
       currentStep.purpose ? `观察重点：${currentStep.purpose}` : null,
       currentStep.acceptanceCriteria?.length
@@ -206,10 +206,15 @@ export function StepNode({ id, data, selected }: NodeProps) {
     <div className="w-[390px]">
       <NodeShell
         nodeId={id}
-        stage="04"
-        kicker={`04 视点推进 · ${route.themeName || route.title}`}
-        title={`视点试验推进 (0${activeIdx + 1}/${steps.length})`}
+        stage="4"
+        kicker="4 视点推进"
+        title={`视点试验推进 (${activeIdx + 1}/${steps.length})`}
         onRegenerate={upstream.count > 0 ? () => synthesizeCard(id) : undefined}
+        badge={
+          <span className="text-[10px] font-medium text-purple-800 bg-purple-50 border border-purple-200/80 px-1.5 py-0.5 rounded">
+            {`试验 0${activeIdx + 1} / 0${steps.length}`}
+          </span>
+        }
         selected={selected}
         collapsedContent={
           <div className="space-y-2 text-xs">
@@ -234,10 +239,10 @@ export function StepNode({ id, data, selected }: NodeProps) {
                           ? "bg-stone-100 text-stone-700 hover:text-ink hover:bg-stone-200"
                           : "bg-stone-50 text-stone-400 hover:text-stone-700 hover:bg-stone-100"
                     }`}
-                    title={`切换到视点 0${i + 1}：${st.title}`}
+                    title={`切换到视点 ${i + 1}：${st.title}`}
                   >
                     <span className="text-[10px] font-mono shrink-0">
-                      {isCompleted ? "✓" : `0${i + 1}`}
+                      {isCompleted ? "✓" : `${i + 1}`}
                     </span>
                     <span className="whitespace-nowrap shrink-0">{cleanStepLabel(st.title)}</span>
                   </button>
@@ -335,7 +340,7 @@ export function StepNode({ id, data, selected }: NodeProps) {
                   }`}
                 >
                   <span className="text-[10px] font-mono shrink-0">
-                    {isCompleted ? "✓" : `0${i + 1}`}
+                    {isCompleted ? "✓" : `${i + 1}`}
                   </span>
                   <span className="whitespace-nowrap shrink-0">{cleanStepLabel(st.title)}</span>
                 </button>
@@ -406,7 +411,7 @@ export function StepNode({ id, data, selected }: NodeProps) {
                 }
               >
                 <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-                <span className="font-medium">读取视点，规划灵感检索 (05) →</span>
+                <span className="font-medium">读取视点，规划灵感检索 (5) →</span>
               </button>
             ) : (
               hasNextStep && (

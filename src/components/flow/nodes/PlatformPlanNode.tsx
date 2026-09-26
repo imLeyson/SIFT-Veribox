@@ -5,7 +5,7 @@ import type { Node, NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { useSiftStore, getUpstreamSummary } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
-import type { PlatformPlan, PlatformSource } from "@/types/routes";
+import type { PlatformPlan, PlatformSource, RouteStep, Route } from "@/types/routes";
 import { buildPlatformSearchUrl } from "@/lib/agent/platform-registry";
 import { getPlatformInspirationClues } from "@/lib/agent/system-one";
 import {
@@ -26,22 +26,65 @@ export type PlatformPlanNodeData = {
   plan: PlatformPlan;
 };
 
-function getSearchUrl(source: PlatformSource, kwOrRaw?: string): string {
-  if (!kwOrRaw) {
-    const first = source.keywords[0];
-    const target =
-      first?.advancedQuery || first?.calibratedQuery || first?.keyword || "";
-    return target ? buildPlatformSearchUrl(source.platform, target) : source.searchUrl;
+function getFacetTargetKeyword(source: PlatformSource, facetIndex: number): string {
+  if (facetIndex === 0) {
+    const kw = source.keywords.find((k) => k.dimension === "form");
+    if (kw) return kw.advancedQuery || kw.calibratedQuery || kw.keyword;
+  } else if (facetIndex === 1) {
+    const kw = source.keywords.find((k) => k.dimension === "craft");
+    if (kw) return kw.advancedQuery || kw.calibratedQuery || kw.keyword;
+  } else if (facetIndex === 2) {
+    const kw = source.keywords.find((k) => k.dimension === "mood");
+    if (kw) return kw.advancedQuery || kw.calibratedQuery || kw.keyword;
   }
-  const matched = source.keywords.find(
-    (k) =>
-      k.keyword === kwOrRaw ||
-      k.calibratedQuery === kwOrRaw ||
-      k.advancedQuery === kwOrRaw,
-  );
-  const target =
-    matched?.advancedQuery || matched?.calibratedQuery || kwOrRaw;
-  return buildPlatformSearchUrl(source.platform, target);
+  const reality = source.keywords.find((k) => k.dimension === "reality");
+  if (reality) return reality.advancedQuery || reality.calibratedQuery || reality.keyword;
+  const first = source.keywords[0];
+  return first?.advancedQuery || first?.calibratedQuery || first?.keyword || "";
+}
+
+function getSearchUrl(source: PlatformSource, kwOrRaw?: string, facetIndex: number = -1): string {
+  if (kwOrRaw) {
+    const matched = source.keywords.find(
+      (k) =>
+        k.keyword === kwOrRaw ||
+        k.calibratedQuery === kwOrRaw ||
+        k.advancedQuery === kwOrRaw,
+    );
+    const target = matched?.advancedQuery || matched?.calibratedQuery || kwOrRaw;
+    return buildPlatformSearchUrl(source.platform, target);
+  }
+  const target = getFacetTargetKeyword(source, facetIndex);
+  return target ? buildPlatformSearchUrl(source.platform, target) : source.searchUrl;
+}
+
+function getFacetEditorialClues(source: PlatformSource, facetIndex: number, route?: Route) {
+  const themeName = route?.themeName || (route?.title ? route.title.replace(/[【】]/g, "") : "");
+  if (facetIndex === 0) {
+    return {
+      lookFor: themeName
+        ? `观察「${themeName}」纯几何与极简轮廓在各视角的收口与倒角比例，聚焦骨架体量与剪影张力。`
+        : "观察极简纯几何体量在各视角的收口与倒角比例、轮廓剪影与光影转折。",
+      avoid: route?.cons || "琐碎装饰性倒角、浮夸且非必要的异形开槽或塑料玩具感造型。",
+    };
+  }
+  if (facetIndex === 1) {
+    return {
+      lookFor: route?.focusDimension
+        ? `聚焦「${route.focusDimension}」真实打样材质的哑光阻尼度、微肌理漫反射与工艺收口。`
+        : "聚焦真实打样材质的哑光阻尼度、表面漫反射与合模分型线工艺细节。",
+      avoid: "塑料感高光反光、过度平滑无触觉质感的劣质样机感。",
+    };
+  }
+  if (facetIndex === 2) {
+    return {
+      lookFor: themeName
+        ? `考察「${themeName}」置于真实生活场景与自然漫射光下的视觉亲和力与高级静谧感。`
+        : "考察器物置于现实生活居室与漫射天光下的视觉尺度亲和力与高级静谧感。",
+      avoid: "脱离真实物理环境的暗黑科幻舞台棚拍光与过度炫耀的渲染烟雾。",
+    };
+  }
+  return source.inspirationClues || getPlatformInspirationClues(source.platform, { themeName });
 }
 
 function sanitizeKeyword(raw: string, calibrated?: string): string {
@@ -127,21 +170,44 @@ export function PlatformPlanNode({
   const [copiedAllKw, setCopiedAllKw] = useState(false);
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [showSearchTrace, setShowSearchTrace] = useState(false);
+  const [facetIndex, setFacetIndex] = useState<number>(-1);
+
+  const plan = data?.plan ?? DEFAULT_FALLBACK_PLAN;
+  const route =
+    routes.find((r) => r.id === plan.routeId || r.id === selectedRouteId) ??
+    customCards.find((c) => c.data?.route?.id === plan.routeId)?.data?.route;
+  const themeName = route?.themeName || (route?.title ? route.title.replace(/[【】]/g, "") : "风格主题");
 
   const handleCopyAllKeywords = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const currentPlan = data?.plan ?? DEFAULT_FALLBACK_PLAN;
-    const sources = Array.isArray(currentPlan.primarySources) ? currentPlan.primarySources : [];
-    const lines = sources
-      .filter((s) => !sourceInteractions[`${currentPlan.stepId}_${s.id}`]?.skipped)
-      .map((s) => {
-        const keywords = Array.isArray(s.keywords) ? s.keywords : [];
-        const topKw = keywords[0]?.calibratedQuery || keywords[0]?.keyword || "";
-        return `[${s.platform}] ${topKw}`;
-      })
-      .join("\n");
+    const sources = Array.isArray(plan.primarySources) ? plan.primarySources : [];
+    const activeSources = sources.filter(
+      (s) => !sourceInteractions[`${plan.stepId}_${s.id}`]?.skipped,
+    );
+
+    let textToCopy = "";
+    if (facetIndex === -1) {
+      textToCopy = activeSources
+        .map((s) => {
+          const kwLines = (s.keywords || [])
+            .map((k) => `  • [${k.dimension === "form" ? "造型" : k.dimension === "craft" ? "CMF" : k.dimension === "mood" ? "光影" : "综合"}] ${k.advancedQuery || k.calibratedQuery || k.keyword}`)
+            .join("\n");
+          return `【${s.platform.toUpperCase()} · ${toInspirationCopy(s.roleTag)}】\n${kwLines}`;
+        })
+        .join("\n\n");
+    } else {
+      const facetName = facetIndex === 0 ? "造型母题" : facetIndex === 1 ? "材质工艺" : "场景光影";
+      const lines = activeSources
+        .map((s) => {
+          const targetKw = getFacetTargetKeyword(s, facetIndex);
+          return `• [${s.platform}] ${targetKw}`;
+        })
+        .join("\n");
+      textToCopy = `【${themeName} · ${facetName}切片词】\n${lines}`;
+    }
+
     try {
-      await navigator.clipboard.writeText(lines);
+      await navigator.clipboard.writeText(textToCopy);
       setCopiedAllKw(true);
       setTimeout(() => setCopiedAllKw(false), 1800);
     } catch {
@@ -162,9 +228,9 @@ export function PlatformPlanNode({
       <div className="w-[390px] transition-all duration-300 hover:shadow-md">
         <NodeShell
           nodeId={id}
-          stage="05"
-          kicker="05 灵感检索 · 空白方案待推导"
-          title={hasUpstream ? `已连接 ${upstream.count} 个上游，等待生成` : "等待连线导入视点试验"}
+          stage="4"
+          kicker="灵感检索"
+          title={hasUpstream ? `已连接 ${upstream.count} 个上游，等待生成` : "等待连线导入风格主题"}
           badge={
             <span className="text-[10px] font-mono text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
               空白卡片
@@ -174,7 +240,7 @@ export function PlatformPlanNode({
           collapsedContent={
             <div className="text-xs text-stone-500 py-1 flex items-center gap-1.5">
               <Search className="h-3.5 w-3.5 text-amber-500" />
-              <span>{hasUpstream ? `已连 ${upstream.count} 个上游，点击展开生成` : "未关联视点，从「04 视点推进」引线连接"}</span>
+              <span>{hasUpstream ? `已连 ${upstream.count} 个上游，点击展开生成` : "未关联风格主题，从「3 风格主题」引线连接"}</span>
             </div>
           }
         >
@@ -206,7 +272,7 @@ export function PlatformPlanNode({
                   className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-[0.99] text-white text-xs font-semibold shadow-md shadow-amber-200 transition-all cursor-pointer"
                 >
                   <Search className="h-3.5 w-3.5 text-amber-200" />
-                  <span>点击根据已连上下文生成检索方案</span>
+                  <span>点击根据已连主题生成检索方案</span>
                 </button>
               </div>
             ) : (
@@ -216,10 +282,10 @@ export function PlatformPlanNode({
                 </div>
                 <div>
                   <h4 className="text-xs font-semibold text-stone-800">
-                    尚未关联视点试验
+                    尚未关联风格主题
                   </h4>
                   <p className="mt-0.5 text-[11px] text-stone-500 leading-relaxed">
-                    从任意「04 视点推进」或「03 风格主题」拖动引线至此卡片，然后点击下方按钮生成
+                    从任意「3 风格主题」拖动引线至此卡片，然后点击下方按钮生成
                   </p>
                 </div>
 
@@ -228,7 +294,7 @@ export function PlatformPlanNode({
                   disabled
                   className="w-full py-2.5 px-3 rounded-xl bg-stone-100 text-stone-400 text-xs font-medium cursor-not-allowed border border-stone-200/60"
                 >
-                  等待连线导入视点或主题
+                  等待连线导入风格主题
                 </button>
               </div>
             )}
@@ -239,7 +305,7 @@ export function PlatformPlanNode({
                 <span>支持的引线连接与生成模式：</span>
               </div>
               <p className="leading-relaxed pl-1 text-stone-600">
-                针对当前视点试验的问题与验收准则，自动剔除水词噪点，生成中英双语检索词库与全球渠道规划（Dezeen / Behance / Pinterest / Cosmobullet）。
+                针对选定风格主题的造型母题、材质触感与场景光影，自动剔除水词噪点，生成中英双语检索词库与全球渠道规划（Dezeen / Behance / Pinterest / Cosmobullet）。
               </p>
             </div>
           </div>
@@ -248,14 +314,17 @@ export function PlatformPlanNode({
     );
   }
 
-  const plan = data?.plan ?? DEFAULT_FALLBACK_PLAN;
   const primarySources = Array.isArray(plan?.primarySources) ? plan.primarySources : [];
-
-  const route = routes.find((r) => r.id === plan.routeId || r.id === selectedRouteId);
-  const step = route?.steps?.find((st) => st.id === plan.stepId);
+  const steps: RouteStep[] = (route?.steps ?? []) as RouteStep[];
+  const step = steps[facetIndex >= 0 ? facetIndex : 0];
   const stepTitle = step ? step.title : "探索搜索方案";
   const briefAnchor = getBriefAnchor(rawBrief, state?.brief.goal);
   const convergenceAnchor = getConvergenceAnchor(state);
+
+  const objectiveText =
+    facetIndex >= 0 && steps[facetIndex]
+      ? `切片聚焦「${steps[facetIndex].title}」：${toInspirationCopy(steps[facetIndex].question || steps[facetIndex].purpose || "")}`
+      : `围绕「${themeName}」视觉主张与「${route?.focusDimension || "核心特征"}」收集高质量先锋视觉证据，只做灵感对照。`;
 
   const handleCopy = async (sourceId: string, kw: string) => {
     const success = await siftActions.copyKeyword(plan.stepId, sourceId, kw);
@@ -269,8 +338,8 @@ export function PlatformPlanNode({
     <div className="w-[390px]">
       <NodeShell
         nodeId={id}
-        stage="05"
-        kicker={`05 灵感检索 · ${stepTitle}`}
+        stage="4"
+        kicker="灵感检索"
         title="跨平台灵感检索"
         onRegenerate={upstream.count > 0 ? () => synthesizeCard(id) : undefined}
         badge={
@@ -339,12 +408,51 @@ export function PlatformPlanNode({
               </button>
             </div>
           )}
+
+          {/* Multi-facet View Switcher: allows switching between All, 1. Form, 2. CMF, 3. Scene */}
+          {steps.length > 0 && (
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-amber-100/70 border border-amber-200/80 text-[10.5px]">
+              <button
+                type="button"
+                onClick={() => setFacetIndex(-1)}
+                className={`flex-1 py-1 px-1 rounded-lg font-medium text-center transition-all cursor-pointer ${
+                  facetIndex === -1
+                    ? "bg-white text-amber-950 shadow-xs font-semibold"
+                    : "text-amber-800/80 hover:text-amber-950 hover:bg-white/40"
+                }`}
+              >
+                全部综合
+              </button>
+              {steps.slice(0, 3).map((st, sIdx) => {
+                const shortLabel = st.title
+                  .replace(/^Step\s*\d+\s*·\s*/i, "")
+                  .replace(/试验|探索/g, "")
+                  .slice(0, 4);
+                return (
+                  <button
+                    key={st.id || sIdx}
+                    type="button"
+                    onClick={() => setFacetIndex(sIdx)}
+                    className={`flex-1 py-1 px-1 rounded-lg font-medium text-center transition-all cursor-pointer truncate ${
+                      facetIndex === sIdx
+                        ? "bg-white text-amber-950 shadow-xs font-semibold"
+                        : "text-amber-800/80 hover:text-amber-950 hover:bg-white/40"
+                    }`}
+                    title={st.title}
+                  >
+                    {sIdx + 1}. {shortLabel}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Focused Visual Inspiration Objective with Foldable Trace */}
           <div className="rounded-xl border border-amber-200/80 bg-amber-50/50 p-2.5 space-y-1.5">
             <div className="flex items-center justify-between text-[10px] font-semibold text-amber-950">
               <span className="flex items-center gap-1">
                 <Search className="h-3 w-3 text-amber-700" />
-                检索目标 · {route?.themeName || route?.title || "风格主题"}
+                检索目标 · {themeName} {facetIndex >= 0 ? `· 0${facetIndex + 1}` : ""}
               </span>
               <button
                 type="button"
@@ -355,7 +463,7 @@ export function PlatformPlanNode({
               </button>
             </div>
             <p className="text-[11.5px] leading-relaxed text-amber-950 font-medium">
-              围绕「{toInspirationCopy(step?.question || stepTitle)}」收集高质量视觉证据，只做灵感对照。
+              {objectiveText}
             </p>
             {showSearchTrace && (
               <div className="grid gap-1 text-[10px] leading-relaxed text-amber-950/75 pt-1.5 border-t border-amber-200/60 animate-in fade-in duration-150">
@@ -366,7 +474,15 @@ export function PlatformPlanNode({
           </div>
 
           <div className="flex items-center justify-between text-muted text-[11px] pb-0.5">
-            <span>精选 3 处灵感渠道</span>
+            <span>
+              {facetIndex === 0
+                ? "聚焦：1. 造型母题"
+                : facetIndex === 1
+                  ? "聚焦：2. 材质工艺"
+                  : facetIndex === 2
+                    ? "聚焦：3. 场景光影"
+                    : "精选 3 处灵感渠道"}
+            </span>
             <button
               type="button"
               onClick={handleCopyAllKeywords}
@@ -381,7 +497,15 @@ export function PlatformPlanNode({
               ) : (
                 <>
                   <Copy className="h-3 w-3 text-stone-400" />
-                  <span>复制全部检索词</span>
+                  <span>
+                    {facetIndex === 0
+                      ? "复制造型切片词"
+                      : facetIndex === 1
+                        ? "复制材质切片词"
+                        : facetIndex === 2
+                          ? "复制场景切片词"
+                          : "复制全部检索词"}
+                  </span>
                 </>
               )}
             </button>
@@ -393,10 +517,10 @@ export function PlatformPlanNode({
               const key = `${plan.stepId}_${source.id}`;
               const interaction = sourceInteractions[key] ?? {};
               const isSkipped = interaction.skipped;
-              const clues =
-                source.inspirationClues || getPlatformInspirationClues(source.platform);
+              const clues = getFacetEditorialClues(source, facetIndex, route);
               const sourceReason = toInspirationCopy(source.reason);
               const roleTag = toInspirationCopy(source.roleTag);
+              const activeFacetKw = getFacetTargetKeyword(source, facetIndex);
 
               return (
                 <div
@@ -446,17 +570,17 @@ export function PlatformPlanNode({
                         <RefreshCw className="h-3 w-3" />
                       </button>
                       <a
-                        href={getSearchUrl(source)}
+                        href={getSearchUrl(source, undefined, facetIndex)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        title={`在 ${source.platform} 检索`}
+                        title={`在 ${source.platform} 检索当前切面`}
                         className="rounded p-1 text-stone-500 hover:text-accent transition-colors inline-flex items-center"
                         onClick={() =>
                           siftActions.recordSourceAction(
                             plan.stepId,
                             source.id,
                             "opened",
-                            source.keywords[0]?.calibratedQuery || source.keywords[0]?.keyword,
+                            activeFacetKw,
                           )
                         }
                       >
@@ -523,6 +647,13 @@ export function PlatformPlanNode({
                   {!isSkipped && (
                     <div className="mt-2 pt-2 border-t border-line/40 flex flex-wrap items-center gap-1.5">
                       {source.keywords.map((k, ki) => {
+                        const isTargetFacet =
+                          facetIndex === -1
+                            ? true
+                            : (facetIndex === 0 && (k.dimension === "form" || k.dimension === "reality")) ||
+                              (facetIndex === 1 && (k.dimension === "craft" || k.dimension === "reality")) ||
+                              (facetIndex === 2 && (k.dimension === "mood" || k.dimension === "reality"));
+
                         const displayKw = toInspirationCopy(
                           sanitizeKeyword(k.keyword, k.calibratedQuery),
                         );
@@ -534,12 +665,28 @@ export function PlatformPlanNode({
                           copiedKw === k.calibratedQuery ||
                           copiedKw === k.keyword;
 
+                        const dimensionTag =
+                          k.dimension === "form"
+                            ? "造型"
+                            : k.dimension === "craft"
+                              ? "CMF"
+                              : k.dimension === "mood"
+                                ? "光影"
+                                : "综合";
+
                         return (
                           <div
                             key={ki}
-                            className="group inline-flex items-center gap-1 rounded-md border border-line/80 bg-stone-50/60 hover:bg-white hover:border-ink/50 px-2 py-0.5 text-[11px] text-ink transition-all"
+                            className={`group inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] transition-all ${
+                              isTargetFacet
+                                ? "border-amber-300/80 bg-amber-50/80 text-amber-950 font-medium shadow-2xs hover:bg-white hover:border-amber-500"
+                                : "border-line/50 bg-stone-50/40 text-stone-400 hover:text-stone-700 hover:bg-white opacity-60"
+                            }`}
                             title={toInspirationCopy(k.meaning || displayKw)}
                           >
+                            <span className="text-[9px] font-mono text-stone-400 font-normal">
+                              {dimensionTag}
+                            </span>
                             <button
                               type="button"
                               onClick={() => handleCopy(source.id, effectiveCopyKw)}
@@ -550,18 +697,23 @@ export function PlatformPlanNode({
                                   : `点击复制纯净搜索词：${effectiveCopyKw}`
                               }
                             >
-                              <span>{displayKw}</span>
+                              <span className="font-mono text-[10.5px]">{displayKw}</span>
+                              {k.meaning && k.meaning !== displayKw && (
+                                <span className="text-[10px] text-stone-400 font-normal hidden sm:inline truncate max-w-[125px]">
+                                  · {toInspirationCopy(k.meaning)}
+                                </span>
+                              )}
                               {isCopied ? (
                                 <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium font-sans">
                                   <Check className="h-2.5 w-2.5" />
                                   <span>已复制</span>
                                 </span>
                               ) : (
-                                <Copy className="h-2.5 w-2.5 opacity-30 group-hover:opacity-80" />
+                                <Copy className="h-2.5 w-2.5 opacity-30 group-hover:opacity-80 shrink-0" />
                               )}
                             </button>
                             <a
-                              href={getSearchUrl(source, displayKw)}
+                              href={getSearchUrl(source, displayKw, facetIndex)}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={() =>

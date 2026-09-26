@@ -4,22 +4,36 @@ import type { NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
-import { EXAMPLES } from "@/lib/agent/examples";
+import { runIndependentBrief } from "@/lib/independent-chain-runner";
 import { compressImageFile } from "@/lib/image-utils";
-import { ImagePlus, Plus, X, Eye } from "lucide-react";
+import { ImagePlus, Plus, X, Eye, Sparkles } from "lucide-react";
 import { evaluateBriefIntentSync } from "@/lib/agent/system-one";
 
-export function BriefInputNode({ id, selected }: NodeProps) {
-  const {
-    rawBrief,
-    briefImages,
-    state,
-    activeRequest,
-    importedBrief,
-    setRawBrief,
-    addBriefImage,
-    removeBriefImage,
-  } = useSiftStore();
+export function BriefInputNode({ id, data, selected }: NodeProps) {
+  const isCustom = id !== "brief";
+  const customData = ((data as any) ?? {}) as Record<string, any>;
+  const updateCustomCard = useSiftStore((s) => s.updateCustomCard);
+
+  const storeRawBrief = useSiftStore((s) => s.rawBrief);
+  const storeBriefImages = useSiftStore((s) => s.briefImages);
+  const storeState = useSiftStore((s) => s.state);
+  const storeActiveRequest = useSiftStore((s) => s.activeRequest);
+  const importedBrief = useSiftStore((s) => s.importedBrief);
+  const storeSetRawBrief = useSiftStore((s) => s.setRawBrief);
+  const storeAddBriefImage = useSiftStore((s) => s.addBriefImage);
+  const storeRemoveBriefImage = useSiftStore((s) => s.removeBriefImage);
+
+  const [isEditingCustom, setIsEditingCustom] = useState(false);
+
+  // Unified getters based on node identity
+  const rawBrief = isCustom ? (customData.rawBrief ?? "") : storeRawBrief;
+  const briefImages = isCustom ? (customData.briefImages ?? []) : storeBriefImages;
+  const state = isCustom ? (customData.state ?? null) : storeState;
+  const isLocked = Boolean(state) && (!isCustom || !isEditingCustom);
+  const activeRequest = isCustom
+    ? customData.status === "running"
+    : Boolean(storeActiveRequest);
+  const customError = isCustom ? customData.error : null;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [compressing, setCompressing] = useState(false);
@@ -30,6 +44,14 @@ export function BriefInputNode({ id, selected }: NodeProps) {
     rawBrief.trim().length >= 4 ? evaluateBriefIntentSync(rawBrief) : null;
   const confirmedDiagnostics =
     state && rawBrief ? evaluateBriefIntentSync(rawBrief) : null;
+
+  const handleSetRawBrief = (text: string) => {
+    if (isCustom) {
+      updateCustomCard(id, { data: { ...customData, rawBrief: text } });
+    } else {
+      storeSetRawBrief(text);
+    }
+  };
 
   const processFiles = async (files: FileList | File[]) => {
     if (briefImages.length >= 3) return;
@@ -43,12 +65,33 @@ export function BriefInputNode({ id, selected }: NodeProps) {
     try {
       for (const file of targetFiles) {
         const compressed = await compressImageFile(file);
-        addBriefImage(compressed);
+        if (isCustom) {
+          const current = (customData.briefImages as string[]) || [];
+          updateCustomCard(id, {
+            data: { ...customData, briefImages: [...current, compressed] },
+          });
+        } else {
+          storeAddBriefImage(compressed);
+        }
       }
     } catch {
       // Ignore individual file parse errors gracefully
     } finally {
       setCompressing(false);
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    if (isCustom) {
+      const current = (customData.briefImages as string[]) || [];
+      updateCustomCard(id, {
+        data: {
+          ...customData,
+          briefImages: current.filter((_: string, i: number) => i !== index),
+        },
+      });
+    } else {
+      storeRemoveBriefImage(index);
     }
   };
 
@@ -77,23 +120,59 @@ export function BriefInputNode({ id, selected }: NodeProps) {
     }
   };
 
+  const handleStartConvergence = async (fastStart = false) => {
+    if (isCustom) {
+      setIsEditingCustom(false);
+      try {
+        await runIndependentBrief({
+          briefCardId: id,
+          rawBrief,
+          images: briefImages,
+          fastStart,
+        });
+      } catch (err) {
+        console.error("独立简报链路运行失败:", err);
+      }
+    } else {
+      if (fastStart) {
+        void siftActions.fastStart();
+      } else {
+        void siftActions.start();
+      }
+    }
+  };
+
   return (
     <>
       <NodeShell
         nodeId={id}
-        stage="00"
-        kicker={state ? "已锁定" : "视觉意图输入"}
-        title={state ? "设计简报" : "设计目标与背景"}
+        stage="0"
+        kicker="0 简报解析"
+        title={
+          isLocked
+            ? "设计简报"
+            : isCustom
+              ? "新设计目标与意图"
+              : "设计目标与背景"
+        }
         badge={
-          state && confirmedDiagnostics ? (
-            <span className="text-[10px] font-mono text-stone-400">
-              {confirmedDiagnostics.domainLabel}
+          isLocked ? (
+            <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
+              已锁定
+            </span>
+          ) : state && confirmedDiagnostics ? (
+            <span className="text-[10px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded">
+              {confirmedDiagnostics.domainLabel || "已解析"}
             </span>
           ) : !state && briefDiagnostics ? (
-            <span className="text-[10px] font-mono text-stone-400">
+            <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
               {briefDiagnostics.domainLabel}
             </span>
-          ) : undefined
+          ) : (
+            <span className="text-[10px] font-medium text-stone-500 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
+              待输入
+            </span>
+          )
         }
         selected={selected}
         collapsedContent={
@@ -115,18 +194,34 @@ export function BriefInputNode({ id, selected }: NodeProps) {
           </div>
         }
       >
-        {state ? (
+        {isLocked ? (
           <div className="space-y-3">
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink font-serif">
               {rawBrief}
             </p>
+            {confirmedDiagnostics?.sensorySeeds && (
+              <div className="rounded-xl border border-stone-200/80 bg-stone-50/70 p-2.5 text-[10.5px] space-y-1.5">
+                <div className="flex items-center gap-1.5 font-semibold text-stone-700">
+                  <Sparkles className="h-3 w-3 text-amber-600" />
+                  <span>前置美学感官种子</span>
+                </div>
+                <div className="flex flex-wrap gap-1 text-[10px] text-stone-600">
+                  <span className="bg-white border border-stone-200/70 rounded px-1.5 py-0.5">
+                    触感: {confirmedDiagnostics.sensorySeeds.tactile}
+                  </span>
+                  <span className="bg-white border border-stone-200/70 rounded px-1.5 py-0.5">
+                    光影: {confirmedDiagnostics.sensorySeeds.light}
+                  </span>
+                </div>
+              </div>
+            )}
             {briefImages.length > 0 && (
               <div className="pt-2 border-t border-line/60">
                 <span className="text-[10px] font-semibold text-stone-500 block mb-1.5">
                   参考意向图 ({briefImages.length})
                 </span>
                 <div className="flex gap-2 flex-wrap">
-                  {briefImages.map((img, idx) => (
+                  {briefImages.map((img: string, idx: number) => (
                     <button
                       key={idx}
                       type="button"
@@ -147,12 +242,26 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                 </div>
               </div>
             )}
+            {isCustom && (
+              <div className="pt-2 border-t border-line/60 flex items-center justify-between">
+                <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">
+                  ✓ 独立链路已锁定
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingCustom(true)}
+                  className="text-xs text-stone-600 hover:text-ink hover:underline cursor-pointer font-medium"
+                >
+                  调整意图 / 重新编辑
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              void siftActions.start();
+              void handleStartConvergence(false);
             }}
             onPaste={handlePaste}
             onKeyDown={(e) => {
@@ -163,30 +272,36 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                 !activeRequest
               ) {
                 e.preventDefault();
-                void siftActions.start();
+                void handleStartConvergence(false);
               }
             }}
             className="space-y-2.5"
           >
+            {customError && (
+              <div className="rounded-xl bg-rose-50/90 border border-rose-200/80 p-2 text-rose-800 text-xs">
+                {customError}
+              </div>
+            )}
+
             <div className="relative">
               <textarea
-                id="brief"
+                id={`brief-${id}`}
                 value={rawBrief}
-                onChange={(e) => setRawBrief(e.target.value)}
+                onChange={(e) => handleSetRawBrief(e.target.value)}
                 disabled={Boolean(activeRequest)}
                 maxLength={10000}
                 rows={4}
                 placeholder="描述设计目标、视觉调性与期望（如：冷泡茶包装设计，追求克制日常感，避免繁复大插画，重点探索特种纸微触感与极简排版）…"
                 className="w-full resize-y rounded-xl border border-line/80 bg-cream/50 px-3.5 py-2.5 text-xs sm:text-[13px] leading-relaxed outline-none focus:border-stone-800 focus:bg-white transition-colors placeholder:text-stone-400/80"
               />
-              {importedBrief && (
+              {importedBrief && !isCustom && (
                 <span className="absolute top-2 right-2 text-[10px] text-accent font-medium bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60">
                   已载入草案
                 </span>
               )}
             </div>
 
-            {/* Live Brief Diagnostics (Restrained & Calm) */}
+            {/* Live Brief Diagnostics */}
             {rawBrief.trim().length >= 4 && briefDiagnostics && (
               <div className="rounded-lg border border-line/60 bg-stone-50/70 px-3 py-2 space-y-1.5 text-stone-600">
                 <div className="flex items-center justify-between text-[11px]">
@@ -207,6 +322,16 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                   <p className="text-[10.5px] text-stone-500 leading-snug pt-0.5">
                     {briefDiagnostics.suggestion.replace(/^(?:💡|✨|⚡️)\s*/u, "")}
                   </p>
+                )}
+                {briefDiagnostics.sensorySeeds && (
+                  <div className="flex flex-wrap gap-1 pt-1 border-t border-stone-200/50 text-[10px] text-stone-600">
+                    <span className="bg-white/90 border border-stone-200/80 rounded px-1.5 py-0.5">
+                      触感: {briefDiagnostics.sensorySeeds.tactile}
+                    </span>
+                    <span className="bg-white/90 border border-stone-200/80 rounded px-1.5 py-0.5">
+                      光影: {briefDiagnostics.sensorySeeds.light}
+                    </span>
+                  </div>
                 )}
               </div>
             )}
@@ -279,7 +404,7 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                   </span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {briefImages.map((img, idx) => (
+                  {briefImages.map((img: string, idx: number) => (
                     <div
                       key={idx}
                       className="relative group h-12 w-12 rounded-lg overflow-hidden border border-line bg-stone-100 flex-shrink-0"
@@ -294,7 +419,7 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                       <button
                         type="button"
                         disabled={Boolean(activeRequest)}
-                        onClick={() => removeBriefImage(idx)}
+                        onClick={() => handleRemoveImage(idx)}
                         className="absolute top-0.5 right-0.5 h-3.5 w-3.5 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                         title="删除图片"
                       >
@@ -317,7 +442,7 @@ export function BriefInputNode({ id, selected }: NodeProps) {
               </div>
             )}
 
-            {/* Action Buttons: Clean & Confident */}
+            {/* Action Buttons */}
             <div className="grid gap-2 sm:grid-cols-2 pt-0.5">
               <button
                 type="submit"
@@ -325,7 +450,13 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                 disabled={Boolean(activeRequest) || !rawBrief.trim()}
                 title="通过关键视觉提问，锁定设计策略基准"
               >
-                <span>{activeRequest ? "正在推演策略…" : "开始策略收敛"}</span>
+                <span>
+                  {activeRequest
+                    ? "正在推演策略…"
+                    : isCustom
+                      ? "开启新链路收敛"
+                      : "开始策略收敛"}
+                </span>
                 {!activeRequest && rawBrief.trim() && (
                   <kbd className="hidden sm:inline-block rounded bg-white/20 px-1 py-0.2 text-[9.5px] font-sans opacity-70">
                     ⌘↵
@@ -336,29 +467,22 @@ export function BriefInputNode({ id, selected }: NodeProps) {
                 type="button"
                 className="btn-ghost w-full text-xs cursor-pointer py-2.5 border border-line/80 text-stone-600 hover:text-ink hover:bg-stone-50 transition-colors"
                 disabled={Boolean(activeRequest) || !rawBrief.trim()}
-                onClick={() => void siftActions.fastStart()}
-                title="跳过提问，直接推导风格主题与检索方向"
+                onClick={() => void handleStartConvergence(true)}
+                title="跳过提问，直接推导风格主题"
               >
                 跳过提问 · 生成主题
               </button>
             </div>
 
-            {/* Subtle Inline Presets (Only when empty, minimal 1-line text links) */}
-            {!rawBrief.trim() && (
-              <div className="flex items-center gap-1 text-[11px] text-stone-400 pt-0.5 px-0.5">
-                <span className="shrink-0 text-stone-400">参考示例:</span>
-                <div className="flex items-center gap-1 flex-wrap">
-                  {EXAMPLES.slice(0, 4).map((example, i) => (
-                    <button
-                      key={example.id}
-                      type="button"
-                      onClick={() => setRawBrief(example.brief)}
-                      className="hover:text-stone-700 hover:underline cursor-pointer transition-colors"
-                    >
-                      {example.label}{i < 3 ? " ·" : ""}
-                    </button>
-                  ))}
-                </div>
+            {isCustom && isEditingCustom && (
+              <div className="pt-1 text-center">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingCustom(false)}
+                  className="text-[11px] text-stone-400 hover:text-stone-600 underline cursor-pointer"
+                >
+                  取消编辑，保持已锁定状态
+                </button>
               </div>
             )}
           </form>

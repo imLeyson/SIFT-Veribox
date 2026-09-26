@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Plus,
   MousePointer,
@@ -18,6 +18,8 @@ import {
   ChevronUp,
   ChevronsDownUp,
   ChevronsUpDown,
+  Wand2,
+  Star,
 } from "lucide-react";
 import { useSiftStore } from "@/lib/convergence-store";
 import { useReactFlow } from "@xyflow/react";
@@ -29,6 +31,7 @@ export type ToolType =
   | "route"
   | "step"
   | "platformPlan"
+  | "imageGen"
   | "note"
   | "image";
 
@@ -49,51 +52,51 @@ const TOOL_OPTIONS: {
 }[] = [
   {
     type: "brief",
-    label: "00 简报解析",
-    stageBadge: "00",
+    label: "0 简报解析",
+    stageBadge: "0",
     desc: "输入设计目标、受众与意向参考图",
     icon: FileText,
     color: "text-stone-300 bg-stone-800",
   },
   {
     type: "ask",
-    label: "01 视觉抉择",
-    stageBadge: "01",
+    label: "1 视觉抉择",
+    stageBadge: "1",
     desc: "分水岭两极提问，排除模糊地带",
     icon: HelpCircle,
     color: "text-sky-300 bg-sky-950",
   },
   {
     type: "state",
-    label: "02 策略基准",
-    stageBadge: "02",
+    label: "2 策略基准",
+    stageBadge: "2",
     desc: "固化视觉假设、主张与评价准则",
     icon: ShieldCheck,
     color: "text-emerald-300 bg-emerald-950",
   },
   {
     type: "route",
-    label: "03 风格主题",
-    stageBadge: "03",
+    label: "3 风格主题",
+    stageBadge: "3",
     desc: "展开差异化风格方案与血统溯源",
     icon: Sparkles,
     color: "text-indigo-300 bg-indigo-950",
   },
   {
-    type: "step",
-    label: "04 视点推进",
-    stageBadge: "04",
-    desc: "分步深入探索、验收清单与手记",
-    icon: Layers,
-    color: "text-purple-300 bg-purple-950",
-  },
-  {
     type: "platformPlan",
-    label: "05 灵感检索",
-    stageBadge: "05",
+    label: "灵感检索",
+    stageBadge: "4",
     desc: "跨平台去噪语法与中英专业词库",
     icon: Search,
     color: "text-amber-300 bg-amber-950",
+  },
+  {
+    type: "imageGen",
+    label: "画面生成",
+    stageBadge: "5",
+    desc: "基于风格主题或意向描述，推导渲染高保真概念画面",
+    icon: Wand2,
+    color: "text-violet-300 bg-violet-950",
   },
   {
     type: "note",
@@ -123,6 +126,20 @@ export function CanvasToolBar({
   const collapsedNodeIds = useSiftStore((s) => s.collapsedNodeIds);
   const collapseAllNodes = useSiftStore((s) => s.collapseAllNodes);
   const expandAllNodes = useSiftStore((s) => s.expandAllNodes);
+  const cardTags = useSiftStore((s) => s.cardTags);
+  const activeFilterTag = useSiftStore((s) => s.activeFilterTag);
+  const setActiveFilterTag = useSiftStore((s) => s.setActiveFilterTag);
+
+  const tagCounts = useMemo(() => {
+    const counts = { primary: 0, review: 0, serendipity: 0, stashed: 0, totalTagged: 0 };
+    for (const tag of Object.values(cardTags || {})) {
+      if (tag && tag in counts) {
+        counts[tag as keyof typeof counts]++;
+        counts.totalTagged++;
+      }
+    }
+    return counts;
+  }, [cardTags]);
 
   const allCollapsed = collapsedNodeIds.length > 0;
   const handleToggleAll = () => {
@@ -171,6 +188,7 @@ export function CanvasToolBar({
       ref={menuRef}
       className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 select-none flex flex-col items-center"
     >
+
       {/* Popover Card Picker */}
       {menuOpen && (
         <div className="mb-3 w-80 rounded-2xl bg-stone-900/95 p-2 shadow-2xl backdrop-blur-md border border-white/15 animate-in fade-in slide-in-from-bottom-2 duration-150">
@@ -292,7 +310,11 @@ export function CanvasToolBar({
           className={`flex h-9 w-9 items-center justify-center rounded-xl hover:bg-white/10 transition-all cursor-pointer ${
             allCollapsed ? "text-amber-300 bg-white/10" : "text-stone-300 hover:text-white"
           }`}
-          title={allCollapsed ? "展开全部卡片完整内容" : "全部卡片收缩（紧凑速览，仅展示关键内容）"}
+          title={
+            allCollapsed
+              ? "展开全部卡片完整内容（快捷键 G 可针对选中卡片或分支收放）"
+              : "全部卡片收缩为紧凑胶囊（快捷键 G 可针对选中卡片或分支收放）"
+          }
         >
           {allCollapsed ? (
             <ChevronsUpDown className="h-4 w-4" />
@@ -310,6 +332,27 @@ export function CanvasToolBar({
         >
           <Maximize2 className="h-4 w-4" />
         </button>
+
+        {/* Curated View Toggle (when any cards are starred/tagged) */}
+        {tagCounts.totalTagged > 0 && (
+          <>
+            <div className="h-4 w-px bg-white/20 mx-1" />
+            <button
+              type="button"
+              onClick={() => setActiveFilterTag(activeFilterTag === "curated" ? "all" : "curated")}
+              className={`flex h-9 items-center gap-1.5 px-2.5 rounded-xl transition-all cursor-pointer text-xs ${
+                activeFilterTag === "curated"
+                  ? "bg-amber-400/20 text-amber-200 border border-amber-400/40 font-medium shadow-xs"
+                  : "hover:bg-white/10 text-stone-300 hover:text-white"
+              }`}
+              title={activeFilterTag === "curated" ? "退出精选：显示全部探索链路" : "仅看精选：聚焦已收藏与重点卡片"}
+            >
+              <Star className="h-3.5 w-3.5 fill-current text-amber-400" />
+              <span>精选</span>
+              <span className="text-[10px] opacity-70 font-mono">({tagCounts.totalTagged})</span>
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

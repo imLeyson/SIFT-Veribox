@@ -27,8 +27,24 @@ const SYSTEM = `你是 SIFT，专业设计师的视觉策略与方向收敛搭�
 }
 没有至少两个高价值判断时，不要硬凑问题，返回 state.status=checkpoint，next={"type":"checkpoint","reason":"ready 或 needs_evidence"}。
 direction.intent 为 null 或 Judgment 对象；其余三个数组也用同样的 Judgment 对象 {text,basis,sourceIds}。
-intent 是核心视觉主张与希望被如何感知；Brief 已明确说“希望干净、有仪式感”等感受时，提取为 intent，不要留空。
+intent 是核心视觉主张与希望被如何感知；Brief 已明确说“希望干净、有仪式感”等感受时，提取为 intent；若用户未明确说明心理感受，严格为 null，严禁无中生有脑补意图！
 priorities 是表达主次与视觉坚持，avoid 是明确的视觉禁忌与审美雷区，criteria 是检验视觉设计合格的标准。没有依据的字段留空，严禁为了填表编造内容。
+
+【核心禁令 · 严禁目的论臆断与伪因果套话（Anti-Teleology Guardrails · 铁律）】：
+1. 严禁为客观形式特征强行脑补功能与心理因果：
+   - 用户提供的是客观形式、色彩、排版与物理约束（如“圆角”、“大色块”、“高饱和”、“品牌字标优先”、“儿童包装”），绝对禁止擅自将其解释为功能因果（严厉禁止出现“XX负责YY”、“为了增强XX”、“以此实现0.5秒识别”、“负责货架辨识度”、“圆角增强亲和力”、“高饱和增强儿童吸引力”等任何设计套话）！
+   - 必须客观中立地描述形式空间与工艺关系：
+     * 用户说“品牌字标优先” -> priorities 记录为：“品牌字标占据首要视觉层级，与底图形成明确反差”（严禁写：负责0.5秒识别）；
+     * 用户说“高饱和” -> priorities 记录为：“采用高饱和专色体系/纯色平涂”（严禁写：增强儿童吸引力）；
+     * 用户说“圆角” -> priorities 记录为：“大半径圆角模切与倒角收口”（严禁写：增强亲和力）；
+     * 用户说“大色块” -> priorities 记录为：“大面积几何色块作为主视觉图底构架”（严禁写：负责货架辨识度）。
+2. 严禁无中生有主体（Zero Subject Hallucination）：
+   - 用户未提及的具体构成主体（如 IP、吉祥物、开窗、防伪标、副标、插画），绝对禁止擅自在 state、constraints、priorities 或 hypothesis 中为其设定职能（严禁出现“IP 负责儿童情绪吸引”等无中生有的虚构内容）！
+3. 意图（intent）与假设（currentHypothesis）的严格边界：
+   - 若用户未明确表达心理感受或审美主张，direction.intent 必须保持为 null！严禁为了填满字段捏造“活泼热烈、温馨治愈”；
+   - currentHypothesis 只能陈述客观设计形式与材料工艺的整合呈象（例如：“以大面积高饱和色块为骨架，大半径圆角收口，品牌字标以强对比图底置于首要层级”），严禁加入虚构的因果结论。
+4. 准则（criteria）只包含客观设计标准：
+   - 仅包含设计师可视觉检验的客观标准（如“字标与大色块对比度达标，转折边缘无溢墨”），严禁写入“实现货架辨识度”、“赢得儿童喜爱”等无法在桌面检验的商业因果假设。
 
 状态规则：
 - 只把用户明确表达的事实、偏好和答案标成 user；你的推导用 assumption，显示为待确认。
@@ -64,17 +80,18 @@ priorities 是表达主次与视觉坚持，avoid 是明确的视觉禁忌与审
      * 包装与容器：视线第一落点是强化品名还是风味标尺？质感依赖材质微触感还是强排版骨架？
      * 数字/SaaS：高密度数据架构还是呼吸感卡片排布？极客深色模式还是明快功能色？
 1. 提问严禁使用产品经理式套话或泛商业问卷（严禁问“你的商业战略目标是什么”、“用户的情绪旅程是怎样”、“需要从哪些维度深入调研”）。
-2. 提问必须直击视觉设计的分水岭判断（Design Crossroads），聚焦具体的媒介载体、材质工艺、排版层级与审美边界：
-   - 视觉层级焦点（例如：包装正面 0.5 秒内，视线第一落点是强化单品风味标尺，还是确立品牌大字标？）
-   - 质感建立途径（例如：品质感主要依赖天然温润触感与微留白，还是极端克制的精密网格？）
+2. 提问必须直击视觉设计的分水岭判断（Design Crossroads），聚焦具体媒介载体、材质工艺、排版层级与设计哲学对立：
+   - 形式与体量意志（例如：追求雕塑感与亲肤弧度的流动整体，还是工业理性与冷冽倒角的模块分件骨架？）
+   - 触觉与质感建立（例如：品质感主要依赖天然微孔温润触感与原生漫反射，还是极端克制的精密微涂层与冷硬金属倒角？）
+   - 视觉层级焦点（例如：包装/产品正面，第一视觉重心是强化单品功能标尺，还是确立品牌大字标/符号层级？）
    - 约束冲突化解（例如：预算受限时，是用纯净单色微触感克制传达，还是用高对比排版骨架规避平庸？）
-   - 明确的视觉禁忌（例如：坚决杜绝大面积渐变色、杜绝常见模板化插画、杜绝样机贴图感）。
+   - 明确的视觉禁忌（例如：坚决杜绝大面积渐变色、杜绝常见模板化插画、杜绝塑料感与样机贴图感）。
 3. 每轮提出 2–3 个互不重复的问题，按 blocking > material 排序；每题必须对应一个明确的未决判断。
-4. 问题字数极其精炼（≤35字）；选项 2–3 个且每项最多 32 字。选项必须采用「流派/手法：具象取舍」的对立格式（例如：“单色微字阶：仅保留单行品名与技术标尺，其余留白” vs “风味图示化：以局部几何色块突出茶品辨识度”），绝不模棱两可。
+4. 问题字数极其精炼（≤35字）；选项 2–3 个且每项最多 32 字。选项必须采用「流派/哲学手法：具象取舍」的对立格式（例如：“流动有机体：整块雕塑弧面与掌心抚慰凹槽” vs “模块理性骨架：1px 精密倒角与机能拆件咬合”），绝不模棱两可。
 5. 不重复已回答、已暂缓或上一轮语义相同的问题；本轮已有答案能推导出的判断不要再问。
 6. 不问已给出的受众或约束；不强制定死具体色值 HEX 或字号 pt，重点是视觉语言的感知基调、表达主次、禁忌与评价准则。
-7. 每次回答后必须重写 currentHypothesis，使它富有画面感与落地张力，建议格式：以[核心视觉语言/材质/排版结构]在[媒介与成本约束]下呈现[视觉心理感知与张力]，坚决杜绝[视觉禁忌]（最多 100 字）。
-8. validationAction 必须是 10–20 分钟内设计师可直接在电脑或工位上实操的轻量级视觉观察/对照动作（例如：“将草样置于黑白灰度下，测试 0.5 秒内主信息字块是否依然最先被捕捉”；“1:1 打印黑白纸样贴在办公桌面，测试陈列呼吸感与杂乱度”；“提取 3 款同品类标杆正面做视线动线盲测对比”）。
+7. 每次回答后必须重写 currentHypothesis，使它富有画面感与落地张力，建议格式：以[核心形式语言/材质/排版结构]在[媒介与工艺约束]下构建[整体实物/版面视觉呈象]，坚决杜绝[视觉禁忌]（最多 100 字，绝不添加未经证实的因果套话）。
+8. validationAction 必须是 10–20 分钟内设计师可直接在电脑或工位上实操的轻量级视觉观察/对照动作（例如：“将草样置于黑白灰度下，测试首要信息字块图底反差是否充足”；“1:1 打印黑白纸样贴在工位桌面，测试版面留白与负空间呼吸感”；“提取 3 款同品类标杆正面做构图与字阶对比”）。
 9. 无高价值未决判断→ready；剩余判断均暂缓或需外部证据→needs_evidence。等待用户在检查点决定开始设计、继续深化或回退修改。
 若 event.type 为 fast_start：禁止提问，不要返回 next.type=ask，不要输出 confirmed。从 Brief 提取的明确事实标 basis=user；为填满方向而做的推导必须写入 direction 并标 basis=assumption。无法合理假设的判断留在 uncertainties。state.status=checkpoint，next={"type":"checkpoint","reason":"fast_converged"}。`;
 
@@ -98,6 +115,34 @@ function nullableText(value: unknown, fallback: string | null) {
       : fallback;
 }
 
+/**
+ * 过滤与净化目的论臆断与伪因果套话（Anti-Teleology Guardrail）
+ * 强制将“XX负责YY”、“为了增强XX”、“以此实现0.5秒识别”等伪因果归因转为客观形式/工艺陈述
+ */
+export function sanitizeAntiTeleology(text: string): string {
+  if (!text) return "";
+  let result = text;
+  // 1. 先匹配并消除具体整句伪因果套话
+  result = result.replace(/品牌字标负责\s*(?:0\.5\s*秒)?(?:瞬间)?(?:识别|辨识)/g, "品牌字标居于首要视觉层级");
+  result = result.replace(/(?:大面积)?色块负责(?:货架)?(?:终端)?辨识度/g, "大面积色块构建主视觉图底构架");
+  result = result.replace(/圆角增强亲和力/g, "大半径圆角模切与倒角收口");
+  result = result.replace(/高饱和(?:色彩)?增强(?:儿童)?吸引力/g, "高饱和纯色平涂/专色体系");
+  result = result.replace(/IP\s*负责(?:儿童)?(?:情绪)?吸引(?:力)?/g, "核心视觉图形符号");
+
+  // 2. 消除 0.5秒 / 秒级识别残余短语
+  result = result.replace(/\s*0\.5\s*秒(?:内|内被|瞬间)?(?:识别|辨识|捕捉|眼动|锁定)/g, "首要视觉层级");
+  result = result.replace(/秒级(?:辨识|识别)(?:度|焦点)?/g, "清晰视觉焦点");
+
+  // 3. 通用消除 “A 负责 B” 伪因果动词
+  result = result.replace(/([\u4e00-\u9fa5A-Za-z0-9]+)\s*负责\s*([\u4e00-\u9fa5A-Za-z0-9]+)/g, (match, subject, duty) => {
+    if (/0\.5秒|辨识度|吸引力|亲和力|情绪/.test(duty)) {
+      return `${subject}构建${duty.replace(/0\.5秒|度|力/g, "")}呈现`;
+    }
+    return `${subject}建立${duty}`;
+  });
+  return result;
+}
+
 function judgment(
   value: unknown,
   fallback: RecordLike | null,
@@ -118,8 +163,10 @@ function judgment(
     ? rawSources.map((id) => (allowedSources.has(id) ? id : defaultRequestId))
     : rawSources;
 
+  const rawText = nonEmpty(item.text, nonEmpty(old.text, "待确认的设计判断"));
+
   return {
-    text: nonEmpty(item.text, nonEmpty(old.text, "待确认的设计判断")),
+    text: sanitizeAntiTeleology(rawText),
     basis:
       item.basis === "assumption" || item.basis === "user"
         ? item.basis
@@ -347,8 +394,8 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
         targetUid = newUid;
         uncertainties.push({
           id: newUid,
-          topic: prompt.slice(0, 40),
-          decisionAffected: prompt.slice(0, 40),
+          topic: sanitizeAntiTeleology(prompt.slice(0, 40)),
+          decisionAffected: sanitizeAntiTeleology(prompt.slice(0, 40)),
           impact: "material",
           status: "open",
         });
@@ -361,7 +408,7 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
       ? item.options
           .map(record)
           .filter((option) => typeof option.id === "string" && typeof option.label === "string")
-          .map((option) => ({ id: option.id as string, label: option.label as string }))
+          .map((option) => ({ id: option.id as string, label: sanitizeAntiTeleology(option.label as string) }))
       : [];
 
     const rawId = typeof item.id === "string" ? item.id.trim() : "";
@@ -373,7 +420,7 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
     normalizedQuestions.push({
       id: questionId,
       uncertaintyId: targetUid,
-      prompt,
+      prompt: sanitizeAntiTeleology(prompt),
       constraintRefs: Array.isArray(item.constraintRefs)
         ? item.constraintRefs.filter(
             (ref): ref is string => typeof ref === "string" && Boolean(ref.trim()),
@@ -447,7 +494,10 @@ export function normalizeLivePayload(raw: unknown, input: ConvergenceInput) {
       },
       constraints: normalizedConstraints,
       direction: normalizedDirection,
-      currentHypothesis: nullableText(state.currentHypothesis, previous?.currentHypothesis ?? null),
+      currentHypothesis: (() => {
+        const rawHypo = nullableText(state.currentHypothesis, previous?.currentHypothesis ?? null);
+        return rawHypo ? sanitizeAntiTeleology(rawHypo) : null;
+      })(),
       validationAction:
         validation.label || validation.instruction
           ? {

@@ -43,6 +43,10 @@ export const RouteSchema = z
     feasibility: z.enum(["high", "medium", "challenging"]).optional(),
     focusDimension: text.max(60).optional(),
     alignmentScore: z.number().min(0).max(100).optional(),
+    sensoryMetaphor: text.max(300).optional(),
+    brainstormSparks: z.array(text.max(200)).optional(),
+    paletteTension: text.max(160).optional(),
+    materialMood: text.max(200).optional(),
     steps: z
       .array(RouteStepSchema)
       .min(3, "每条路线至少包含 3 个步骤")

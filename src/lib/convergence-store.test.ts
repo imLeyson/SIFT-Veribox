@@ -349,8 +349,8 @@ describe("convergence session", () => {
     const targetAfter = store.getState().customCards.find((c) => c.id === "card-target");
     expect(targetAfter?.data?.isEmpty).toBe(false);
     expect(targetAfter?.data?.isBlended).toBe(true);
-    expect(targetAfter?.data?.route.themeName).toContain("极简几何");
-    expect(targetAfter?.data?.route.themeName).toContain("温暖触感");
+    expect(targetAfter?.data?.route.themeName).toContain("《");
+    expect(targetAfter?.data?.route.startingPoint).toContain("极简几何");
 
     // 6. Test edge cancellation: deleting edge removes connection
     store.getState().deleteCustomEdge("e2");
@@ -431,20 +431,20 @@ describe("convergence session", () => {
     const s = store.getState();
     const resolvedDirection = resolveNodeContext("direction", s);
     expect(resolvedDirection?.type).toBe("state");
-    expect(resolvedDirection?.label).toContain("02 策略基准");
+    expect(resolvedDirection?.label).toContain("2 策略基准");
 
     const resolvedStep = resolveNodeContext("step-r1", s);
     expect(resolvedStep?.type).toBe("step");
-    expect(resolvedStep?.label).toContain("04 视点推进");
+    expect(resolvedStep?.label).toContain("4 视点推进");
     expect(resolvedStep?.data?.step?.title).toBe("纸张克重与压凹试验");
 
     const resolvedPlan = resolveNodeContext("plan-r1-s1", s);
     expect(resolvedPlan?.type).toBe("platformPlan");
-    expect(resolvedPlan?.label).toBe("05 灵感检索");
+    expect(resolvedPlan?.label).toBe("灵感检索");
 
     const resolvedAsk = resolveNodeContext("turn-1", s);
     expect(resolvedAsk?.type).toBe("ask");
-    expect(resolvedAsk?.label).toBe("01 视觉抉择");
+    expect(resolvedAsk?.label).toBe("1 视觉抉择");
 
     // 2. Test getUpstreamSummary with direction and step nodes
     const targetCardId = store.getState().addCustomCard({
@@ -455,13 +455,13 @@ describe("convergence session", () => {
       content: "",
     });
 
-    // Connect from "direction" (02 策略基准) to note card
+    // Connect from "direction" (2 策略基准) to note card
     store.getState().addCustomEdge({ id: "e-dir", source: "direction", target: "card-note-test" });
 
     const summary = getUpstreamSummary("card-note-test", store.getState());
     expect(summary.count).toBe(1);
     expect(summary.hasStrategy).toBe(true);
-    expect(summary.labels[0]).toContain("02 策略基准");
+    expect(summary.labels[0]).toContain("2 策略基准");
 
     // 3. Test synthesizeCard on note card connected to "direction"
     const synthesized = store.getState().synthesizeCard("card-note-test");
@@ -484,7 +484,7 @@ describe("convergence session", () => {
 
     const stepSummary = getUpstreamSummary("card-step-test", store.getState());
     expect(stepSummary.hasStep).toBe(true);
-    expect(stepSummary.labels[0]).toContain("04 视点推进");
+    expect(stepSummary.labels[0]).toContain("4 视点推进");
   });
 });
 

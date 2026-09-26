@@ -2,8 +2,15 @@ import type { Route } from "@/types/routes";
 import type { DesignState } from "@/types/convergence";
 
 function attachAlignmentScores(routes: Route[], recommendedId: string | null): Route[] {
+  const defaultMetaphors = [
+    "大面积温润材质微肌理留白，在 45° 侧光下沉下一道静谧克制的光影，散发耐看的高级物料质感",
+    "严谨理性的视觉骨架与清晰字阶层级，呈现如同殿堂级档案般的权威可信度",
+    "纯粹利落的视觉焦点在克制环境中形成强穿透力，瞬间锁定第一视觉心智",
+  ];
+
   return routes.map((r, i) => ({
     ...r,
+    sensoryMetaphor: r.sensoryMetaphor || defaultMetaphors[i] || defaultMetaphors[0],
     alignmentScore: r.id === recommendedId || r.recommendedReason ? 96 : i === 1 ? 91 : 87,
   }));
 }
@@ -46,11 +53,12 @@ export function getMockRoutes(
     const routes: Route[] = [
       {
         id: "route_prod_fiber",
-        themeName: "原生纤维与微颗粒肌理",
-        title: "原生纤维与微颗粒肌理",
-        visualSnapshot: "回收再生纤维压合成微孔哑光表面，保留天然毛色微杂质与漫反射暖意，触感温润微糙，摒弃廉价塑料感，散发物料本真质感。",
-        startingPoint: "再生纤维原生肌理与微气孔触感",
-        focusDimension: "原生材料转化与微触感",
+        themeName: "《寂静凝灰》 Silent Tuff",
+        title: "再生纤维微孔阻尼 × 1px 细拉丝冷铝倒角",
+        sensoryMetaphor: "像一块未经精抛的暖灰凝灰岩，被冷冽的 1px 铝合金倒角精密收口，表面泛着微孔漫反射",
+        visualSnapshot: "回收再生材料压合成微孔哑光表面，保留天然毛色微杂质与漫反射暖意，冷冽金属倒角利落收口，在侧光下呈现物料本真质感。",
+        startingPoint: "再生材料物性转化与微孔阻尼",
+        focusDimension: "材料微孔漫反射与金属精密收口",
         coreProblem: "放弃二次精细涂层掩盖，把视觉与触觉质感押在再生纤维本身的微颗粒肌理与自然漫反射上",
         purpose: "以回收纤维本身的物性转化与微气孔触感构建真实耐看的产品肌理体验",
         pros: "材料原生肌理独特且具辨识度，自然光下呈现温润微光泽，环保与品质感兼具",
@@ -87,11 +95,12 @@ export function getMockRoutes(
       },
       {
         id: "route_prod_vessel",
-        themeName: "柔和弧度与温润器型",
-        title: "柔和弧度与温润器型",
+        themeName: "《掌心温存》 Poetic Organism",
+        title: "自然卵石连续曲率 × 隐式握持凹槽",
+        sensoryMetaphor: "自然圆润如河床卵石，柔和曲面贴合掌心微握凹槽，散发温润无声的陪伴温度",
         visualSnapshot: "柔和流动的有机弧面与微握持凹槽，器型沉静如卵石，置于居家桌面或掌心抚触，通过实体形态传递无声的陪伴温度。",
-        startingPoint: "有机弧面与手握抚慰度",
-        focusDimension: "情感陪伴语义与器物形态",
+        startingPoint: "自然卵石连续曲率与手握抚慰度",
+        focusDimension: "情感陪伴语义与有机器物形态",
         coreProblem: "放弃符号化具象动物装饰，通过器物本身的握持弧度与有机线条唤起深层情感陪伴共鸣",
         purpose: "以符合人体抚触习惯的有机器物形态传递情感疗愈与陪伴温度",
         pros: "器物造型温润耐看，兼具桌面静物美感与触觉互动抚慰价值，情感连接深刻",
@@ -128,10 +137,11 @@ export function getMockRoutes(
       },
       {
         id: "route_prod_minimal",
-        themeName: "机能卡扣与日常实用",
-        title: "机能卡扣与日常实用",
+        themeName: "《冷轧秩序》 Precision Architecture",
+        title: "高强度再生复合料 × 模块化卡扣微咬合",
+        sensoryMetaphor: "极简现代几何形态与精妙微卡扣无缝咬合，宛如一件融入当代居所的建筑微缩模型",
         visualSnapshot: "极简克制的几何线条结合精妙微倒角构件，材料与现代铝合金或原木自然嵌合，呈现兼具实用机能与当代家居审美的优雅器物。",
-        startingPoint: "现代生活机能与结合部细节",
+        startingPoint: "高强度复合料与结合部卡扣细节",
         focusDimension: "现代机能美学与日常共生",
         coreProblem: "放弃单纯的概念展品定位，以克制利落的机能结构让可持续材料自然融入现代日常生活",
         purpose: "以现代极简机能结构与精致收口实现可持续新材料在日常产品中的优雅落地",
@@ -180,8 +190,8 @@ export function getMockRoutes(
       const altRoutes: Route[] = [
         {
           id: "route_tea_ink_alt",
-          themeName: "水墨留白与宣纸肌理",
-          title: "水墨留白与宣纸肌理",
+          themeName: "《空山寒墨》 Mountain Ink",
+          title: "特种植物宣纸纤维 × 单色水墨极简留白",
           visualSnapshot: "特种手工宣纸覆合硬盒，正面仅一抹淡雅水墨晕染与朱红小印，80% 呼吸感留白，墨韵自然散开，无多余商业装饰。",
           startingPoint: "手工宣纸肌理与极简水墨意象",
           focusDimension: "传统材质手工感与当代水墨排版",
@@ -207,7 +217,7 @@ export function getMockRoutes(
               question: "淡墨晕染与朱红小印的色彩比例如何在视线中形成瞬间聚焦？",
               purpose: "打磨极简留白中的视觉焦点与东方神韵",
               deliverables: ["水墨晕染灰度对比稿 3 款", "朱印位置与尺度规范"],
-              acceptanceCriteria: ["墨色过渡柔和无阶梯断层", "朱印成为 0.5 秒第一眼视觉落脚点"],
+              acceptanceCriteria: ["墨色过渡柔和无阶梯断层", "朱印成为首要视觉焦点"],
             },
             {
               id: "step_tea_ink_3",
@@ -221,8 +231,8 @@ export function getMockRoutes(
         },
         {
           id: "route_tea_ceramic_alt",
-          themeName: "陶土砂砾与多边器物",
-          title: "陶土砂砾与多边器物",
+          themeName: "《陶砂器度》 Ceramic Cut",
+          title: "无涂层矿物砂砾感 × 八边形几何雕塑切面",
           visualSnapshot: "无涂层陶土质感纸张包裹八边形硬盒，单色哑光微小字符，呈现如桌面雕塑般的器物之美。",
           startingPoint: "天然陶土砂砾触感与利落多边形",
           focusDimension: "矿物微颗粒纸感与雕塑式器型",
@@ -262,8 +272,8 @@ export function getMockRoutes(
         },
         {
           id: "route_tea_black_alt",
-          themeName: "炭黑暗纹与等高线微光",
-          title: "炭黑暗纹与等高线微光",
+          themeName: "《暗夜焙火》 Roasted Void",
+          title: "深邃炭黑哑光微绒 × 单色同色系折光反差",
           visualSnapshot: "深黑炭质触感特种纸，正面同色系亮光透明折光勾勒茶山等高线，在光线流转下若隐若现，冷峻而先锋。",
           startingPoint: "极黑炭质触感与同色系折光反差",
           focusDimension: "全黑消光材质与局部光油反差",
@@ -310,8 +320,8 @@ export function getMockRoutes(
     const routes: Route[] = [
       {
         id: "route_tea_material",
-        themeName: "素雅棉纸与无墨压凹",
-        title: "素雅棉纸与无墨压凹",
+        themeName: "《零度墨痕》 Zero-Ink",
+        title: "350g 原浆棉纸 × 45° 侧光深压凹",
         visualSnapshot: "大面积纯白原浆棉纸留白，正面无多余彩印，仅凭 0.5mm 侧光单色深压凹显露出茶品名与暗纹，在光线下呈现极简雕塑感。",
         startingPoint: "特种纸微触感与无墨压凹",
         focusDimension: "特种纸肌理与深压凹工艺",
@@ -351,8 +361,8 @@ export function getMockRoutes(
       },
       {
         id: "route_tea_typography",
-        themeName: "严谨网格与档案排版",
-        title: "严谨网格与档案排版",
+        themeName: "《风土标尺》 Swiss Telemetry",
+        title: "双栏微字阶排印 × 档案式茶品批号",
         visualSnapshot: "严谨双栏瑞士网格排版，中西文字阶 2.5 倍对比，冷冽黑白字符清晰罗列产地海拔与风味批号，呈现如专业档案般的权威可信度。",
         startingPoint: "双栏网格与微字阶层级",
         focusDimension: "双栏网格与微字阶层级",
@@ -370,7 +380,7 @@ export function getMockRoutes(
             question: "品名、采摘年份与风味标尺如何划分为清晰的主次信息区块？",
             purpose: "确立正面版式的几何网格与留白率",
             deliverables: ["罐身正面双栏网格规范稿", "核心风味标签层级草图 3 套"],
-            acceptanceCriteria: ["核心品名在 0.5 秒内被捕获", "留白面积占比保持 50% 以上"],
+            acceptanceCriteria: ["核心品名处于首要视觉层级", "留白面积占比保持 50% 以上"],
           },
           {
             id: "step_tea_typo_2",
@@ -392,8 +402,8 @@ export function getMockRoutes(
       },
       {
         id: "route_tea_desk",
-        themeName: "极简几何与视觉大色块",
-        title: "极简几何与视觉大色块",
+        themeName: "《暗室静物》 Dark Chamber Still",
+        title: "几何负空间大色块 × 局部哑光微UV",
         visualSnapshot: "低饱和莫兰迪茶色圆角罐身，正面仅居中一枚极简几何抚慰符号，在原木办公桌上呈现纯粹温和的现代艺术静物感。",
         startingPoint: "桌面静物陈列与微解压隐喻",
         focusDimension: "桌面陈列美学与视觉解压",
@@ -443,8 +453,8 @@ export function getMockRoutes(
     const routes: Route[] = [
       {
         id: "route_skin_lab",
-        themeName: "科学证据 · 极细刻度",
-        title: "【刻度排版与配方图表】理性实验室证据",
+        themeName: "《无菌微界》 Sterile Matrix",
+        title: "哑光洁白触感涂层 × 严谨成分刻度网格",
         visualSnapshot: "冷白透光玻璃瓶身搭配 0.25pt 极细数据标尺与成分浓度百分比，无多余装饰，像精密实验室试剂瓶般严谨可信。",
         startingPoint: "配方逻辑图表化与科学证据感",
         focusDimension: "数据图表美学与刻度排版",
@@ -484,8 +494,8 @@ export function getMockRoutes(
       },
       {
         id: "route_skin_nature",
-        themeName: "原生肌理 · 哑光通感",
-        title: "【微观原生肌理与哑光留白】通感纯净亲肤",
+        themeName: "《凝露微光》 Dew Luminescence",
+        title: "半透微磨砂聚合物 × 连续有机水滴弧面",
         visualSnapshot: "细腻磨砂触感与低饱和大地原色，大面积 60% 温润留白，借由微观原料肌理传递零添加、零刺激的安心亲肤感。",
         startingPoint: "原生植物微观肌理与温和触感",
         focusDimension: "微观纹理与有机色彩通感",
@@ -525,8 +535,8 @@ export function getMockRoutes(
       },
       {
         id: "route_skin_ritual",
-        themeName: "晨暮光影 · 空间仪式",
-        title: "【晨暮光影微渐变】洗漱台桌面静物",
+        themeName: "《悬浮静石》 Floating Monolith",
+        title: "纯白极简几何块面 × 隐藏式微阻尼旋盖",
         visualSnapshot: "瓶身带有晨光微白至暮色深灰蓝的平滑柔和微光晕渐变，放置在浴室大理石洗漱台上呈现沉静优雅的治愈静物感。",
         startingPoint: "晨暮光影流转与身心松弛",
         focusDimension: "光影微晕与情绪氛围",
@@ -576,8 +586,8 @@ export function getMockRoutes(
     const routes: Route[] = [
       {
         id: "route_saas_clarity",
-        themeName: "纯粹网格 · 高效骨架",
-        title: "【纯粹栅格与高对比字阶】低认知负荷效率",
+        themeName: "《夜航座舱》 Night Flight HUD",
+        title: "暗黑无光基底 × 1px 精细冷灰微层级",
         visualSnapshot: "严格 8px 模块化布局与 3 级高对比字阶，界面以极简黑白灰为骨架，无任何冗余插画装饰，海量数据 1 秒理清。",
         startingPoint: "高密度信息的秩序化重组",
         focusDimension: "栅格系统与视觉信息层级",
@@ -617,8 +627,8 @@ export function getMockRoutes(
       },
       {
         id: "route_saas_modular",
-        themeName: "轻盈模组 · 弥散微光",
-        title: "【轻量卡片容器与弥散微阴影】现代亲和模组",
+        themeName: "《数据晶格》 Telemetry Grid",
+        title: "8px 密集数据晶格 × 紧凑型无衬线排布",
         visualSnapshot: "通透圆角卡片容器悬浮于灰白背景，搭配极其细腻的空气感弥散微阴影与胶囊标签，如同乐高积木般亲和易用。",
         startingPoint: "组件卡片化与视线轻量化",
         focusDimension: "卡片微投影与空间层次",
@@ -658,8 +668,8 @@ export function getMockRoutes(
       },
       {
         id: "route_saas_identity",
-        themeName: "暗黑先锋 · 极客字符",
-        title: "【等宽排版与先锋暗色工程】极客字符美学",
+        themeName: "《穿透中枢》 Pulse Console",
+        title: "硬件级控制台拟态 × 单一穿透状态微光",
         visualSnapshot: "深炭灰科技背景配合等宽代码字体排版与高穿透荧光电光青点缀，呈现先锋利落的硬核工程技术美学。",
         startingPoint: "代码美学字符与现代极客精神",
         focusDimension: "等宽字体与极客符号美学",
@@ -709,8 +719,8 @@ export function getMockRoutes(
     const altRoutes: Route[] = [
       {
         id: "route_gen_paper_alt",
-        themeName: "素雅原质 · 纸感微雕",
-        title: "【特种原质材料与微压凹】极端克制美学",
+        themeName: "《原质重构》 Tectonic Fiber",
+        title: "特种纤维微孔哑光 × 局部精密微倒角",
         visualSnapshot: "大面积纯净材质肌理留白，正面单色侧光微浅压凹，无多余装饰，依靠自然光影产生如雕塑般的静谧耐看度。",
         startingPoint: "特种材料原生肌理与无墨微工艺",
         focusDimension: "实体材料触感与光影微雕",
@@ -750,8 +760,8 @@ export function getMockRoutes(
       },
       {
         id: "route_gen_grid_alt",
-        themeName: "秩序档案 · 理性骨架",
-        title: "【严谨模块网格与中西字阶】档案式专业信息",
+        themeName: "《冷冽秩序》 Cold Typography",
+        title: "极简微字阶对比 × 模块化标尺网格",
         visualSnapshot: "严谨双栏瑞士网格排版，中西文字阶 2.5 倍对比，冷冽黑白字符清晰罗列关键数据与属性，呈现如权威档案般的可信度。",
         startingPoint: "模块化网格与严格字阶对照",
         focusDimension: "双栏网格与微字阶层级",
@@ -791,8 +801,8 @@ export function getMockRoutes(
       },
       {
         id: "route_gen_hammer_alt",
-        themeName: "先锋符号 · 瞬间记忆",
-        title: "【极简高反差几何符号】秒级识别视觉锤",
+        themeName: "《锐利图腾》 Sharp Totem",
+        title: "几何穿透超级符号 × 局部微亮光对撞",
         visualSnapshot: "提炼极简且穿透力极强的单一几何视觉符号，高反差黑白对比，在 3 米外一眼识别，过目难忘。",
         startingPoint: "极简几何符号与瞬间视觉穿透",
         focusDimension: "符号化图形与高对比色彩",
@@ -840,8 +850,8 @@ export function getMockRoutes(
   const routes: Route[] = [
     {
       id: "route_gen_core",
-      themeName: "单一视觉锤 · 极简轮廓",
-      title: "【单一极简轮廓】高穿透力视觉锤",
+      themeName: "《暗室纯形》 Negative Silhouette",
+      title: "极简负空间几何大色块 × 单色哑光重锤",
       visualSnapshot: "大面积纯净负空间中居中一枚极度洗练的标志性图形轮廓，即便缩小至 16px 图标或 10 米外远眺也能瞬间认出。",
       startingPoint: "标志性轮廓与第一眼记忆锚定",
       focusDimension: "极简图形符号与轮廓特征",
@@ -881,8 +891,8 @@ export function getMockRoutes(
     },
     {
       id: "route_gen_narrative",
-      themeName: "真实切片 · 温暖通感",
-      title: "【纪实摄影与克制手绘】生活场景通感",
+      themeName: "《理性标尺》 Telemetry Ledger",
+      title: "双栏瑞士网格排印 × 档案式参数系统",
       visualSnapshot: "低饱和温润色调的生活纪实瞬间切片，搭配克制的手写字标与疏朗大留白，散发真诚松弛的人文温度。",
       startingPoint: "真实生活瞬间与情感氛围营造",
       focusDimension: "氛围光影与情绪场景构图",
@@ -922,8 +932,8 @@ export function getMockRoutes(
     },
     {
       id: "route_gen_contrast",
-      themeName: "经典解构 · 现代几何",
-      title: "【经典符号几何重构】高反差现代平面",
+      themeName: "《素纸凝神》 Pure Papercraft",
+      title: "300g 原浆棉卡微触感 × 45° 侧光深压凹",
       visualSnapshot: "以当代利落的几何线条将传统文化意象彻底拆解重组，高反差明快色彩对撞大留白，先锋现代且张力十足。",
       startingPoint: "传统意象与现代几何碰撞",
       focusDimension: "文化符号解构与现代几何",

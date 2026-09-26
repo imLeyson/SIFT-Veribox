@@ -6,7 +6,10 @@ import { InfiniteCanvas } from "./flow/InfiniteCanvas";
 import { CanvasErrorBoundary } from "./flow/CanvasErrorBoundary";
 import { ThinkingProgress } from "./canvas/ThinkingProgress";
 import { DossierModal } from "./dossier/DossierModal";
-import { FileDown } from "lucide-react";
+import { GlobalChatView } from "./chat/GlobalChatView";
+import { ProjectSwitcher } from "./project/ProjectSwitcher";
+import { createProject } from "@/lib/project-manager";
+import { FileDown, MessageSquare, Plus } from "lucide-react";
 
 function subscribeHydration(onChange: () => void) {
   return useSiftStore.persist.onFinishHydration(onChange);
@@ -21,6 +24,7 @@ export function Workspace() {
   );
   const [runtimeMode, setRuntimeMode] = useState<"live" | "mock" | null>(null);
   const [dossierOpen, setDossierOpen] = useState(false);
+  const [advisorOpen, setAdvisorOpen] = useState(false);
 
   useEffect(() => {
     void useSiftStore.persist.rehydrate();
@@ -31,6 +35,11 @@ export function Workspace() {
       .catch(() => {});
     return () => ac.abort();
   }, []);
+
+  useEffect(() => {
+    window.dispatchEvent(new Event("resize"));
+  }, [advisorOpen]);
+
   if (!ready)
     return (
       <div className="flex h-dvh items-center justify-center text-sm text-muted">
@@ -39,40 +48,69 @@ export function Workspace() {
     );
   return (
     <main className="flex h-dvh flex-col overflow-hidden">
-      <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-line/70 bg-white/60 px-4 py-3 backdrop-blur-sm sm:px-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-sm font-semibold tracking-wide text-ink">SIFT</h1>
-            <span className="hidden md:inline-block rounded-md bg-stone-100 border border-stone-200 px-1.5 py-0.5 text-[10px] font-medium text-stone-600">
-              视觉策略工作台
-            </span>
-          </div>
-          <p className="mt-0.5 text-xs text-muted">
-            设计前期策略收敛、风格主题推导与跨平台灵感检索
-          </p>
+      <header className="z-10 flex h-12 items-center justify-between border-b border-stone-200/80 bg-white/80 px-4 backdrop-blur-md select-none sm:px-5">
+        <div className="flex items-center gap-2.5">
+          {/* Brand Logo - clean, confident, restrained */}
+          <span className="font-serif font-black tracking-wider text-base text-stone-900 select-none">
+            SIFT
+          </span>
+
+          <span className="text-stone-300 font-light select-none">/</span>
+
+          {/* Module 5: Multi-Project Canvas Switcher */}
+          <ProjectSwitcher />
+
+          {/* Strategy Advisor Drawer Toggle */}
+          <button
+            type="button"
+            onClick={() => setAdvisorOpen(!advisorOpen)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer select-none ${
+              advisorOpen
+                ? "bg-stone-100 text-stone-900 border-stone-300 shadow-2xs font-semibold"
+                : "bg-white/80 hover:bg-stone-100/80 border-stone-200/90 text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <MessageSquare className="h-3.5 w-3.5 text-stone-500" />
+            <span>策略顾问</span>
+            {Boolean(state) && (
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+            )}
+          </button>
         </div>
-        <div className="flex items-center gap-2">
-          {Boolean(state) && (
-            <button
-              className="btn-ghost !bg-accent/10 !text-accent hover:!bg-accent hover:!text-white text-xs flex items-center gap-1 font-medium transition-all"
-              onClick={() => setDossierOpen(true)}
-              title="导出视觉策略与收敛提案（用于前期方案对齐，非落地交付）"
-            >
-              <FileDown className="h-3.5 w-3.5" />
-              <span>导出提案</span>
-            </button>
-          )}
+
+        {/* Right side utility actions */}
+        <div className="flex items-center gap-1.5">
           {state?.status === "questioning" && (
             <button
-              className="btn-ghost text-xs"
+              type="button"
+              className="px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
               onClick={siftActions.converge}
               title="停止追问，按当前状态进入人工检查点"
             >
               快速收敛
             </button>
           )}
-          <button className="btn-ghost text-xs" onClick={siftActions.reset}>
-            新建
+
+          {Boolean(state) && (
+            <button
+              type="button"
+              className="px-2.5 py-1.5 rounded-lg border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-900 text-xs font-medium flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+              onClick={() => setDossierOpen(true)}
+              title="导出视觉策略与收敛提案（用于前期方案对齐，非落地交付）"
+            >
+              <FileDown className="h-3.5 w-3.5 text-stone-500" />
+              <span>导出提案</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="px-2.5 py-1.5 rounded-lg border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-900 text-xs font-medium flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+            onClick={() => createProject()}
+            title="新建画布工程"
+          >
+            <Plus className="h-3.5 w-3.5 text-stone-500" />
+            <span>新建</span>
           </button>
         </div>
       </header>
@@ -112,11 +150,21 @@ export function Workspace() {
           </button>
         </div>
       )}
-      <div className="relative min-h-0 flex-1">
-        <CanvasErrorBoundary>
-          <InfiniteCanvas onOpenDossier={() => setDossierOpen(true)} />
-        </CanvasErrorBoundary>
+      
+      <div className="relative min-h-0 flex-1 flex">
+        <div className="relative min-h-0 flex-1">
+          <CanvasErrorBoundary>
+            <InfiniteCanvas onOpenDossier={() => setDossierOpen(true)} />
+          </CanvasErrorBoundary>
+        </div>
+
+        {advisorOpen && (
+          <div className="w-[400px] border-l border-line/70 bg-white/95 backdrop-blur-sm shadow-xl flex flex-col z-10 shrink-0">
+            <GlobalChatView onClose={() => setAdvisorOpen(false)} />
+          </div>
+        )}
       </div>
+
       <DossierModal
         isOpen={dossierOpen}
         onClose={() => setDossierOpen(false)}

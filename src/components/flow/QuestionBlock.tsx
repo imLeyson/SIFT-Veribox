@@ -11,25 +11,39 @@ function answerFor(drafts: Answer[], questionId: string) {
 
 function getQuestionCategoryTag(prompt: string, index: number): string {
   if (/材质|纸|盒|工艺|触感|金属|打样|质感|压凹|烫/.test(prompt)) {
-    return `0${index + 1} · 材质工艺`;
+    return `${index + 1} · 材质工艺`;
   }
   if (/版式|排版|字|网格|层级|字阶|留白|负空间|信息/.test(prompt)) {
-    return `0${index + 1} · 版式层级`;
+    return `${index + 1} · 版式层级`;
   }
   if (/色|彩|调|黑白|灰度|饱和度/.test(prompt)) {
-    return `0${index + 1} · 色彩基调`;
+    return `${index + 1} · 色彩基调`;
   }
   if (/冲突|优先|权衡|保哪个|取舍|平衡|成本/.test(prompt)) {
-    return `0${index + 1} · 核心权衡`;
+    return `${index + 1} · 核心权衡`;
   }
   if (/符号|隐喻|图形|意象|场景|情绪/.test(prompt)) {
-    return `0${index + 1} · 视觉意象`;
+    return `${index + 1} · 视觉意象`;
   }
-  return `0${index + 1} · 视觉取舍`;
+  return `${index + 1} · 视觉取舍`;
 }
 
-export function QuestionBlock({ questions }: { questions: Question[] }) {
-  const { drafts, activeRequest, setDrafts } = useSiftStore();
+export function QuestionBlock({
+  questions,
+  drafts: externalDrafts,
+  setDrafts: externalSetDrafts,
+  disabled: externalDisabled,
+}: {
+  questions: Question[];
+  drafts?: Answer[];
+  setDrafts?: (drafts: Answer[]) => void;
+  disabled?: boolean;
+}) {
+  const { drafts: storeDrafts, activeRequest, setDrafts: storeSetDrafts } = useSiftStore();
+  const drafts = externalDrafts ?? storeDrafts;
+  const setDrafts = externalSetDrafts ?? storeSetDrafts;
+  const disabled = externalDisabled !== undefined ? externalDisabled : Boolean(activeRequest);
+
   const title = useRef<HTMLParagraphElement>(null);
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
@@ -41,8 +55,6 @@ export function QuestionBlock({ questions }: { questions: Question[] }) {
   useEffect(() => {
     title.current?.focus({ preventScroll: true });
   }, [questionIds]);
-
-  const disabled = Boolean(activeRequest);
 
   const selectOption = (questionId: string, optionId: string) => {
     setCustomMode((prev) => ({ ...prev, [questionId]: false }));

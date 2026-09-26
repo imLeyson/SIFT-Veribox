@@ -1,20 +1,18 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { useSiftStore, getUpstreamSummary } from "@/lib/convergence-store";
-import { siftActions } from "@/lib/convergence-client";
-import { cleanStepLabel, type Route } from "@/types/routes";
+import type { Route } from "@/types/routes";
 import { toInspirationCopy } from "@/lib/exploration-copy";
 import {
   Sparkles,
-  Check,
   ShieldAlert,
   RefreshCw,
   Compass,
-  Copy,
-  StickyNote,
+  Eye,
+  Layers,
 } from "lucide-react";
 
 export type RouteNodeData = {
@@ -44,6 +42,7 @@ const DEFAULT_FALLBACK_ROUTE: Route = {
   startingPoint: "基于自由探索假设切入",
   coreProblem: "建立独具画面辨识度的视觉语言",
   purpose: "构建连贯的视觉策略与设计母题",
+  sensoryMetaphor: "大面积纯白原浆棉纸留白，正面仅单色侧光深压凹，在 45° 侧光下靠压凹阴影显出极简雕塑感",
   pros: "探索自由度高、可灵活微调",
   cons: "需自行验证与评估落地可行性",
   recommendedReason: null,
@@ -88,21 +87,52 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
   const index = data?.index ?? 0;
 
   const [showTrace, setShowTrace] = useState(false);
-  const [copiedSpec, setCopiedSpec] = useState(false);
   const selectedRouteId = useSiftStore((s) => s.selectedRouteId);
-  const exploredRouteIds = useSiftStore((s) => s.exploredRouteIds ?? []);
   const activeRequest = useSiftStore((s) => s.activeRequest);
   const customEdges = useSiftStore((s) => s.customEdges);
   const customCards = useSiftStore((s) => s.customCards);
   const routes = useSiftStore((s) => s.routes);
-  const rawBrief = useSiftStore((s) => s.rawBrief);
-  const state = useSiftStore((s) => s.state);
   const synthesizeCard = useSiftStore((s) => s.synthesizeCard);
+  const collapsedNodeIds = useSiftStore((s) => s.collapsedNodeIds);
+  const collapseAllNodes = useSiftStore((s) => s.collapseAllNodes);
+
 
   const upstream = useMemo(
     () => getUpstreamSummary(id, { customEdges, routes, customCards }),
     [id, customEdges, routes, customCards],
   );
+
+  const downstreamNodeIds = useMemo(() => {
+    const ids = new Set<string>();
+    const queue = [id];
+    while (queue.length > 0) {
+      const curr = queue.shift()!;
+      for (const edge of customEdges) {
+        if (edge.source === curr && !ids.has(edge.target)) {
+          ids.add(edge.target);
+          queue.push(edge.target);
+        }
+      }
+    }
+    if (selectedRouteId === route.id || `route-${selectedRouteId}` === id) {
+      route.steps?.forEach((st) => ids.add(`step-${st.id}`));
+    }
+    return Array.from(ids);
+  }, [id, customEdges, route, selectedRouteId]);
+
+  const areAllDownstreamCollapsed =
+    downstreamNodeIds.length > 0 &&
+    downstreamNodeIds.every((dId) => collapsedNodeIds.includes(dId));
+
+  const handleToggleBranch = () => {
+    if (areAllDownstreamCollapsed) {
+      const remaining = collapsedNodeIds.filter((cid) => !downstreamNodeIds.includes(cid));
+      collapseAllNodes(remaining);
+    } else {
+      const combined = Array.from(new Set([...collapsedNodeIds, ...downstreamNodeIds]));
+      collapseAllNodes(combined);
+    }
+  };
 
   // Clean, instantly recognizable theme title (must be called unconditionally!)
   const heroTitle = useMemo(() => {
@@ -119,6 +149,97 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
     return raw.replace(/[【】]/g, "").trim();
   }, [route.themeName, route.title]);
 
+  // Two-Tier Flagship Concept Code (《概念代号》 + Studio Tag)
+  const { conceptTitle, englishTag } = useMemo(() => {
+    const raw = (route.themeName || "").trim();
+    if (!raw) {
+      const fallback = heroTitle;
+      return { conceptTitle: fallback.startsWith("《") ? fallback : `《${fallback}》`, englishTag: "" };
+    }
+    // Match 《...》 followed by optional English Tag
+    const bookMatch = raw.match(/^(《[^》]+》)(.*)$/);
+    if (bookMatch) {
+      const enRaw = bookMatch[2].replace(/^[·\-\s]+/, "").trim();
+      // Guard against composite strings like "PALM VALLEY与《卵石序列》 PEBBLE SEQUENCE复合变奏"
+      const cleanEn = enRaw.replace(/与.*$/, "").replace(/复合变奏.*$/, "").trim();
+      return {
+        conceptTitle: bookMatch[1].trim(),
+        englishTag: /^[a-zA-Z\s\/\-_]+$/.test(cleanEn) ? cleanEn : "",
+      };
+    }
+    // Match non-English chars followed by optional English Tag
+    const generalMatch = raw.match(/^([^\w\s·]+(?:[·\s]+[^\w\s·]+)*)\s*([a-zA-Z\s\/\-_]+)?$/);
+    if (generalMatch && generalMatch[1]) {
+      const zh = generalMatch[1].trim();
+      return {
+        conceptTitle: zh.startsWith("《") ? zh : `《${zh}》`,
+        englishTag: (generalMatch[2] || "").trim(),
+      };
+    }
+    return {
+      conceptTitle: raw.startsWith("《") ? raw : `《${raw}》`,
+      englishTag: "",
+    };
+  }, [route.themeName, heroTitle]);
+
+  // Two-Tier Craft Formula Subtitle (CMF材质 × 结构工艺)
+  const craftParts = useMemo(() => {
+    const rawTitle = (route.title || "").trim();
+    if (!rawTitle || rawTitle === route.themeName) return [];
+    // Strip leading 【...】 entirely and remove "跨界融合" prefix
+    const clean = rawTitle
+      .replace(/^[【\[].*?[】\]]\s*/, "")
+      .replace(/【|】/g, "")
+      .replace(/^跨界融合\s*[×与·]?\s*/, "")
+      .trim();
+
+    if (clean.includes("×")) {
+      return clean
+        .split("×")
+        .map((s) => s.trim())
+        .filter((s) => s && !/^《.*》$/.test(s) && s !== "跨界融合");
+    }
+    if (clean.includes("与") && !clean.includes("×")) {
+      const [left, right] = clean.split("与");
+      if (left && right && left.length < 25 && right.length < 25) {
+        return [left.trim(), right.trim()];
+      }
+    }
+    return [clean];
+  }, [route.title, route.themeName]);
+
+  // Rich Editorial Typography Header for NodeShell
+  const nodeTitle = useMemo(() => {
+    return (
+      <div className="space-y-1 py-0.5">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="font-serif font-bold text-ink text-[17px] leading-snug tracking-tight">
+            {conceptTitle}
+          </span>
+          {englishTag && (
+            <span className="font-mono text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">
+              {englishTag}
+            </span>
+          )}
+        </div>
+        {craftParts.length > 0 && (
+          <div className="text-[12px] font-sans font-medium text-stone-600 leading-snug flex items-center flex-wrap gap-1">
+            {craftParts.map((part, idx) => (
+              <React.Fragment key={idx}>
+                {idx > 0 && (
+                  <span className="text-indigo-600 font-bold px-0.5 select-none text-[13px]">
+                    ×
+                  </span>
+                )}
+                <span>{part}</span>
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }, [conceptTitle, englishTag, craftParts]);
+
   // Consolidated craft description (must be called unconditionally!)
   const visualCraftText = useMemo(() => {
     const rawCraft = route.focusDimension || route.startingPoint || route.pros;
@@ -132,7 +253,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
       <div className="w-[390px] transition-all duration-300 hover:shadow-md">
         <NodeShell
           nodeId={id}
-          stage="03"
+          stage="3"
           kicker="空白主题"
           title={hasUpstream ? "已关联上游，等待生成" : "等待连线导入设计上下文"}
           badge={
@@ -238,7 +359,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
                     连策略基准
                   </span>
                   <span className="leading-snug text-stone-600">
-                    从「02 策略基准」推导符合假设与准则的全新主题
+                    从「2 策略基准」推导符合假设与准则的全新主题
                   </span>
                 </div>
               </div>
@@ -249,83 +370,31 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
     );
   }
 
-  const isExplored =
-    exploredRouteIds.includes(route.id) ||
-    (id ? exploredRouteIds.includes(id) : false) ||
-    selectedRouteId === route.id ||
-    (id ? selectedRouteId === id : false);
-
   const kicker = isBlended
     ? "跨界融合"
     : isEvolved
       ? "衍生变奏"
       : isDerived
         ? "策略推导"
-        : `主题方向 0${index + 1}`;
+        : `探索主题 0${index + 1}`;
 
   const snapshotText = toInspirationCopy(cleanText(route.visualSnapshot || route.purpose));
   const coreProblemText = toInspirationCopy(cleanText(route.coreProblem));
   const consText = toInspirationCopy(cleanText(route.cons));
-
-  const routeSteps = Array.isArray(route?.steps) && route.steps.length > 0 ? route.steps : (DEFAULT_FALLBACK_ROUTE.steps ?? []);
-
-  // Designer Tool: Copy theme spec to clipboard
-  const handleCopySpec = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const text = [
-      `【风格主题】${heroTitle}`,
-      `画面意向：“${snapshotText}”`,
-      `核心视觉手法：${visualCraftText}`,
-      `设计取舍与权衡：${coreProblemText}`,
-      `防跑偏提醒：${consText}`,
-      `后续探索视点：\n${routeSteps.map((st, i) => `  0${i + 1} ${cleanStepLabel(st.title)}：${st.question}`).join("\n")}`,
-    ].join("\n\n");
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedSpec(true);
-      setTimeout(() => setCopiedSpec(false), 1800);
-    } catch {
-      // fallback gracefully
-    }
-  };
-
-  // Designer Tool: Spawn linked note card
-  const handleAddLinkedNote = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const store = useSiftStore.getState();
-    const pos = store.positions[id] ?? { x: 800, y: 300 };
-    const noteId = `card-note-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-    store.addCustomCard({
-      id: noteId,
-      type: "note",
-      title: `${heroTitle} · 备忘`,
-      content: `针对【${heroTitle}】的设计批注与落地考量：\n`,
-      color: "amber",
-      position: { x: pos.x + 420, y: pos.y },
-      data: { isEmpty: false },
-    });
-    store.addCustomEdge({
-      id: `edge-${id}-${noteId}`,
-      source: id,
-      target: noteId,
-    });
-  };
 
   return (
     <div
       className={`transition-all duration-300 w-[390px] ${
         isBlended
           ? "ring-2 ring-purple-600/70 shadow-lg"
-          : isExplored
-            ? "ring-2 ring-indigo-600/70 shadow-md"
-            : "hover:shadow-md"
+          : "hover:shadow-md"
       }`}
     >
       <NodeShell
         nodeId={id}
-        stage="03"
+        stage="3"
         kicker={kicker}
-        title={heroTitle}
+        title={nodeTitle}
         onRegenerate={upstream.count > 0 ? () => synthesizeCard(id) : undefined}
         badge={
           isBlended ? (
@@ -341,23 +410,13 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
             <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded">
               策略推导
             </span>
-          ) : isExplored ? (
-            <span className="text-[10px] font-medium text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.2 rounded">
-              ✓ 视点展开中
+          ) : (
+            <span className="text-[10px] font-medium text-stone-600 bg-stone-100/90 border border-stone-200/80 px-1.5 py-0.5 rounded">
+              {`主题 0${index + 1}`}
             </span>
-          ) : undefined
+          )
         }
-        selected={selected || isExplored || isBlended}
-        collapsedContent={
-          <div className="space-y-1.5 text-xs py-0.5">
-            <p className="text-[12px] font-medium text-stone-800 line-clamp-1">
-              {heroTitle}
-            </p>
-            <p className="text-[11.5px] font-serif text-stone-500 leading-relaxed line-clamp-2">
-              “{snapshotText}”
-            </p>
-          </div>
-        }
+        selected={selected || isBlended}
       >
         <div className="space-y-2.5 text-xs">
           {/* Upstream context indicator and re-generate button */}
@@ -379,130 +438,86 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
             </div>
           )}
 
-          {/* 1. 画面意向 (Visual Concept / Snapshot) */}
-          <div className="rounded-xl border border-stone-200/90 bg-stone-50/70 p-3 space-y-1.5">
-            <div className="text-[11px] font-semibold text-stone-700 flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-amber-600" />
-              <span>画面意向</span>
+          {/* 1. 视觉意象 (单层呼吸表面，纯净质感呈现) */}
+          <div className="rounded-xl border border-stone-200/80 bg-stone-50/60 p-3 space-y-1.5">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="flex items-center gap-1.5 font-semibold text-stone-600">
+                <Eye className="h-3.5 w-3.5 text-stone-400" />
+                <span>视觉意象</span>
+              </span>
             </div>
-            <p className="text-xs sm:text-[12.5px] text-ink font-medium leading-relaxed font-serif bg-white/95 p-2.5 rounded-lg border border-line/60 shadow-2xs">
-              “{snapshotText}”
+            <p className="text-[12.5px] text-stone-800 leading-[1.68] font-sans pl-0.5">
+              {snapshotText || cleanText(route.sensoryMetaphor)}
             </p>
           </div>
 
-          {/* 2. 设计思考与权衡 (3-Point Essential Thinking: 手法 / 取舍 / 避坑) */}
-          <div className="rounded-xl border border-line/70 bg-white/90 p-3 space-y-2.5 text-[11.5px]">
-            {/* 核心视觉手法 */}
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-stone-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-stone-400" />
-                <span>核心视觉手法</span>
-              </div>
-              <p className="text-stone-700 leading-relaxed pl-3 text-[11.5px]">
-                {visualCraftText}
-              </p>
-            </div>
+          {/* 2. 设计决策与避坑提醒 (默认折叠抽屉，去除非关键冗余) */}
+          <details className="group rounded-xl border border-stone-200/70 bg-white/70 overflow-hidden text-[11px] transition-all">
+            <summary className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-stone-50 transition-colors select-none text-stone-600 font-medium list-none [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center gap-1.5">
+                <Compass className="h-3.5 w-3.5 text-stone-400 group-hover:text-stone-600 transition-colors" />
+                <span>设计决策与避坑提醒</span>
+              </span>
+              <span className="text-[10px] text-stone-400 transition-transform group-open:rotate-180">
+                ▼
+              </span>
+            </summary>
+            <div className="p-3 pt-2 border-t border-stone-100 space-y-2.5 bg-stone-50/30 text-[11px]">
+              {/* 设计取舍与押注 */}
+              {coreProblemText && (
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-semibold text-indigo-700 block">设计取舍</span>
+                  <p className="text-stone-700 leading-relaxed pl-2 border-l-2 border-indigo-200">
+                    {coreProblemText}
+                  </p>
+                </div>
+              )}
 
-            {/* 设计取舍与押注 */}
-            <div className="space-y-0.5 border-t border-line/40 pt-2">
-              <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-stone-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                <span>设计取舍与权衡</span>
-              </div>
-              <p className="text-stone-700 leading-relaxed pl-3 text-[11.5px]">
-                {coreProblemText}
-              </p>
-            </div>
+              {/* 防跑偏提醒 */}
+              {consText && (
+                <div className="space-y-0.5 pt-0.5">
+                  <span className="text-[10px] font-semibold text-amber-800 flex items-center gap-1">
+                    <ShieldAlert className="h-3 w-3 text-amber-600" />
+                    <span>避坑提醒</span>
+                  </span>
+                  <p className="text-stone-600 leading-relaxed pl-2 border-l-2 border-amber-200">
+                    {consText}
+                  </p>
+                </div>
+              )}
 
-            {/* 防跑偏提醒 */}
-            <div className="space-y-0.5 border-t border-line/40 pt-2">
-              <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-amber-800">
-                <ShieldAlert className="h-3 w-3 text-amber-600 shrink-0" />
-                <span>防跑偏提醒</span>
-              </div>
-              <p className="text-stone-600 leading-relaxed pl-3 text-[11px]">
-                {consText}
-              </p>
+              {/* 推荐理由 (若有) */}
+              {route.recommendedReason && (
+                <div className="space-y-0.5 pt-0.5">
+                  <span className="text-[10px] font-semibold text-emerald-800 flex items-center gap-1">
+                    <Compass className="h-3 w-3 text-emerald-600" />
+                    <span>推荐解题意图</span>
+                  </span>
+                  <p className="text-stone-600 leading-relaxed pl-2 border-l-2 border-emerald-200">
+                    {toInspirationCopy(cleanText(route.recommendedReason))}
+                  </p>
+                </div>
+              )}
             </div>
-          </div>
+          </details>
 
-          {/* 3. 后续切入视点 (Exploration Angles 直通 04 视点推进) */}
-          <div className="space-y-1.5 pt-0.5">
-            <div className="text-[10px] font-semibold text-stone-400 tracking-wider">
-              后续切入视点（04 探索方向）
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {routeSteps.map((st, i) => (
-                <span
-                  key={st.id}
-                  className="inline-flex items-center gap-1 rounded-md bg-stone-50 border border-line/70 px-2 py-0.5 text-[10.5px] text-stone-700"
-                >
-                  <span className="font-mono text-[9px] text-stone-400">0{i + 1}</span>
-                  <span>{cleanStepLabel(st.title)}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* 4. Designer Tools & Actions */}
-          <div className="pt-2 border-t border-line/60 space-y-2">
-            <div className="flex items-center gap-1.5">
+          {/* Branch Fold / Chain Grouping */}
+          {downstreamNodeIds.length > 0 && (
+            <div className="flex items-center justify-between pt-2 border-t border-stone-200/70 text-[11px]">
+              <span className="text-stone-400">
+                已衍生 {downstreamNodeIds.length} 张下游探索卡
+              </span>
               <button
                 type="button"
-                onClick={handleCopySpec}
-                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-stone-50 hover:bg-stone-100 border border-line/70 text-[11px] font-medium text-stone-600 hover:text-ink transition-colors cursor-pointer"
-                title="一键复制主题全案参数到剪贴板（支持粘贴至 Figma 或提案文档）"
+                onClick={handleToggleBranch}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium text-[10px] transition-colors cursor-pointer shadow-2xs"
+                title={areAllDownstreamCollapsed ? "展开下游所有卡片" : "一键折叠本路线所有衍生卡片，精简画布视野"}
               >
-                {copiedSpec ? (
-                  <>
-                    <Check className="h-3 w-3 text-emerald-600" />
-                    <span className="text-emerald-700 font-semibold">已复制参数</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-3 w-3 text-stone-500" />
-                    <span>复制参数</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleAddLinkedNote}
-                className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-amber-50/80 hover:bg-amber-100/90 border border-amber-200/80 text-[11px] font-medium text-amber-900 transition-colors cursor-pointer"
-                title="在画布上以此主题生成关联的设计备忘便签"
-              >
-                <StickyNote className="h-3 w-3 text-amber-600" />
-                <span>+ 备忘便签</span>
+                <Layers className="h-3 w-3 text-stone-500" />
+                <span>{areAllDownstreamCollapsed ? "展开分支链路" : "收起分支链路"}</span>
               </button>
             </div>
-
-            {isExplored ? (
-              <div className="flex items-center justify-between gap-2 pt-0.5">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700">
-                  <Check className="h-3.5 w-3.5" />
-                  已展开视点推进 (04)
-                </span>
-                <button
-                  type="button"
-                  className="btn-ghost !py-1 !px-2.5 text-xs text-stone-500 hover:text-red-600 transition-colors cursor-pointer"
-                  onClick={() => siftActions.unexploreRoute(route.id)}
-                  title="收起此主题对应的 04 视点推进卡片"
-                >
-                  收起视点
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className="btn-primary w-full text-xs font-medium py-2.5 flex items-center justify-center gap-1.5 rounded-xl shadow-xs hover:shadow cursor-pointer"
-                disabled={Boolean(activeRequest)}
-                onClick={() => siftActions.selectRoute(route.id)}
-              >
-                <span>深入探索此主题，展开视点推进 (04) →</span>
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </NodeShell>
     </div>
