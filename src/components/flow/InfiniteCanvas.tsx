@@ -21,6 +21,8 @@ import {
   resolveNodeContext,
   type CustomCard,
 } from "@/lib/convergence-store";
+import { collabManager } from "@/lib/collaboration/collab-manager";
+import { MultiplayerCursors } from "@/components/collaboration/MultiplayerCursors";
 import { nodeTypes } from "./nodeTypes";
 import { CanvasToolBar, type ToolType } from "./CanvasToolBar";
 import type { Route, PlatformPlan } from "@/types/routes";
@@ -1080,11 +1082,25 @@ function FlowInner() {
     }, 50);
   }, [nodes, history, routes, platformPlans, setPosition, setNodes, fitView]);
 
+  const lastCursorBroadcastRef = useRef<number>(0);
+  const handleCanvasPointerMove = useCallback(
+    (flowPos: { x: number; y: number }) => {
+      const now = Date.now();
+      if (now - lastCursorBroadcastRef.current > 35) {
+        lastCursorBroadcastRef.current = now;
+        collabManager.broadcastPresence(flowPos, null);
+      }
+    },
+    [],
+  );
+
   return (
     <div
       className="relative h-full w-full outline-hidden"
       onMouseMove={(e) => {
         lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+        const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+        handleCanvasPointerMove(flowPos);
       }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -1115,6 +1131,9 @@ function FlowInner() {
         edges={safeEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
+        onNodeDrag={(_e, node) => {
+          collabManager.broadcastPresence(node.position, node.id);
+        }}
         onNodeDragStop={(_e, node) => setPosition(node.id, node.position)}
         onConnect={onConnect}
         onConnectStart={onConnectStart}
@@ -1165,6 +1184,7 @@ function FlowInner() {
           color="#d2c8ba"
         />
         <Controls showInteractive={false} position="bottom-left" />
+        <MultiplayerCursors />
       </ReactFlow>
 
       {/* Floating Figma-like Tool Bar */}
@@ -1337,10 +1357,8 @@ export function InfiniteCanvas({
   onOpenDossier?: () => void;
 } = {}) {
   return (
-    <ReactFlowProvider>
-      <div className="h-full w-full">
-        <FlowInner />
-      </div>
-    </ReactFlowProvider>
+    <div className="h-full w-full">
+      <FlowInner />
+    </div>
   );
 }

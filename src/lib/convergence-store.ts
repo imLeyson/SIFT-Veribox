@@ -34,6 +34,23 @@ import { synthesizeCardFromInputs, type ToolType } from "./card-synthesis";
 
 export const STORAGE_KEY = "sift-convergence-v3";
 
+export type StoreMutationListener = (type: string, payload: any) => void;
+let mutationListener: StoreMutationListener | null = null;
+
+export function setStoreMutationListener(listener: StoreMutationListener | null) {
+  mutationListener = listener;
+}
+
+function notifyMutation(type: string, payload: any) {
+  if (mutationListener) {
+    try {
+      mutationListener(type, payload);
+    } catch {
+      // ignore
+    }
+  }
+}
+
 const SourceInteractionSchema = z.object({
   skipped: z.boolean().optional(),
   replacedBy: z.string().optional(),
@@ -336,8 +353,10 @@ export function createSiftStore(providedStorage?: StateStorage) {
         },
         setDrafts: (drafts) => set({ drafts }),
         setCorrectionDraft: (correctionDraft) => set({ correctionDraft }),
-        setPosition: (id, position) =>
-          set({ positions: { ...get().positions, [id]: position } }),
+        setPosition: (id, position) => {
+          set({ positions: { ...get().positions, [id]: position } });
+          notifyMutation("node:move", { nodeId: id, position });
+        },
         setError: (error) => set({ error }),
         beginRequest: () => {
           if (get().activeRequest) return null;
@@ -693,6 +712,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
             customCards: nextCards,
             routes: nextRoutes,
           });
+          notifyMutation("card:add", { card: newCard });
           return id;
         },
         updateCustomCard: (id, patch) => {
@@ -725,6 +745,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
             customCards: updatedCards,
             routes: nextRoutes,
           });
+          notifyMutation("card:update", { cardId: id, patch });
         },
         deleteNodeById: (id) => {
           const currentDeleted = get().deletedNodeIds;
@@ -737,6 +758,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
               (e) => e.source !== id && e.target !== id
             ),
           });
+          notifyMutation("card:delete", { nodeId: id });
         },
         restoreNodeById: (id) => {
           set({
@@ -759,23 +781,23 @@ export function createSiftStore(providedStorage?: StateStorage) {
           ) {
             return;
           }
+          const newEdge = {
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            animated: edge.animated ?? true,
+            style: edge.style,
+          };
           set({
-            customEdges: [
-              ...currentEdges,
-              {
-                id: edge.id,
-                source: edge.source,
-                target: edge.target,
-                animated: edge.animated ?? true,
-                style: edge.style,
-              },
-            ],
+            customEdges: [...currentEdges, newEdge],
           });
+          notifyMutation("edge:add", { edge: newEdge });
         },
         deleteCustomEdge: (id) => {
           set({
             customEdges: get().customEdges.filter((e) => e.id !== id),
           });
+          notifyMutation("edge:delete", { edgeId: id });
         },
         synthesizeCard: (cardId: string) => {
           const state = get();

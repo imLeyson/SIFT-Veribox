@@ -8,8 +8,10 @@ import { ThinkingProgress } from "./canvas/ThinkingProgress";
 import { DossierModal } from "./dossier/DossierModal";
 import { GlobalChatView } from "./chat/GlobalChatView";
 import { ProjectSwitcher } from "./project/ProjectSwitcher";
+import { CollaborationBar } from "./collaboration/CollaborationBar";
 import { createProject } from "@/lib/project-manager";
 import { FileDown, MessageSquare, Plus } from "lucide-react";
+import { ReactFlowProvider } from "@xyflow/react";
 
 function subscribeHydration(onChange: () => void) {
   return useSiftStore.persist.onFinishHydration(onChange);
@@ -47,39 +49,42 @@ export function Workspace() {
       </div>
     );
   return (
-    <main className="flex h-dvh flex-col overflow-hidden">
-      <header className="z-10 flex h-12 items-center justify-between border-b border-stone-200/80 bg-white/80 px-4 backdrop-blur-md select-none sm:px-5">
-        <div className="flex items-center gap-2.5">
-          {/* Brand Logo - clean, confident, restrained */}
-          <span className="font-serif font-black tracking-wider text-base text-stone-900 select-none">
-            SIFT
-          </span>
+    <ReactFlowProvider>
+      <main className="flex h-dvh flex-col overflow-hidden">
+        <header className="z-10 flex h-12 items-center justify-between border-b border-stone-200/80 bg-white/80 px-4 backdrop-blur-md select-none sm:px-5">
+          <div className="flex items-center gap-2.5">
+            {/* Brand Logo - clean, confident, restrained */}
+            <span className="font-serif font-black tracking-wider text-base text-stone-900 select-none">
+              SIFT
+            </span>
 
-          <span className="text-stone-300 font-light select-none">/</span>
+            <span className="text-stone-300 font-light select-none">/</span>
 
-          {/* Module 5: Multi-Project Canvas Switcher */}
-          <ProjectSwitcher />
+            {/* Module 5: Multi-Project Canvas Switcher */}
+            <ProjectSwitcher />
 
-          {/* Strategy Advisor Drawer Toggle */}
-          <button
-            type="button"
-            onClick={() => setAdvisorOpen(!advisorOpen)}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer select-none ${
-              advisorOpen
-                ? "bg-stone-100 text-stone-900 border-stone-300 shadow-2xs font-semibold"
-                : "bg-white/80 hover:bg-stone-100/80 border-stone-200/90 text-stone-600 hover:text-stone-900"
-            }`}
-          >
-            <MessageSquare className="h-3.5 w-3.5 text-stone-500" />
-            <span>策略顾问</span>
-            {Boolean(state) && (
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
-            )}
-          </button>
-        </div>
+            {/* Strategy Advisor Drawer Toggle */}
+            <button
+              type="button"
+              onClick={() => setAdvisorOpen(!advisorOpen)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer select-none ${
+                advisorOpen
+                  ? "bg-stone-100 text-stone-900 border-stone-300 shadow-2xs font-semibold"
+                  : "bg-white/80 hover:bg-stone-100/80 border-stone-200/90 text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <MessageSquare className="h-3.5 w-3.5 text-stone-500" />
+              <span>策略顾问</span>
+              {Boolean(state) && (
+                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+              )}
+            </button>
+          </div>
 
-        {/* Right side utility actions */}
-        <div className="flex items-center gap-1.5">
+          {/* Right side utility actions */}
+          <div className="flex items-center gap-1.5">
+            {/* Multi-user real-time collaboration */}
+            <CollaborationBar />
           {state?.status === "questioning" && (
             <button
               type="button"
@@ -170,5 +175,6 @@ export function Workspace() {
         onClose={() => setDossierOpen(false)}
       />
     </main>
+    </ReactFlowProvider>
   );
 }
