@@ -1,6 +1,11 @@
 import type { Route } from "@/types/routes";
 import type { DesignState } from "@/types/convergence";
 
+function stripEnglishThemeTag(themeName: string): string {
+  const match = themeName.trim().match(/^(《[^》]+》)\s*(?:[·\-–—:]?\s*[A-Za-z][A-Za-z0-9 /_-]*)?$/);
+  return match?.[1] || themeName.trim();
+}
+
 function attachAlignmentScores(routes: Route[], recommendedId: string | null): Route[] {
   const defaultMetaphors = [
     "大面积温润材质微肌理留白，在 45° 侧光下沉下一道静谧克制的光影，散发耐看的高级物料质感",
@@ -10,6 +15,7 @@ function attachAlignmentScores(routes: Route[], recommendedId: string | null): R
 
   return routes.map((r, i) => ({
     ...r,
+    themeName: stripEnglishThemeTag(r.themeName || ""),
     sensoryMetaphor: r.sensoryMetaphor || defaultMetaphors[i] || defaultMetaphors[0],
     alignmentScore: r.id === recommendedId || r.recommendedReason ? 96 : i === 1 ? 91 : 87,
   }));
