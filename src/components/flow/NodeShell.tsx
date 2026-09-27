@@ -174,8 +174,16 @@ export function NodeShell({
   const currentTag = (canTagCard && nodeId && activeCardTags ? activeCardTags[nodeId] : undefined) as CardTag | undefined;
 
   const taggableNodeIds = useMemo(
-    () => new Set(getNodes().filter((node) => node.type === "route" || node.type === "imageGen").map((node) => node.id)),
-    [getNodes, activeCardTags],
+    () => {
+      const ids = new Set(
+        getNodes()
+          .filter((node) => node.type === "route" || node.type === "imageGen")
+          .map((node) => node.id),
+      );
+      if (nodeId && canTagCard) ids.add(nodeId);
+      return ids;
+    },
+    [getNodes, activeCardTags, nodeId, canTagCard],
   );
 
   const edgeSignature = getEdges()

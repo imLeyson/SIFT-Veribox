@@ -102,8 +102,8 @@ describe("Module 3: Card Tagging & Collaborative Spotlight System", () => {
         React.createElement(
           NodeShell,
           {
-            kicker: "灵感检索",
-            title: "合模线检索",
+          kicker: "画面生成",
+          title: "合模线视觉",
             nodeId: "test-node-other",
           },
           React.createElement("div", null, "Card Content")
