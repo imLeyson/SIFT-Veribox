@@ -65,7 +65,8 @@ export function ImageGenNode({ id, data, selected }: NodeProps) {
   const updateCustomCard = useSiftStore((s) => s.updateCustomCard);
   const synthesizeCard = useSiftStore((s) => s.synthesizeCard);
 
-  const cardData = (data || {}) as ImageGenNodeData;
+  const currentCustomCard = customCards.find((c) => c.id === id);
+  const cardData = (currentCustomCard?.data || data || {}) as ImageGenNodeData;
   const isEmpty = Boolean(cardData.isEmpty);
 
   // Upstream summary
@@ -159,18 +160,31 @@ export function ImageGenNode({ id, data, selected }: NodeProps) {
     adjustTextareaHeight();
   }, [prompt, isPromptExpanded, adjustTextareaHeight]);
 
-  // Update helper
+  // Update helper using fresh store data to avoid stale closures
   const updateField = useCallback(
     (patch: Partial<ImageGenNodeData>) => {
+      const current = useSiftStore.getState().customCards.find((c) => c.id === id);
+      const currentData = (current?.data || cardData || {}) as ImageGenNodeData;
       updateCustomCard(id, {
         data: {
-          ...cardData,
+          ...currentData,
           ...patch,
         },
       });
     },
     [id, cardData, updateCustomCard],
   );
+
+  // Auto-recovery: if card is stuck in isGenerating for > 45s without completing, reset it
+  useEffect(() => {
+    if (!isGenerating) return;
+    const timer = setTimeout(() => {
+      console.warn(`[ImageGenNode] Card ${id} stuck in isGenerating, auto-clearing`);
+      updateField({ isGenerating: false });
+      setGenError("模型出图耗时过长或已中断，可点击重新渲染");
+    }, 45000);
+    return () => clearTimeout(timer);
+  }, [id, isGenerating, updateField]);
 
   // Copy prompt handler
   const handleCopyPrompt = async () => {
@@ -188,7 +202,12 @@ export function ImageGenNode({ id, data, selected }: NodeProps) {
 
     setGenError(null);
     updateField({ isGenerating: true, isEmpty: false });
-    let nextCandidates = [...candidates];
+    const currentCard = useSiftStore.getState().customCards.find((c) => c.id === id);
+    const existingCandidates = (currentCard?.data?.candidates || candidates || []) as ImageCandidate[];
+    let nextCandidates = [...existingCandidates];
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 55000);
 
     try {
       for (let i = 0; i < count; i += 1) {
@@ -202,6 +221,7 @@ export function ImageGenNode({ id, data, selected }: NodeProps) {
             referenceImageUrl: connectedRefImage?.src,
             refWeight,
           }),
+          signal: controller.signal,
         });
 
         const result = await res.json();
@@ -226,9 +246,14 @@ export function ImageGenNode({ id, data, selected }: NodeProps) {
       }
     } catch (err: any) {
       console.error("[ImageGenNode] Error generating image:", err);
-      const errMsg = err?.message || "出图请求失败，请稍后重试";
+      const isTimeout = err?.name === "AbortError" || err?.message?.includes("超时");
+      const errMsg = isTimeout
+        ? "出图请求超时 (55s)，请点击重试"
+        : (err?.message || "出图请求失败，请稍后重试");
       setGenError(errMsg);
       updateField({ isGenerating: false, candidates: nextCandidates });
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
@@ -538,6 +563,18 @@ export function ImageGenNode({ id, data, selected }: NodeProps) {
                         画幅 {aspectRatio} · 注入「{displayTitle}」特征
                       </span>
                     </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        updateField({ isGenerating: false });
+                        setGenError("已取消等待，可重新点击渲染");
+                      }}
+                      className="mt-1 text-[10px] text-stone-300 hover:text-white px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition-all cursor-pointer shadow-xs"
+                      title="取消本次等待并解锁卡片"
+                    >
+                      取消等待
+                    </button>
                   </div>
                 ) : currentImageUrl ? (
                   /* Rendered Image Display with Clean Hover Overlay */

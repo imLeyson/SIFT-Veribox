@@ -293,29 +293,46 @@ class CollaborationManager {
   }
 
   private registerCardConflict(op: Extract<CollaborationOp, { type: "card:update" }>): string[] {
-    if (this.activeLocalNodeId !== op.cardId) return [];
+    if (!isBrowser() || !op.patch) return [];
+
+    // Only register conflict if local user is actively focused on an input of this card
+    const activeEl = document.activeElement;
+    const activeNodeId = activeEl?.closest?.("[data-nodeid]")?.getAttribute("data-nodeid");
+    if (!activeNodeId || activeNodeId !== op.cardId) return [];
 
     const current = useSiftStore.getState().customCards.find((card) => card.id === op.cardId);
     if (!current) return [];
 
-    const fields = Object.keys(op.patch).filter((field) => {
-      if (field === "data") return Boolean(op.patch.data && current.data);
-      return (current as Record<string, unknown>)[field] !== undefined;
-    });
-    if (fields.length === 0) return [];
+    const activeField = (activeEl as HTMLElement)?.dataset?.field;
+    // If user is editing a specific text field (title/content), only conflict on that field
+    const candidateFields = activeField
+      ? [activeField]
+      : ["title", "content"];
 
-    const localPatch = fields.reduce<Record<string, any>>((patch, field) => {
-      patch[field] = field === "data" ? current.data : (current as Record<string, any>)[field];
+    const conflictFields = candidateFields.filter((field) => {
+      const remoteVal = (op.patch as Record<string, unknown>)[field];
+      const localVal = (current as Record<string, unknown>)[field];
+      return (
+        remoteVal !== undefined &&
+        localVal !== undefined &&
+        JSON.stringify(remoteVal) !== JSON.stringify(localVal)
+      );
+    });
+
+    if (conflictFields.length === 0) return [];
+
+    const localPatch = conflictFields.reduce<Record<string, any>>((patch, field) => {
+      patch[field] = (current as Record<string, any>)[field];
       return patch;
     }, {});
-    const remotePatch = fields.reduce<Record<string, any>>((patch, field) => {
-      patch[field] = op.patch[field];
+    const remotePatch = conflictFields.reduce<Record<string, any>>((patch, field) => {
+      patch[field] = (op.patch as Record<string, any>)[field];
       return patch;
     }, {});
     const remotePeer = this.peersMap.get(op.userId);
     this.cardConflicts.set(op.cardId, {
       cardId: op.cardId,
-      fields,
+      fields: conflictFields,
       localPatch,
       remotePatch,
       remotePeer: {
@@ -327,7 +344,7 @@ class CollaborationManager {
     });
     this.setStatus("conflict");
     this.notifyConflictListeners();
-    return fields;
+    return conflictFields;
   }
 
   public resolveCardConflict(cardId: string, resolution: CardConflictResolution) {
@@ -401,8 +418,13 @@ class CollaborationManager {
       snap.customEdges?.length || 0,
       snap.platformPlans?.length || 0,
       Object.keys(snap.positions || {}).length,
-      // Include a content-level hash of the most volatile fields
-      snap.customCards?.map((c) => `${c.id}:${c.title || ""}:${(c as any).data?.notes?.length || 0}`).join(",") || "",
+      // Comprehensive card content hash including image generation state & URLs
+      snap.customCards
+        ?.map((c) => {
+          const d = (c as any).data || {};
+          return `${c.id}:${c.title || ""}:${c.content || ""}:${d.imageUrl || ""}:${d.isGenerating ? 1 : 0}:${d.candidates?.length || 0}:${d.notes?.length || 0}:${d.prompt ? d.prompt.slice(0, 30) : ""}`;
+        })
+        .join(";") || "",
       snap.routes?.map((r) => `${r.id}:${r.themeName || ""}`).join(",") || "",
       JSON.stringify(snap.deletedNodeIds || []),
     ];
@@ -443,9 +465,28 @@ class CollaborationManager {
 
         // Surgical field-level protection: only protect the exact field
         // the local user is actively typing in (detected via focus).
-        // Previously, clicking ANY card locked the entire card from remote
-        // updates, causing the "occupation" problem.
+        // Protect generated image assets: never overwrite a card that has an image locally
+        // with a stale remote card that has no image (e.g. from an in-flight snapshot)
         if (Array.isArray(nextCustomCards) && Array.isArray(prev.customCards)) {
+          nextCustomCards = nextCustomCards.map((remoteCard) => {
+            const localCard = prev.customCards.find((c) => c.id === remoteCard.id);
+            if (!localCard) return remoteCard;
+            const localData = (localCard.data || {}) as Record<string, any>;
+            const remoteData = (remoteCard.data || {}) as Record<string, any>;
+            if (localData.imageUrl && !remoteData.imageUrl) {
+              return {
+                ...remoteCard,
+                data: {
+                  ...remoteData,
+                  imageUrl: localData.imageUrl,
+                  candidates: localData.candidates ?? remoteData.candidates,
+                  isGenerating: false,
+                },
+              };
+            }
+            return remoteCard;
+          });
+
           const activeEl = typeof document !== "undefined" ? document.activeElement : null;
           const activeInputNodeId = activeEl?.closest?.("[data-nodeid]")?.getAttribute("data-nodeid") || null;
 
@@ -925,6 +966,9 @@ class CollaborationManager {
         // Track what we just uploaded so we don't re-apply our own snapshot
         if (snapshotToSend) {
           this.lastUploadedSnapshotHash = this.snapshotFingerprint(snapshotToSend);
+          this.lastUploadedAtRevision = data.revision;
+        } else if (opsToSend.length > 0) {
+          // If we sent ops, those ops bumped the server revision, so don't treat as incoming write
           this.lastUploadedAtRevision = data.revision;
         }
 

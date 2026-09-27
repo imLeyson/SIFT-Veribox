@@ -115,6 +115,38 @@ export async function POST(request: Request) {
         room.cursor += 1;
         room.revision += 1;
         room.ops.push({ ...op, seq: room.cursor });
+
+        // Apply mutation to room snapshot so the server snapshot never goes stale
+        if (room.snapshot) {
+          if (op.type === "card:update" && Array.isArray(room.snapshot.customCards)) {
+            room.snapshot.customCards = room.snapshot.customCards.map((c) => {
+              if (c.id !== op.cardId) return c;
+              return {
+                ...c,
+                ...op.patch,
+                data: {
+                  ...(c.data || {}),
+                  ...(op.patch?.data || {}),
+                },
+              };
+            });
+            room.snapshot.updatedAt = now;
+          } else if (op.type === "card:add" && Array.isArray(room.snapshot.customCards)) {
+            if (!room.snapshot.customCards.some((c) => c.id === op.card.id)) {
+              room.snapshot.customCards = [...room.snapshot.customCards, op.card];
+              room.snapshot.updatedAt = now;
+            }
+          } else if (op.type === "card:delete" && Array.isArray(room.snapshot.customCards)) {
+            room.snapshot.customCards = room.snapshot.customCards.filter((c) => c.id !== op.nodeId);
+            room.snapshot.updatedAt = now;
+          } else if (op.type === "node:move") {
+            room.snapshot.positions = {
+              ...(room.snapshot.positions || {}),
+              [op.nodeId]: op.position,
+            };
+            room.snapshot.updatedAt = now;
+          }
+        }
       }
     }
     // Keep replay protection bounded while retaining enough history for
