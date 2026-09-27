@@ -7,6 +7,7 @@ import { siftActions } from "@/lib/convergence-client";
 import { hasDirection, type DesignState } from "@/types/convergence";
 import { Sparkles, ArrowRight, RefreshCw, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { runIndependentStateRoutes } from "@/lib/independent-chain-runner";
+import { USER_STATUS_LABELS } from "../flow-copy";
 
 export function StateNode({ id, data, selected }: NodeProps) {
   const isCustomState = Boolean((data as any)?.state);
@@ -60,7 +61,7 @@ export function StateNode({ id, data, selected }: NodeProps) {
         title="核心策略基准（草稿）"
         badge={
           <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
-            待收敛
+            {USER_STATUS_LABELS.strategyDraft}
           </span>
         }
         selected={selected}
@@ -129,11 +130,11 @@ export function StateNode({ id, data, selected }: NodeProps) {
         confirmed ? (
           <span className="text-[10px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded flex items-center gap-1 shadow-2xs">
             <span className="text-emerald-600 font-bold">✓</span>
-            <span>已锁定</span>
+            <span>{USER_STATUS_LABELS.confirmed}</span>
           </span>
         ) : checkpoint ? (
           <span className="text-[10px] font-medium text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded">
-            检查点
+            {USER_STATUS_LABELS.pendingConfirmation}
           </span>
         ) : (
           <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">

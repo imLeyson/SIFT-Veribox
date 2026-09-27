@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { questionSubmitLabel, revisionLabel } from "./flow-copy";
+import { questionSubmitLabel, revisionLabel, USER_STATUS_LABELS } from "./flow-copy";
 
 describe("flow copy", () => {
   it("uses a direct continuation label when no question is answered", () => {
@@ -12,5 +12,11 @@ describe("flow copy", () => {
 
   it("shows a stable user-facing revision label instead of an internal code", () => {
     expect(revisionLabel(2)).toBe("第 2 次记录");
+  });
+
+  it("uses plain-language status labels in cards", () => {
+    expect(USER_STATUS_LABELS.waitingInput).toBe("等待输入");
+    expect(USER_STATUS_LABELS.pendingConfirmation).toBe("待确认");
+    expect(USER_STATUS_LABELS.confirmed).toBe("已确认");
   });
 });

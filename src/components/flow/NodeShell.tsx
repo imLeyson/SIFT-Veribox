@@ -274,6 +274,7 @@ export function NodeShell({
         isConnectable={true}
         className="!w-3 !h-3 !rounded-full !bg-stone-400 hover:!bg-accent !border-2 !border-white transition-all cursor-crosshair !-left-[6px] opacity-75 hover:opacity-100 hover:scale-125 z-10"
         title="拖动或吸附连线（输入）"
+        aria-label="输入连接点：接收上一张卡片"
       />
       <Handle
         type="source"
@@ -281,6 +282,7 @@ export function NodeShell({
         isConnectable={true}
         className="!w-3 !h-3 !rounded-full !bg-stone-400 hover:!bg-accent !border-2 !border-white transition-all cursor-crosshair !-right-[6px] opacity-75 hover:opacity-100 hover:scale-125 z-10"
         title="拖动引线连接下游卡片或释放呼出下一步"
+        aria-label="输出连接点：拖动到下一张卡片"
       />
       <div className="overflow-hidden rounded-[1.25rem]">
         {/* Top 3px Semantic Stage Accent Strip */}
@@ -445,6 +447,12 @@ export function NodeShell({
           >
             {title}
           </div>
+          {selected && nodeId && (
+            <div className="mt-2 flex items-center gap-1.5 text-[10px] text-stone-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+              <span>拖动右侧圆点，连接下一步</span>
+            </div>
+          )}
         </div>
 
         {/* Collapsible Card Body / Chat Mode Body */}

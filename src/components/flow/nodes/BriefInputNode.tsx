@@ -5,6 +5,7 @@ import { NodeShell } from "../NodeShell";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { runIndependentBrief } from "@/lib/independent-chain-runner";
+import { USER_STATUS_LABELS } from "../flow-copy";
 import { compressImageFile } from "@/lib/image-utils";
 import {
   applyBriefInputImeEvent,
@@ -182,7 +183,7 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
         badge={
           isLocked ? (
             <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
-              已锁定
+              {USER_STATUS_LABELS.confirmed}
             </span>
           ) : state ? (
             <span className="text-[10px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded">
@@ -190,7 +191,7 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
             </span>
           ) : (
             <span className="text-[10px] font-medium text-stone-500 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
-              待输入
+              {USER_STATUS_LABELS.waitingInput}
             </span>
           )
         }

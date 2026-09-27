@@ -7,7 +7,7 @@ import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { answerText, type Answer, type Question } from "@/types/convergence";
 import { runIndependentAskConvergence } from "@/lib/independent-chain-runner";
-import { revisionLabel } from "../flow-copy";
+import { revisionLabel, USER_STATUS_LABELS } from "../flow-copy";
 
 export type FlowData = {
   historyId?: string;
@@ -89,7 +89,7 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
         title="关键视觉抉择"
         badge={
           <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
-            待确认
+            {USER_STATUS_LABELS.pendingConfirmation}
           </span>
         }
         selected={selected}
@@ -170,7 +170,7 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
           title="关键视觉抉择"
           badge={
             <span className="text-[10px] font-medium text-sky-800 bg-sky-50 border border-sky-200/80 px-1.5 py-0.5 rounded">
-              待确认
+              {USER_STATUS_LABELS.pendingConfirmation}
             </span>
           }
           selected={selected}

@@ -12,3 +12,10 @@ export function questionSubmitLabel(
 export function revisionLabel(revision: number): string {
   return revision > 0 ? `第 ${revision} 次记录` : "决策记录";
 }
+
+export const USER_STATUS_LABELS = {
+  waitingInput: "等待输入",
+  pendingConfirmation: "待确认",
+  confirmed: "已确认",
+  strategyDraft: "策略草稿",
+} as const;
