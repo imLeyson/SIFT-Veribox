@@ -19,9 +19,8 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   Wand2,
-  Star,
 } from "lucide-react";
-import { useSiftStore } from "@/lib/convergence-store";
+import { useSiftStore, type FilterTag } from "@/lib/convergence-store";
 import { useReactFlow } from "@xyflow/react";
 
 export type ToolType =
@@ -112,6 +111,20 @@ const TOOL_OPTIONS: {
     icon: ImageIcon,
     color: "text-blue-300 bg-blue-950",
   },
+];
+
+const FILTER_OPTIONS: {
+  value: FilterTag;
+  label: string;
+  icon: string;
+  countKey?: "primary" | "review" | "serendipity" | "stashed";
+}[] = [
+  { value: "all", label: "全部", icon: "◇" },
+  { value: "curated", label: "精选", icon: "✦" },
+  { value: "primary", label: "喜欢", icon: "⭐️", countKey: "primary" },
+  { value: "review", label: "待评审", icon: "❓", countKey: "review" },
+  { value: "serendipity", label: "灵感", icon: "💡", countKey: "serendipity" },
+  { value: "stashed", label: "反例", icon: "↺", countKey: "stashed" },
 ];
 
 export function CanvasToolBar({
@@ -333,24 +346,40 @@ export function CanvasToolBar({
           <Maximize2 className="h-4 w-4" />
         </button>
 
-        {/* Curated View Toggle (when any cards are starred/tagged) */}
+        {/* Curated View Filters (when any cards are starred/tagged) */}
         {tagCounts.totalTagged > 0 && (
           <>
             <div className="h-4 w-px bg-white/20 mx-1" />
-            <button
-              type="button"
-              onClick={() => setActiveFilterTag(activeFilterTag === "curated" ? "all" : "curated")}
-              className={`flex h-9 items-center gap-1.5 px-2.5 rounded-xl transition-all cursor-pointer text-xs ${
-                activeFilterTag === "curated"
-                  ? "bg-amber-400/20 text-amber-200 border border-amber-400/40 font-medium shadow-xs"
-                  : "hover:bg-white/10 text-stone-300 hover:text-white"
-              }`}
-              title={activeFilterTag === "curated" ? "退出精选：显示全部探索链路" : "仅看精选：聚焦已收藏与重点卡片"}
-            >
-              <Star className="h-3.5 w-3.5 fill-current text-amber-400" />
-              <span>精选</span>
-              <span className="text-[10px] opacity-70 font-mono">({tagCounts.totalTagged})</span>
-            </button>
+            <div className="flex items-center gap-0.5 rounded-xl bg-white/5 p-0.5" role="group" aria-label="精选视图筛选">
+              {FILTER_OPTIONS.map((option) => {
+                const count = option.countKey ? tagCounts[option.countKey] : option.value === "curated" ? tagCounts.totalTagged : undefined;
+                const isActive = activeFilterTag === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setActiveFilterTag(option.value)}
+                    className={`flex h-8 items-center gap-1 rounded-lg px-1.5 transition-all cursor-pointer text-[10px] ${
+                      isActive
+                        ? "bg-amber-400/20 text-amber-100 border border-amber-400/40 font-medium shadow-xs"
+                        : "border border-transparent text-stone-400 hover:bg-white/10 hover:text-white"
+                    }`}
+                    title={
+                      option.value === "all"
+                        ? "显示全部探索链路"
+                        : option.value === "curated"
+                          ? "聚焦所有已标记卡片，并保留来源链路"
+                          : `只看${option.label}，并保留来源链路`
+                    }
+                    aria-pressed={isActive}
+                  >
+                    <span aria-hidden="true">{option.icon}</span>
+                    <span>{option.label}</span>
+                    {count !== undefined && <span className="font-mono opacity-70">{count}</span>}
+                  </button>
+                );
+              })}
+            </div>
           </>
         )}
       </div>

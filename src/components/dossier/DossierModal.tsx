@@ -604,7 +604,7 @@ export function DossierModal({
                     {taggedItems.stashed.length > 0 && (
                       <div className="space-y-1.5 pt-2">
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-600">
-                          <span>💤 备选归档 (Stashed Alternatives)</span>
+                          <span>💤 反例 / 归档 (Counterexamples & Stashed)</span>
                           <span className="text-[10px] text-stone-400 font-mono">
                             ({taggedItems.stashed.length})
                           </span>

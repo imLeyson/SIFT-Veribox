@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Handle, Position } from "@xyflow/react";
-import { GripHorizontal, Copy, Trash2, ChevronDown, ChevronUp, RefreshCw, Bookmark, Check, Star, MessageSquare } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Handle, Position, useReactFlow } from "@xyflow/react";
+import { GripHorizontal, Copy, Trash2, ChevronDown, ChevronUp, RefreshCw, Bookmark, Check, Star, MessageSquare, Lightbulb, Archive } from "lucide-react";
 import { useSiftStore, type CardTag } from "@/lib/convergence-store";
 import { useRemoteCollaboratorsOnNode } from "@/lib/collaboration/collab-manager";
 
@@ -41,12 +41,12 @@ export const CARD_TAG_CONFIG: Record<CardTag, {
     description: "关键分水岭卡片，需团队/导师协助表决",
   },
   stashed: {
-    label: "备选归档",
-    shortLabel: "归档",
+    label: "反例 / 归档",
+    shortLabel: "反例",
     icon: "💤",
     badgeClass: "bg-stone-100 text-stone-600 border-stone-300",
     activeClass: "opacity-65",
-    description: "暂不行通或已替代，沉淀备选",
+    description: "暂不采用或已替代，保留为反例和备选",
   },
 };
 
@@ -177,6 +177,7 @@ export function NodeShell({
   const cardTags = useSiftStore((s) => s.cardTags);
   const activeFilterTag = useSiftStore((s) => s.activeFilterTag);
   const setCardTag = useSiftStore((s) => s.setCardTag);
+  const { getEdges } = useReactFlow();
 
   const [localCollapsed, setLocalCollapsed] = useState(false);
   const activeCollapsedList = typeof window === "undefined" ? useSiftStore.getState().collapsedNodeIds : (collapsedNodeIds ?? []);
@@ -185,6 +186,39 @@ export function NodeShell({
   const activeCardTags = typeof window === "undefined" ? useSiftStore.getState().cardTags : cardTags;
   const currentFilterTag = typeof window === "undefined" ? useSiftStore.getState().activeFilterTag : activeFilterTag;
   const currentTag = (nodeId && activeCardTags ? activeCardTags[nodeId] : undefined) as CardTag | undefined;
+
+  const edgeSignature = getEdges()
+    .map((edge) => `${edge.source}>${edge.target}`)
+    .sort()
+    .join("|");
+  const spotlightSourceIds = useMemo(() => {
+    if (currentFilterTag === "all") return new Set<string>();
+
+    const selectedIds = new Set(
+      Object.entries(activeCardTags ?? {})
+        .filter(([, tag]) => currentFilterTag === "curated" || tag === currentFilterTag)
+        .map(([id]) => id),
+    );
+    const reverseEdges = new Map<string, string[]>();
+    for (const edge of getEdges()) {
+      const sources = reverseEdges.get(edge.target) ?? [];
+      sources.push(edge.source);
+      reverseEdges.set(edge.target, sources);
+    }
+
+    const sourceIds = new Set<string>();
+    const queue = [...selectedIds];
+    while (queue.length > 0) {
+      const targetId = queue.shift();
+      if (!targetId) continue;
+      for (const sourceId of reverseEdges.get(targetId) ?? []) {
+        if (sourceIds.has(sourceId) || selectedIds.has(sourceId)) continue;
+        sourceIds.add(sourceId);
+        queue.push(sourceId);
+      }
+    }
+    return sourceIds;
+  }, [activeCardTags, currentFilterTag, edgeSignature, getEdges]);
 
   const handleToggle = () => {
     if (nodeId) {
@@ -205,11 +239,14 @@ export function NodeShell({
     currentFilterTag === "curated"
       ? Boolean(currentTag)
       : Boolean(currentTag && currentTag === currentFilterTag);
+  const isSourceInSpotlightChain = Boolean(nodeId && spotlightSourceIds.has(nodeId));
 
   let spotlightClass = "";
   if (isSpotlightActive) {
     if (isSpotlightMatched) {
       spotlightClass = "ring-2 ring-stone-900/70 shadow-2xl scale-[1.01] z-30 opacity-100";
+    } else if (isSourceInSpotlightChain) {
+      spotlightClass = "opacity-75 ring-1 ring-stone-300/80 shadow-md";
     } else {
       spotlightClass = "opacity-20 blur-[0.2px] hover:opacity-60 hover:blur-none transition-all duration-200";
     }
@@ -292,6 +329,11 @@ export function NodeShell({
                   {cleanKicker}
                 </span>
               ) : null}
+              {isSourceInSpotlightChain && (
+                <span className="shrink-0 whitespace-nowrap rounded border border-stone-300/70 bg-stone-100/80 px-1.5 py-0.5 text-[9px] font-medium text-stone-500">
+                  来源链路
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
@@ -356,21 +398,42 @@ export function NodeShell({
                     )}
                   </button>
 
-                  {/* Secondary/Legacy tags if present */}
-                  {currentTag && currentTag !== "primary" && currentTag !== "review" && CARD_TAG_CONFIG[currentTag] && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCardTag(nodeId, null);
-                      }}
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-all flex items-center gap-1 cursor-pointer border ${CARD_TAG_CONFIG[currentTag].badgeClass}`}
-                      title={`${CARD_TAG_CONFIG[currentTag].label} (点击取消)`}
-                    >
-                      <span>{CARD_TAG_CONFIG[currentTag].icon}</span>
-                      <span>{CARD_TAG_CONFIG[currentTag].shortLabel}</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCardTag(nodeId, currentTag === "serendipity" ? null : "serendipity");
+                    }}
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-all flex items-center gap-1 cursor-pointer border ${
+                      currentTag === "serendipity"
+                        ? CARD_TAG_CONFIG.serendipity.badgeClass
+                        : "border-transparent text-stone-400 hover:text-purple-600 hover:bg-stone-100 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    }`}
+                    title={currentTag === "serendipity" ? "已标记灵感 (点击取消)" : "标记为意外灵感"}
+                    aria-label={currentTag === "serendipity" ? "取消灵感标记" : "标记为意外灵感"}
+                  >
+                    <Lightbulb className={`h-3 w-3 ${currentTag === "serendipity" ? "text-purple-600" : "text-stone-400"}`} />
+                    {currentTag === "serendipity" && <span>{CARD_TAG_CONFIG.serendipity.shortLabel}</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCardTag(nodeId, currentTag === "stashed" ? null : "stashed");
+                    }}
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-all flex items-center gap-1 cursor-pointer border ${
+                      currentTag === "stashed"
+                        ? CARD_TAG_CONFIG.stashed.badgeClass
+                        : "border-transparent text-stone-400 hover:text-stone-700 hover:bg-stone-100 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    }`}
+                    title={currentTag === "stashed" ? "已标记反例 / 归档 (点击取消)" : "标记为反例 / 归档"}
+                    aria-label={currentTag === "stashed" ? "取消反例标记" : "标记为反例 / 归档"}
+                  >
+                    <Archive className={`h-3 w-3 ${currentTag === "stashed" ? "text-stone-600" : "text-stone-400"}`} />
+                    {currentTag === "stashed" && <span>{CARD_TAG_CONFIG.stashed.shortLabel}</span>}
+                  </button>
+
                 </div>
               )}
 

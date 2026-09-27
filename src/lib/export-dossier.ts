@@ -226,7 +226,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       else if (tag === "stashed") stashedCards.push(cardLabel);
     });
 
-    if (primaryCards.length > 0 || reviewCards.length > 0 || serendipityCards.length > 0) {
+    if (primaryCards.length > 0 || reviewCards.length > 0 || serendipityCards.length > 0 || stashedCards.length > 0) {
       lines.push(`## 团队协同标记与决策漏斗 (Collaborative Review & Decision Funnel)\n`);
       if (primaryCards.length > 0) {
         lines.push(`### ⭐️ 喜欢收藏的方向 (Favorite Directions)`);
@@ -241,6 +241,11 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       if (serendipityCards.length > 0) {
         lines.push(`### 💡 突破性意外灵感 (Serendipitous Sparks)`);
         serendipityCards.forEach((c) => lines.push(`- 💡 **${c}**`));
+        lines.push("");
+      }
+      if (stashedCards.length > 0) {
+        lines.push(`### 💤 反例 / 归档 (Counterexamples & Stashed)`);
+        stashedCards.forEach((c) => lines.push(`- 💤 **${c}**`));
         lines.push("");
       }
       lines.push("---\n");
