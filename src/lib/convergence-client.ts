@@ -20,6 +20,7 @@ export function createConvergenceActions(
 ) {
   let controller: AbortController | null = null;
   let correctionInFlight: string | null = null;
+  let routeRefreshIndex = 0;
 
   function cancel() {
     controller?.abort();
@@ -119,7 +120,7 @@ export function createConvergenceActions(
         state: s.state,
         history: s.history,
         excludeThemeNames,
-        refreshIndex: options?.refresh ? 1 : 0,
+        refreshIndex: options?.refresh ? ++routeRefreshIndex : 0,
       };
       const response = await fetcher("/api/routes", {
         method: "POST",

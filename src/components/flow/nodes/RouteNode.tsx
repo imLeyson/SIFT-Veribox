@@ -149,8 +149,8 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
     return raw.replace(/[【】]/g, "").trim();
   }, [route.themeName, route.title]);
 
-  // Two-Tier Flagship Concept Code (《概念代号》 + Studio Tag)
-  const { conceptTitle, englishTag } = useMemo(() => {
+  // Display the Chinese concept only; English studio tags add noise to the theme scan.
+  const { conceptTitle } = useMemo(() => {
     const raw = (route.themeName || "").trim();
     if (!raw) {
       const fallback = heroTitle;
@@ -216,11 +216,6 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
           <span className="font-serif font-bold text-ink text-[17px] leading-snug tracking-tight">
             {conceptTitle}
           </span>
-          {englishTag && (
-            <span className="font-mono text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">
-              {englishTag}
-            </span>
-          )}
         </div>
         {craftParts.length > 0 && (
           <div className="text-[12px] font-sans font-medium text-stone-600 leading-snug flex items-center flex-wrap gap-1">
@@ -238,7 +233,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
         )}
       </div>
     );
-  }, [conceptTitle, englishTag, craftParts]);
+  }, [conceptTitle, craftParts]);
 
   // Consolidated craft description (must be called unconditionally!)
   const visualCraftText = useMemo(() => {

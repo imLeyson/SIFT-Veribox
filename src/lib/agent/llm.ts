@@ -147,6 +147,7 @@ export async function completeJson<T>(
   // if a stale env still says medium/low.
   reasoningEffort = "none",
   images: string[] = [],
+  temperature = 0.4,
 ): Promise<T> {
   void reasoningEffort;
   if (!API_KEY) throw new Error("未配置 LLM_API_KEY");
@@ -154,7 +155,7 @@ export async function completeJson<T>(
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     return await withRetry(() =>
-      completeJsonOnce<T>(system, user, controller.signal, images),
+      completeJsonOnce<T>(system, user, controller.signal, images, temperature),
     );
   } finally {
     clearTimeout(timer);
@@ -173,6 +174,7 @@ async function completeJsonOnce<T>(
   user: string,
   signal: AbortSignal,
   images: string[] = [],
+  temperature = 0.4,
 ): Promise<T> {
   let res: Response;
   let raw: string;
@@ -197,7 +199,7 @@ async function completeJsonOnce<T>(
       signal,
       body: JSON.stringify({
         model: MODEL,
-        temperature: 0.4,
+        temperature,
         // Non-thinking default is 8K; keep a hard cap under the 45s budget.
         max_tokens: 8192,
         reasoning_effort: "none",

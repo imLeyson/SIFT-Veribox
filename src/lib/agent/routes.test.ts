@@ -254,6 +254,71 @@ describe("routes agent generation", () => {
     expect(normalized.routes[0].themeName).toContain("回收");
   });
 
+  it("breaks a batch that repeats the same generic theme prefix", () => {
+    const repeatedRoutes = ["冷镜卵石", "冷轧标尺", "冷灰镜室"].map((themeName, index) => ({
+      id: `repeat-${index + 1}`,
+      themeName,
+      title: `主题命题 ${index + 1}`,
+      startingPoint: `手机使用切面 ${index + 1}`,
+      focusDimension: `视觉观察 ${index + 1}`,
+      coreProblem: "如何在具体形态与日常使用之间保持取舍？",
+      purpose: "观察不同视觉命题的成立条件",
+      pros: "有清晰的视觉抓手",
+      cons: "需要继续验证细节",
+      recommendedReason: index === 0 ? "与 Brief 更贴合" : null,
+      steps: [
+        { id: `s${index}1`, title: "形态观察", question: "观察什么？", purpose: "记录" },
+        { id: `s${index}2`, title: "场景观察", question: "比较什么？", purpose: "记录" },
+        { id: `s${index}3`, title: "细节观察", question: "验证什么？", purpose: "记录" },
+      ],
+    }));
+
+    const normalized = normalizeLiveRoutesPayload(
+      { routes: repeatedRoutes, recommendedRouteId: "repeat-1" },
+      {
+        sessionId: "s-repeat",
+        requestId: "req-repeat",
+        baseRevision: 1,
+        rawBrief: "智能手机日常使用设计",
+        state: {
+          ...confirmedState,
+          brief: { goal: "智能手机日常使用设计", audience: null, deliverable: "产品设计" },
+        },
+      },
+    );
+
+    const names = normalized.routes.map((route) => route.themeName ?? "");
+    expect(new Set(names).size).toBe(3);
+    expect(new Set(names.map((name) => name.replace(/[《》]/g, "").slice(0, 1))).size).toBeGreaterThan(1);
+  });
+
+  it("removes English studio tags from returned theme names", () => {
+    const namedRoutes = ["木纹触点 COLD GRAIN", "镜面回声 MIRROR ECHO", "折线借景 FOLD VIEW"].map((themeName, index) => ({
+      id: `named-${index + 1}`,
+      themeName,
+      title: `视觉命题 ${index + 1}`,
+      startingPoint: `不同切面 ${index + 1}`,
+      focusDimension: "形态与触点",
+      coreProblem: "如何保留真实判断？",
+      purpose: "观察",
+      pros: "清楚",
+      cons: "待验证",
+      recommendedReason: null,
+      steps: [],
+    }));
+    const normalized = normalizeLiveRoutesPayload(
+      { routes: namedRoutes, recommendedRouteId: "named-1" },
+      {
+        sessionId: "s-named",
+        requestId: "req-named",
+        baseRevision: 1,
+        rawBrief: "儿童牙刷形态设计",
+        state: confirmedState,
+      },
+    );
+    expect(normalized.routes.map((route) => route.themeName)).toEqual(["《木纹触点》", "《镜面回声》", "《折线借景》"]);
+  });
+
   it("generates pet-anchored fallback routes and steps for pet visual briefs", () => {
     const petNormalized = normalizeLiveRoutesPayload(
       { routes: [] },
@@ -270,10 +335,11 @@ describe("routes agent generation", () => {
     );
 
     expect(petNormalized.routes).toHaveLength(3);
-    // Theme names should be pet-adaptive, intuitive and without AI buzzwords
-    expect(petNormalized.routes[0].themeName).toBe("《温润生灵》 Gentle Companion");
-    expect(petNormalized.routes[1].themeName).toBe("《守护档案》 Guardian Ledger");
-    expect(petNormalized.routes[2].themeName).toBe("《负形印记》 Negative Silhouette");
+    // Theme names should be brief-anchored, distinct and free of the old English code template.
+    const petNames = petNormalized.routes.map((route) => route.themeName ?? "");
+    expect(new Set(petNames).size).toBe(3);
+    expect(petNames.some((name) => name.includes("宠物"))).toBe(true);
+    expect(petNames.every((name) => !/[A-Z]{3,}/.test(name))).toBe(true);
 
     // Titles & snapshots must refer to warm healing / pet identity
     expect(petNormalized.routes[0].title).toBe("350g 棉柔纸微触感 × 浅浮雕无墨微压凹");
@@ -306,10 +372,11 @@ describe("routes agent generation", () => {
     );
 
     expect(normalized.routes).toHaveLength(3);
-    // Theme names should adapt to sustainable material and emotional product, NOT 2D brand identity
-    expect(normalized.routes[0].themeName).toBe("《寂静凝灰》 Silent Tuff");
-    expect(normalized.routes[1].themeName).toBe("《掌心温存》 Poetic Organism");
-    expect(normalized.routes[2].themeName).toBe("《冷轧秩序》 Precision Architecture");
+    // Theme names should adapt to the brief and stay distinct, rather than using a fixed trio.
+    const productNames = normalized.routes.map((route) => route.themeName ?? "");
+    expect(new Set(productNames).size).toBe(3);
+    expect(productNames.some((name) => name.includes("宠物毛"))).toBe(true);
+    expect(productNames.every((name) => !/[A-Z]{3,}/.test(name))).toBe(true);
 
     // Snapshots must focus on recycled fiber and vessel/object form, not paper mill / 2D logo
     expect(normalized.routes[0].visualSnapshot).toContain("再生");

@@ -33,6 +33,8 @@ interface ExtractedThemeMeta {
   cons: string;
 }
 
+let blendGeneration = 0;
+
 function extractThemeMeta(theme: Route): ExtractedThemeMeta {
   const rawTheme = (theme.themeName || "").trim();
   const rawTitle = (theme.title || "").trim();
@@ -106,48 +108,69 @@ function splitChineseChunks(str: string): string[] {
   return [clean.slice(0, 2), clean.slice(2, 4)];
 }
 
+function hashString(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function pickBySeed<T>(items: T[], seed: number, offset = 0): T {
+  return items[(seed + offset) % items.length];
+}
+
+function compactPhrase(value: string, maxLength = 12): string {
+  const compact = value.replace(/[「」【】《》。，、：:；;]/g, "").trim();
+  return compact.length > maxLength ? `${compact.slice(0, maxLength)}…` : compact;
+}
+
 function synthesizeConceptName(
   metaA: ExtractedThemeMeta,
-  metaB: ExtractedThemeMeta
-): { conceptZh: string; conceptEn: string } {
+  metaB: ExtractedThemeMeta,
+  seed: number,
+  variant = 0,
+): string {
   const zhA = metaA.zh;
   const zhB = metaB.zh;
 
   const chunksA = splitChineseChunks(zhA);
   const chunksB = splitChineseChunks(zhB);
 
-  let conceptZh = "";
-  if (chunksB.length >= 2 && chunksA.length >= 2) {
-    conceptZh = `${chunksB[0]}${chunksA[chunksA.length - 1]}`;
-  } else if (chunksB.length >= 1 && chunksA.length >= 1) {
-    conceptZh = `${chunksB[0]}${chunksA[0]}`;
-  } else {
-    conceptZh = `${zhB.slice(0, 2)}${zhA.slice(-2)}`;
-  }
+  const pairCandidates = [
+    `${chunksB[0] || zhB.slice(0, 2)}${chunksA[chunksA.length - 1] || zhA.slice(-2)}`,
+    `${chunksA[0] || zhA.slice(0, 2)}${chunksB[chunksB.length - 1] || zhB.slice(-2)}`,
+    `${zhB.slice(0, 2)}${zhA.slice(0, 2)}`,
+  ];
+  const core = pickBySeed(pairCandidates, seed, variant)
+    .replace(/设计主题|风格主题|主题|方案|探索/g, "")
+    .slice(0, 4) || "交界";
+  const suffixes = ["折光", "回声", "借景", "偏轴", "留痕", "余温", "层差", "缓冲"];
+  const suffix = pickBySeed(suffixes, seed, 3 + variant);
+  return `《${core}${suffix}》`;
+}
 
-  if (conceptZh.length < 3) {
-    conceptZh = `${zhB.slice(0, 2)}${zhA.slice(0, 2)}`;
-  } else if (conceptZh.length > 5) {
-    conceptZh = conceptZh.slice(0, 4);
-  }
+function blendTitleVoice(cmf: string, structure: string, seed: number, variant = 0): string {
+  const material = compactPhrase(cmf, 9);
+  const form = compactPhrase(structure, 11);
+  const voices = [
+    `把${material}收进${form}`,
+    `${form}承接${material}`,
+    `让${material}沿着${form}展开`,
+    `在${material}与${form}之间留出转折`,
+  ];
+  return pickBySeed(voices, seed, variant);
+}
 
-  const wordsA = metaA.en.split(/\s+/).filter(Boolean);
-  const wordsB = metaB.en.split(/\s+/).filter(Boolean);
-  let conceptEn = "";
-
-  if (wordsB.length > 0 && wordsA.length > 0) {
-    const wordB = wordsB[0];
-    const wordA = wordsA[wordsA.length - 1];
-    conceptEn = wordB !== wordA ? `${wordB} ${wordA}` : `${wordB} FUSION`;
-  } else if (wordsB.length > 0) {
-    conceptEn = wordsB.join(" ");
-  } else if (wordsA.length > 0) {
-    conceptEn = wordsA.join(" ");
-  } else {
-    conceptEn = "HYBRID LAB";
-  }
-
-  return { conceptZh, conceptEn };
+function blendStepLabels(seed: number, variant = 0): [string, string, string] {
+  const options: Array<[string, string, string]> = [
+    ["轮廓借用", "触感转译", "场景回看"],
+    ["先定形", "再定质", "最后看使用"],
+    ["形体交界", "表面换挡", "真实触点"],
+    ["抓住记忆点", "拆开材料层", "放回日常场景"],
+  ];
+  return pickBySeed(options, seed, 5 + variant);
 }
 
 function synthesizeCmfAndStructure(
@@ -191,60 +214,63 @@ function synthesizeCmfAndStructure(
 
 /**
  * 1. 双主题融合（Theme Blending）：
- * 提取两个主题的视觉母题、触感材质与形式张力，合成一个兼具两者特色的全新跨界复合风格主题
+ * 提取两个主题的视觉母题、触感材质与形式张力，合成一条保留来源、但可以继续验证的新设计线索。
  */
 export function blendThemes(themeA: Route, themeB: Route): Route {
   const metaA = extractThemeMeta(themeA);
   const metaB = extractThemeMeta(themeB);
   const blendId = `route-blend-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const blendVariant = blendGeneration++;
 
-  // 1. Synthesize a brand new concept name & English tag
-  const { conceptZh, conceptEn } = synthesizeConceptName(metaA, metaB);
-  const fusedThemeName = `《${conceptZh}》 ${conceptEn}`.trim();
+  // Use the invocation id as part of the seed so “重新生成” can produce a
+  // genuinely different concept from the same two inputs.
+  const blendSeed = hashString(`${metaA.zh}|${metaB.zh}|${blendId}`);
+  const fusedThemeName = synthesizeConceptName(metaA, metaB, blendSeed, blendVariant);
 
-  // 2. Synthesize true CMF × Structure subtitle
+  // 2. Synthesize a natural visual proposition from both inputs.
   const { cmf, structure } = synthesizeCmfAndStructure(metaA, metaB);
-  const fusedTitle = `【跨界融合】${cmf} × ${structure}`;
+  const fusedTitle = blendTitleVoice(cmf, structure, blendSeed, blendVariant);
 
   // 3. Synthesize rich visual snapshot, metaphor, problem, pros, cons
-  const visualSnapshot = `以${structure}为核心器物形态，通体施加${cmf}处理。在「${metaA.zh}」的握持人机弧度与「${metaB.zh}」的体量节奏交汇处，45°漫反射侧光勾勒出兼具工效深度与物性温润的一体化高级秩序。`;
-  const sensoryMetaphor = `手心贴合的雕塑曲面与体量呼吸感共生，在${cmf}微阻尼触感映衬下呈现克制且精准的器物美学。`;
-  const coreProblem = `在延续「${metaA.zh}」一体化曲面张力的同时，如何融入「${metaB.zh}」的结构转折节奏，避免局部转折打断器物整体流动感？`;
-  const startingPoint = `融合「${metaA.zh}」的${metaA.structure || "轮廓骨架"}与「${metaB.zh}」的${metaB.cmf || "微触感"}，开辟复合审美路径。`;
-  const focusDimension = `${structure}秩序与${cmf}微触感`;
-  const pros = `深度融合「${metaA.zh}」的标志性记忆锚点与「${metaB.zh}」的高级材质秩序，既有贴合人体工效的形体辨识度，又具备丰富的感官触觉层次。`;
-  const cons = `需严格把控两种材质交界处的接缝公差与分型线，防止结构细节过多破坏微观曲面的整体纯净度。`;
+  const visualSnapshot = `先保留「${metaA.zh}」的${metaA.structure || "轮廓记忆"}，再让「${metaB.zh}」的${metaB.cmf || "表面触感"}在${structure}的转折处出现。光线从侧面擦过时，${cmf}只在需要被触碰的位置留下变化。`;
+  const sensoryMetaphor = `靠近时先读到${structure}的起伏，握住后才感到${cmf}的阻尼；两种输入在同一件器物上各自保留辨识度。`;
+  const coreProblem = `「${metaA.zh}」更强调${metaA.structure || "连续的轮廓"}，「${metaB.zh}」更强调${metaB.cmf || "表面的变化"}。两者相遇时，哪里应该让位，哪里必须留下？`;
+  const startingPoint = `从「${metaA.zh}」借一段${metaA.structure || "轮廓"}，把「${metaB.zh}」的${metaB.cmf || "触感"}放到${structure}的关键转折上。`;
+  const focusDimension = `${structure}的转折与${cmf}的触点`;
+  const pros = `保留两个输入各自最容易被辨认的部分，形体负责方向，表面负责靠近时的反馈。`;
+  const cons = `两种语言的交界需要被明确限制；如果每一处都同时强调轮廓和材质，整体会失去主次。`;
+  const [shapeLabel, materialLabel, sceneLabel] = blendStepLabels(blendSeed, blendVariant);
 
   // 4. Synthesize 3 concrete, bespoke steps
   const blendedSteps: RouteStep[] = [
     {
       id: `${blendId}-s1`,
-      title: `【母题杂交】造型骨架与轮廓融合试验`,
-      question: `如何将「${metaA.zh}」的核心特征与「${metaB.zh}」的${metaB.structure || "体量关系"}融合成连贯的一体化视觉？`,
-      purpose: `确立融合型视觉母题，检验两种形体语言的相容性与轮廓纯净度`,
+      title: `${shapeLabel}：${metaA.zh}与${metaB.zh}`,
+      question: `如果只能留下一个轮廓记忆点，应该从「${metaA.zh}」借什么，再用「${metaB.zh}」改变哪里？`,
+      purpose: `先确定主轮廓与次轮廓，避免两个输入平均分配注意力`,
       acceptanceCriteria: [
-        `造型转折与比例无割裂感，呈现一体化美学`,
-        `兼具「${metaA.zh}」与「${metaB.zh}」的核心记忆锚点`,
+        `一眼能说清主轮廓来自哪一条输入`,
+        `转折处没有突然拼接的感觉`,
       ],
     },
     {
       id: `${blendId}-s2`,
-      title: `【工艺衔接】${cmf}与交界分型试验`,
-      question: `在不同材质交界与体量过渡处，如何处理分型线以保证握持顺滑且符合现实模具制造？`,
-      purpose: `深化微观材质过渡工艺，确保触觉层次丰富且符合工程可实现性`,
+      title: `${materialLabel}：${cmf}`,
+      question: `触感应该在哪一段被感知？如何让${cmf}只出现在握持或开启等真实动作上？`,
+      purpose: `把材料差异绑定到具体动作，而不是把质感平均铺满表面`,
       acceptanceCriteria: [
-        `明确主副材质的分型线与渐变过渡方式`,
-        `表面微纹理与触感阻尼具有现实可制造性`,
+        `能标出材料变化开始和结束的位置`,
+        `表面处理与真实加工方式相符`,
       ],
     },
     {
       id: `${blendId}-s3`,
-      title: `【感官验证】全场景握持贴合与漫反射光影试验`,
-      question: `融合后的设计语言在真实手持握持与不同色温环境光下，是否保持克制高级？`,
-      purpose: `检验跨界复合风格在全案延展时的系统完整度与视觉耐看度`,
+      title: `${sceneLabel}：把它放回日常`,
+      question: `在第一次拿起、放下和再次看到它的时刻，两个输入是否仍然各自有作用？`,
+      purpose: `用真实触点检查创意是否能转成可被感知的体验`,
       acceptanceCriteria: [
-        `在光影与真实触碰下保持高级、克制的整体气质`,
-        `可顺畅延展至整套系列器物或包装构件`,
+        `至少一个动作能验证形体与触感的关系`,
+        `放入同一系列后仍能保持清楚的识别线索`,
       ],
     },
   ];
@@ -256,12 +282,12 @@ export function blendThemes(themeA: Route, themeB: Route): Route {
     focusDimension,
     startingPoint,
     coreProblem,
-    purpose: `跨界融合两组主题的长处，开辟兼具造型辨识度与触感深度的全新视觉领地。`,
+    purpose: `把两个已被喜欢的方向压缩成一条可继续验证的设计线索。`,
     sensoryMetaphor,
     visualSnapshot,
     pros,
     cons,
-    recommendedReason: `由设计师自主引线触发的双主题跨界融合方案，打破单一分支局限，具备独特的跨界创新张力。`,
+    recommendedReason: `由你连接的两个方向共同生成；保留来源，也明确下一步该验证的差异。`,
     alignmentScore: Math.min(98, Math.max(themeA.alignmentScore ?? 90, themeB.alignmentScore ?? 90) + 2),
     steps: blendedSteps,
     feasibility: "medium",
@@ -275,6 +301,16 @@ export function blendThemes(themeA: Route, themeB: Route): Route {
 export function evolveTheme(theme: Route): Route {
   const baseName = theme.themeName || cleanTitle(theme.title);
   const branchId = `route-branch-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const branchSeed = hashString(`${theme.id}|${baseName}|${branchId}`);
+  const variationNames = ["借景", "换挡", "留痕", "偏轴", "余温", "折面"];
+  const variationName = pickBySeed(variationNames, branchSeed);
+  const variationTitles = [
+    `让${baseName}换一个观看入口`,
+    `把${baseName}放进新的使用动作`,
+    `从${baseName}留下一个反差`,
+    `让${baseName}在边界处停一下`,
+  ];
+  const variationTitle = pickBySeed(variationTitles, branchSeed, 2);
 
   const evolvedSteps: RouteStep[] = (theme.steps && theme.steps.length > 0
     ? theme.steps
@@ -304,22 +340,22 @@ export function evolveTheme(theme: Route): Route {
   ).map((s, idx) => ({
     ...s,
     id: `${branchId}-s${idx + 1}`,
-    title: `${cleanStepLabel(s.title)} · 变奏`,
+    title: `${cleanStepLabel(s.title)} · ${pickBySeed(["换个入口", "换种触感", "放回场景"], branchSeed, idx)}`,
   }));
 
   return {
     ...theme,
     id: branchId,
-    title: `【${baseName}】形态与工艺变奏`,
-    themeName: `${baseName} (变奏探索)`,
-    startingPoint: `源自「${baseName}」，进一步在形态曲率与微观触感上做探索变奏。`,
-    coreProblem: `在延续「${baseName}」核心调性的同时，挖掘更多维度的工艺表现空间。`,
+    title: variationTitle,
+    themeName: `${baseName} · ${variationName}`,
+    startingPoint: `保留「${baseName}」最容易被认出的部分，只改变一个观看或使用入口。`,
+    coreProblem: `如果不复制「${baseName}」的原有表达，哪一个局部变化能让它产生新的判断？`,
     purpose: theme.purpose || "探索多维度的视觉表现可能",
     sensoryMetaphor: theme.sensoryMetaphor
-      ? `${theme.sensoryMetaphor}（在此基础上推演更极端的曲率张力与工艺变奏）`
-      : `源自「${baseName}」，在微观光影与触觉层次上做进一步激进变奏`,
-    pros: "继承了主线调性，同时赋予形态和材质更多试错空间。",
-    cons: "需防止探索方向过度分散失焦。",
+      ? `${theme.sensoryMetaphor}；这次只把变化放在一个可被触碰的局部。`
+      : `从「${baseName}」出发，只在光影或触觉的一个局部留下偏差`,
+    pros: "保留主线识别度，同时给一个局部足够的试错空间。",
+    cons: "变化必须有明确落点，不能把所有差异都叠在同一张卡上。",
     recommendedReason: null,
     alignmentScore: Math.min(96, (theme.alignmentScore ?? 88) + 1),
     steps: evolvedSteps,

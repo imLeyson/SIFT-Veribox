@@ -73,15 +73,28 @@ describe("Card Synthesis & Upstream Blending", () => {
   it("blends two themes into a hybrid cross-over theme with merged steps and badge metadata", () => {
     const blended = blendThemes(mockThemeA, mockThemeB);
 
-    expect(blended.title).toContain("跨界融合");
-    expect(blended.themeName).toContain("《");
+    expect(blended.title).not.toContain("跨界融合");
+    expect(blended.title).not.toContain("×");
+    expect(blended.themeName).toMatch(/^《[^》]+》$/);
     expect(blended.steps).toHaveLength(3);
-    expect(blended.steps[0].title).toContain("母题杂交");
-    expect(blended.steps[1].title).toContain("工艺衔接");
-    expect(blended.steps[2].title).toContain("感官验证");
+    expect(blended.steps[0].title).not.toContain("母题杂交");
+    expect(blended.steps[1].title).not.toContain("工艺衔接");
+    expect(blended.steps[2].title).not.toContain("感官验证");
     expect(blended.alignmentScore).toBeGreaterThanOrEqual(95);
     expect(blended.sensoryMetaphor).toBeTruthy();
     expect(blended.visualSnapshot).toBeTruthy();
+  });
+
+  it("changes the creative naming and proposition when the same inputs are regenerated", () => {
+    const first = blendThemes(mockThemeA, mockThemeB);
+    const second = blendThemes(mockThemeA, mockThemeB);
+
+    expect(first.themeName).not.toMatch(/[A-Z]{3,}/);
+    expect(second.themeName).not.toMatch(/[A-Z]{3,}/);
+    expect(first.title).not.toBe(second.title);
+    expect(first.steps.map((step) => step.title).join("|")).not.toBe(
+      second.steps.map((step) => step.title).join("|"),
+    );
   });
 
   it("authentically blends 《掌心凹谷》 PALM VALLEY and 《卵石序列》 PEBBLE SEQUENCE into a single unified theme", () => {
@@ -116,14 +129,14 @@ describe("Card Synthesis & Upstream Blending", () => {
 
     const blended = blendThemes(palmValley, pebbleSequence);
 
-    // Concept Name must be a genuine single code, e.g. 《卵石凹谷》 PEBBLE VALLEY
-    expect(blended.themeName).toMatch(/^《[^\s》]+》\s+[A-Z\s]+$/);
+    // Concept name is a single Chinese creative cue; English studio codes are omitted.
+    expect(blended.themeName).toMatch(/^《[^》]+》$/);
     expect(blended.themeName).not.toContain("与《");
     expect(blended.themeName).not.toContain("复合变奏");
 
-    // Title must be CMF × Structure formula
-    expect(blended.title).toContain("【跨界融合】");
-    expect(blended.title).toContain("×");
+    // Title is a natural language design proposition rather than a fixed CMF × Structure formula.
+    expect(blended.title).not.toContain("【跨界融合】");
+    expect(blended.title).not.toContain("×");
     expect(blended.title).not.toContain("与《");
 
     // Steps must be 3 coherent verification steps
@@ -134,8 +147,9 @@ describe("Card Synthesis & Upstream Blending", () => {
     const evolved = evolveTheme(mockThemeA);
 
     expect(evolved.title).toContain("原生木质纤维");
-    expect(evolved.title).toContain("变奏");
-    expect(evolved.themeName).toContain("变奏");
+    expect(evolved.title).not.toContain("形态与工艺变奏");
+    expect(evolved.themeName).not.toContain("变奏探索");
+    expect(evolved.themeName).toContain("·");
     expect(evolved.steps.length).toBeGreaterThanOrEqual(2);
     expect(evolved.sensoryMetaphor).toBeTruthy();
   });
@@ -217,7 +231,7 @@ describe("Card Synthesis & Upstream Blending", () => {
 
     expect(synthesized.data?.isBlended).toBe(true);
     expect(synthesized.data?.isEmpty).toBe(false);
-    expect(synthesized.data?.route?.title).toContain("跨界融合");
+    expect(synthesized.data?.route?.title).not.toContain("跨界融合");
   });
 
   it("synthesizeCardFromInputs router automatically triggers theme evolution when 1 route is connected", () => {
@@ -229,7 +243,7 @@ describe("Card Synthesis & Upstream Blending", () => {
 
     expect(synthesized.data?.isEvolved).toBe(true);
     expect(synthesized.data?.isEmpty).toBe(false);
-    expect(synthesized.data?.route?.themeName).toContain("变奏");
+    expect(synthesized.data?.route?.themeName).toContain("·");
   });
 
   it("synthesizeCardFromInputs router handles Step and PlatformPlan card synthesis", () => {
@@ -297,4 +311,3 @@ describe("Card Synthesis & Upstream Blending", () => {
     expect(decodedSquare).toContain("#2563eb");
   });
 });
-

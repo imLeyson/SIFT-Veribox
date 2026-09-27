@@ -3,6 +3,7 @@ import { completeJson } from "./llm";
 import type { z } from "zod";
 import type { RoutesInputSchema } from "./routes-schema";
 import { sanitizeAntiTeleology } from "./convergence-live";
+import { selectCreativeLenses, type CreativeLens } from "./creative-lenses";
 
 type RoutesInput = z.infer<typeof RoutesInputSchema>;
 
@@ -15,21 +16,13 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
 2. 严禁品类错位：严禁将“可持续材料与实体器物”做成“平面品牌纸厂打样”或“瑞士网格排版标签”，严禁将“UI界面”做成“实体包装盒”！
 3. 所有 3 个设计主题（Theme）、快照（Snapshot）和切入视点（Steps），必须全部深度服务于【该设计任务的具体载体】。
 
-关键原则与双层主题命名架构（彻底去除 AI 感与套路复读，打造设计总监级提案质感）：
-1. 采用【双层概念架构】（Flagship Concept Code + Craft Formula Subtitle）：
-   - themeName（旗舰概念代号）：4–6 字具有文学感、通感画面与物理锚点的书名号代号《...》，可搭配简短英文 Studio Tag（如：《寂静凝灰》 Silent Tuff、《零度墨痕》 Zero-Ink、《夜航座舱》 Night Flight HUD）。
-     * 【物理锚点守则（Physical Anchor Guardrail）】：概念代号必须包含具体的物理材质、地质、器物、光线、光机电或实体构件隐喻（如“凝灰、墨痕、座舱、晶格、卵石、冷轧、原浆、生灵、标尺”）。
+关键原则与动态主题命名架构（去除 AI 感与套路复读）：
+1. 主题名称必须先从当前 Brief 找到真实锚点，再形成有创意的中文概念，不强制使用书名号、英文副标题或固定的“材质 × 工艺”格式。
+   - themeName：4–8 个中文字符，来自当前任务中的具体物件、动作、场景、材料变化或信息关系；名称应让设计师能联想到一个可继续探索的画面，不要写成抽象品牌口号。
+     * 概念名称必须与当前任务主体有关，不能只写“高级、极简、温暖、秩序、未来”等泛化形容词。
      * 【严禁虚空公关套话与网红奶茶词汇】：绝对禁止使用“时光、岁月、初见、温馨、星河、物性转化、空间解构、多维赋能、生态感知、心流共鸣、交融升华”等虚无 AI 词汇！
      * 【严禁敷衍平庸词】：绝对禁止使用“现代风、白色简约、好看的包装、高端大气、主题一”等空洞废话！
-     * 品类典范：
-       - 可持续材料/产品：《寂静凝灰》 Silent Tuff / 《掌心温存》 Poetic Organism / 《冷轧秩序》 Precision Architecture
-       - 实体包装/容器：《零度墨痕》 Zero-Ink / 《风土标尺》 Swiss Telemetry / 《暗室静物》 Dark Chamber Still
-       - 品牌/VI：《温润生灵》 Gentle Companion / 《守护档案》 Guardian Ledger / 《负形印记》 Negative Silhouette
-       - UI/数字系统：《夜航座舱》 Night Flight HUD / 《数据晶格》 Telemetry Grid / 《穿透中枢》 Pulse Console
-       - 咖啡包装：《泥土本色》 Terra Raw / 《产地纪实》 Origin Dossier / 《豆标重锤》 Geometric Bean
-   - title（工法配方副标）：必须采用【主打材质/CMF × 结构/倒角/工法】的配方对撞结构（如“再生纤维微孔阻尼 × 1px 细拉丝冷铝倒角”、“300g 原浆棉纸 × 45° 侧光深压凹”）。
-     * 必须以“ × ”作为材质与工法维度的连接符，不嵌套多层中括号【】。
-     * 材质在左，工法在右，直接陈述具体物性手段。
+   - title：一句自然的视觉命题，可以写材料、动作、场景、信息关系或工艺，但不要求每条都使用“材质 × 工艺”的配方结构。
 
 2. 动态创意方向（禁止固定套用）：
    - 根据 Brief、交付载体、目标受众和已确认的优先级，自主发现 3 个真正适合当前任务的切入方向；
@@ -39,8 +32,8 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
 3. 去除机械复读原则（Anti-Repetition Rule）：
    - 严禁同一名词（如“原生”、“纤维”、“肌理”）在同一张卡片的 themeName、title、startingPoint、focusDimension、visualSnapshot 中重复出现 3 次以上！
    - 各字段分工明确：
-     * themeName：概念通感代号；
-     * title：CMF材质 × 结构工艺对撞；
+     * themeName：从 Brief 生长出的具体创意命题；
+     * title：对该命题的自然语言说明；
      * visualSnapshot：1–2 句具象大白话描绘“最终画面/实物长什么样”，画面感极强且紧扣当前品类主体与材质，严禁使用“一眼看懂”、“让人一目了然”等轻佻AI套话；
      * focusDimension：核心视觉手法（工艺、排版或构成规则）；
      * coreProblem：设计取舍与权衡（说明主动放弃了什么、押注了什么，呼应用户收敛确立的 Priorities 与 Avoid，这是设计师决策最有价值的思考！）；
@@ -61,8 +54,8 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
 每条路径都要有自己的视觉命题和具体依据；可从材质、形态、行为、信息结构、叙事、文化语义、空间场景或工艺细节中选择切入点，但只使用真正适合当前任务的因素。
 
 严格字段契约（保证每条主题都有清晰依据与视觉定调）：
-- themeName: 4–6 字概念代号《...》可附带英文 Studio Tag（如：《寂静凝灰》 Silent Tuff）。
-- title: 视觉切入或工艺手法简述（如：再生纤维微孔 × 1px 细拉丝冷铝倒角）。
+   - themeName: 4–8 个中文字符的创意主题名，必须从当前 Brief 或已确认判断中生长出来。
+   - title: 一句具体的视觉命题，可以是材料、动作、场景、信息或工艺，不套用统一格式。
 - sensoryMetaphor: 1 句物料与光影画面的审美提炼（如：“未经精抛的暖灰微孔表面，被冷冽的铝合金倒角精密收口，在光线下呈现哑光漫反射”）。
 - visualSnapshot: 1–2 句具象大白话描绘“最终画面/实物长什么样”，画面感极强且紧扣当前品类主体与材质。
 - focusDimension: 视觉核心切入点。
@@ -87,8 +80,8 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
   "routes": [
     {
       "id": "route_1",
-      "themeName": "《与任务相关的概念代号》",
-      "title": "与任务相关的视觉手法 × 具体结构或工艺",
+      "themeName": "从 Brief 提取的中文创意名称",
+      "title": "一句具体的视觉命题",
       "sensoryMetaphor": "用一句具体的材质、形态、光影或场景描述画面",
       "visualSnapshot": "描述最终画面或实体效果，避免抽象口号",
       "focusDimension": "当前主题最核心的视觉切入点",
@@ -141,9 +134,79 @@ function nonEmpty(v: unknown, fallback: string): string {
 
 const FIXED_THEME_LABELS = ["物性本真", "诗意人本", "工业精密"] as const;
 
-function adaptiveThemeName(raw: string, input: RoutesInput, index: number, startingPoint: string, focusDimension: string): string {
+function themeNameCore(value: string): string {
+  return value
+    .replace(/[《》【】]/g, "")
+    .replace(/[a-zA-Z][a-zA-Z\s/-]*/g, "")
+    .replace(/[^\u4e00-\u9fa5]/g, "")
+    .trim();
+}
+
+function stripThemeStudioTag(value: string): string {
+  const clean = value.replace(/[《》【】]/g, "").trim();
+  const bookMatch = clean.match(/^([^\s]+)\s+[A-Za-z][A-Za-z\s\/_-]*$/);
+  if (bookMatch) return `《${bookMatch[1]}》`;
+  return clean.replace(/[A-Za-z][A-Za-z\s\/_-]*/g, "").replace(/\s{2,}/g, " ").trim() || value;
+}
+
+function creativeSource(input: RoutesInput): string {
+  return [
+    input.rawBrief,
+    input.state.brief.goal,
+    input.state.brief.deliverable,
+    input.state.brief.audience,
+    input.state.direction?.intent?.text,
+    ...(input.state.direction?.priorities ?? []).map((item) => item.text),
+    ...(input.state.direction?.criteria ?? []).map((item) => item.text),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function creativeAnchor(input: RoutesInput, index: number): string {
+  const candidates = creativeSource(input)
+    .match(/[\u4e00-\u9fa5]{2,8}/g)
+    ?.map((chunk) => chunk.replace(/我想|想做|做一个|一款|一个|关于|围绕|设计|主题|视觉|方向|用户|项目|提案|产品|品牌|包装|可持续|核心|目标|日常|使用|人群|好看/g, ""))
+    .filter((chunk) => chunk.length >= 2) ?? [];
+  const value = candidates[index % Math.max(candidates.length, 1)] || "探索切面";
+  return value.slice(0, value.length > 4 ? 4 : value.length);
+}
+
+function fallbackCreativeThemeName(input: RoutesInput, index: number, lens: CreativeLens): string {
+  const suffixes = ["触点", "折面", "留痕", "偏轴", "回声", "借景", "层差", "余温"];
+  const anchor = creativeAnchor(input, index);
+  const lensOffset = lens.id.charCodeAt(0) % suffixes.length;
+  return `${anchor}${suffixes[(index + lensOffset + (input.refreshIndex ?? 0)) % suffixes.length]}`;
+}
+
+function namesNeedDiversity(names: string[]): boolean {
+  const cores = names.map(themeNameCore).filter(Boolean);
+  if (cores.length < 3) return false;
+  if (new Set(cores).size < cores.length) return true;
+  const firstChars = cores.map((name) => name.slice(0, 1));
+  const sharedFirst = firstChars.every((char) => char === firstChars[0]);
+  return sharedFirst && /冷|暖|极|新|原|纯|清|深|低|柔|微|高/.test(firstChars[0]);
+}
+
+function creativeRoundPrompt(lenses: CreativeLens[]): string {
+  return lenses
+    .map((lens, index) => `- 主题 ${index + 1}【${lens.label}】：${lens.instruction}`)
+    .join("\n");
+}
+
+function adaptiveThemeName(
+  raw: string,
+  input: RoutesInput,
+  index: number,
+  startingPoint: string,
+  focusDimension: string,
+  lens: CreativeLens,
+): string {
   const value = raw.trim();
   if (!FIXED_THEME_LABELS.some((label) => value.includes(label))) return value;
+
+  const creativeName = fallbackCreativeThemeName(input, index, lens);
+  if (creativeName.length >= 3) return creativeName;
 
   const source = `${startingPoint} ${focusDimension} ${input.state.brief.goal ?? input.rawBrief}`
     .replace(/[《》【】]/g, "")
@@ -166,6 +229,9 @@ export function normalizeLiveRoutesPayload(
 } {
   const root = record(raw);
   const rawRoutes = Array.isArray(root.routes) ? root.routes.map(record) : [];
+  const creativeLenses = selectCreativeLenses(
+    `${input.sessionId}|${input.rawBrief}|${input.refreshIndex ?? 0}`,
+  );
 
   const seenStarting = new Set<string>();
   const rawGoal = (input.state?.brief?.goal || input.rawBrief || "").trim();
@@ -187,11 +253,6 @@ export function normalizeLiveRoutesPayload(
     "棉纸物料肌理与深压凹工艺",
     "双栏网格与微字阶排印体系",
     "几何负空间与局部哑光微UV",
-  ];
-  let defaultThemeNames = [
-    "《零度墨痕》 Zero-Ink",
-    "《风土标尺》 Swiss Telemetry",
-    "《暗室静物》 Dark Chamber Still",
   ];
   let defaultTitles = [
     "300g 原浆棉纸 × 45° 侧光深压凹",
@@ -240,11 +301,6 @@ export function normalizeLiveRoutesPayload(
       "情感陪伴语义与有机器物形态",
       "现代机能美学与日常共生",
     ];
-    defaultThemeNames = [
-      "《寂静凝灰》 Silent Tuff",
-      "《掌心温存》 Poetic Organism",
-      "《冷轧秩序》 Precision Architecture",
-    ];
     defaultTitles = [
       "再生纤维微孔阻尼 × 1px 细拉丝冷铝倒角",
       "自然卵石连续曲率 × 隐式握持凹槽",
@@ -290,11 +346,6 @@ export function normalizeLiveRoutesPayload(
       "温润棉柔纸微触感与治愈留白",
       "科学双栏网格与严谨信息骨架",
       "极简动物剪影与瞬间穿透符号",
-    ];
-    defaultThemeNames = [
-      "《温润生灵》 Gentle Companion",
-      "《守护档案》 Guardian Ledger",
-      "《负形印记》 Negative Silhouette",
     ];
     defaultTitles = [
       "350g 棉柔纸微触感 × 浅浮雕无墨微压凹",
@@ -342,11 +393,6 @@ export function normalizeLiveRoutesPayload(
       "信息架构与 8px 密集数据网格",
       "硬件控制台隐喻与状态微光",
     ];
-    defaultThemeNames = [
-      "《夜航座舱》 Night Flight HUD",
-      "《数据晶格》 Telemetry Grid",
-      "《穿透中枢》 Pulse Console",
-    ];
     defaultTitles = [
       "暗黑无光基底 × 1px 精细冷灰微层级",
       "8px 密集数据晶格 × 紧凑型无衬线排布",
@@ -392,11 +438,6 @@ export function normalizeLiveRoutesPayload(
       "原浆牛皮卡肌理与风土触觉",
       "风味档案与瑞士双栏排印",
       "极简几何豆标与货架视觉锤",
-    ];
-    defaultThemeNames = [
-      "《泥土本色》 Terra Raw",
-      "《产地纪实》 Origin Dossier",
-      "《豆标重锤》 Geometric Bean",
     ];
     defaultTitles = [
       "380g 粗颗粒原浆牛皮卡 × 单色深压凹烘焙标",
@@ -548,7 +589,7 @@ export function normalizeLiveRoutesPayload(
     ];
   }
 
-  const routes: Route[] = rawRoutes.slice(0, 3).map((r, i) => {
+  let routes: Route[] = rawRoutes.slice(0, 3).map((r, i) => {
     const routeId = nonEmpty(r.id, `route_${i + 1}`);
     let starting = nonEmpty(r.startingPoint, defaultStarts[i] ?? `探索领地 ${i + 1}`);
     if (seenStarting.has(starting)) {
@@ -562,7 +603,7 @@ export function normalizeLiveRoutesPayload(
     }
 
     let themeName = typeof r.themeName === "string" && r.themeName.trim()
-      ? sanitizeLeakedVariables(r.themeName.trim())
+      ? stripThemeStudioTag(sanitizeLeakedVariables(r.themeName.trim()))
       : "";
 
     if (!themeName) {
@@ -570,7 +611,11 @@ export function normalizeLiveRoutesPayload(
       if (match) {
         themeName = match[2].trim() || match[1].trim();
       } else {
-        themeName = defaultThemeNames[i] ?? `主题 0${i + 1}`;
+        themeName = fallbackCreativeThemeName(
+          input,
+          i,
+          creativeLenses[i] ?? creativeLenses[0],
+        );
       }
     }
 
@@ -662,7 +707,14 @@ export function normalizeLiveRoutesPayload(
       : (defaultSensoryMetaphors[i] ?? defaultSensoryMetaphors[0]);
 
     const resolvedFocusDimension = sanitizeAntiTeleology(nonEmpty(r.focusDimension, defaultDimensions[i] ?? "视觉美学探索"));
-    const resolvedThemeName = adaptiveThemeName(themeName, input, i, starting, resolvedFocusDimension);
+    const resolvedThemeName = adaptiveThemeName(
+      themeName,
+      input,
+      i,
+      starting,
+      resolvedFocusDimension,
+      creativeLenses[i] ?? creativeLenses[0],
+    );
 
     return {
       id: routeId,
@@ -683,13 +735,30 @@ export function normalizeLiveRoutesPayload(
     };
   });
 
+  if (routes.length === 3 && namesNeedDiversity(routes.map((route) => route.themeName || ""))) {
+    routes = routes.map((route, index) => ({
+      ...route,
+      themeName: sanitizeAntiTeleology(
+        fallbackCreativeThemeName(
+          input,
+          index,
+          creativeLenses[index] ?? creativeLenses[0],
+        ),
+      ),
+    }));
+  }
+
   // Ensure exactly 3 routes
   while (routes.length < 3) {
     const i = routes.length;
     routes.push({
       id: `route_${i + 1}`,
       title: defaultTitles[i] ?? `【视觉策略与探索】实战方案 0${i + 1}`,
-      themeName: defaultThemeNames[i] ?? `设计主题 0${i + 1}`,
+      themeName: fallbackCreativeThemeName(
+        input,
+        i,
+        creativeLenses[i] ?? creativeLenses[0],
+      ),
       visualSnapshot: defaultSnapshots[i] ?? "大面积纯净留白，依靠材质微肌理与清晰字阶呈现克制现代美感。",
       sensoryMetaphor: defaultSensoryMetaphors[i] ?? defaultSensoryMetaphors[0],
       startingPoint: defaultStarts[i] ?? `探索切入 0${i + 1}`,
@@ -741,6 +810,9 @@ export function normalizeLiveRoutesPayload(
 
 export function liveRoutes(input: RoutesInput): Promise<unknown> {
   let promptSystem = SYSTEM;
+  const creativeLenses = selectCreativeLenses(
+    `${input.sessionId}|${input.rawBrief}|${input.refreshIndex ?? 0}`,
+  );
   const rawGoal = (input.state?.brief?.goal || input.rawBrief || "").trim();
   const deliverable = (input.state?.brief?.deliverable || "").trim();
   const audience = (input.state?.brief?.audience || "").trim();
@@ -788,6 +860,11 @@ export function liveRoutes(input: RoutesInput): Promise<unknown> {
     promptSystem += `\n\n【用户更换主题指令】：用户对上一批设计主题（${input.excludeThemeNames.join("、")}）不满意，要求换一批全新的创意领地与设计主题！严禁与上述主题重复或雷同，必须推导截然不同的视觉手法与画面呈象！`;
   }
 
+  promptSystem += `\n\n【本轮创意分工，必须一一对应】
+本轮不要先套用熟悉的风格词。先从 Brief 和用户已确认内容中提取具体事实，再按下列三个创意视角各生成一条主题：
+${creativeRoundPrompt(creativeLenses)}
+三条主题的名称、title、startingPoint 和 visualSnapshot 必须彼此不同；不要让三条主题共享同一个开头形容词，也不要都写成“材质 × 工艺”、网格、几何、留白或英文代号。`;
+
   const userPrompt = `【任务设计背景与已收敛方向状态 (Design State)】：
 - 原始 Brief 核心目标：${rawGoal}
 ${deliverable ? `- 交付载体与媒介：${deliverable}` : ""}
@@ -810,7 +887,7 @@ ${constraints.length ? `- 已确认设计约束：${constraints.join("；")}` : 
 完整原始输入 JSON（含上下文 ID 与修订版本）：
 ${JSON.stringify(input)}`;
 
-  return completeJson(promptSystem, userPrompt, "none").then((payload) =>
+  return completeJson(promptSystem, userPrompt, "none", [], 0.85).then((payload) =>
     normalizeLiveRoutesPayload(payload, input),
   );
 }
