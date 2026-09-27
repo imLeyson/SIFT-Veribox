@@ -493,7 +493,7 @@ export function DossierModal({
                   <div className="p-4 rounded-xl bg-stone-50 border border-stone-200/60 text-xs text-stone-500 text-center space-y-1">
                     <p className="font-medium text-stone-700">画布卡片当前处于全量探索态</p>
                     <p className="text-[11px] text-stone-400">
-                      在画布卡片右上角点击标记（⭐️ 核心候选 / ❓ 待团队评估 / 💡 意外灵感），将自动在此归拢沉淀为汇报决策依据。
+                      在画布卡片右上角点击标记（⭐️ 喜欢收藏 / ❓ 待团队评估 / 💡 意外灵感），将自动在此归拢沉淀为汇报决策依据。
                     </p>
                   </div>
                 ) : (
@@ -502,7 +502,7 @@ export function DossierModal({
                     {taggedItems.primary.length > 0 && (
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-900">
-                          <span>⭐️ 核心主选方案 (Primary Candidates)</span>
+                          <span>⭐️ 喜欢收藏的方向 (Favorite Directions)</span>
                           <span className="text-[10px] text-amber-700/80 font-mono">
                             ({taggedItems.primary.length})
                           </span>

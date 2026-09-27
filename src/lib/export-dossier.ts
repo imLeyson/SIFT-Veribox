@@ -229,7 +229,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     if (primaryCards.length > 0 || reviewCards.length > 0 || serendipityCards.length > 0) {
       lines.push(`## 团队协同标记与决策漏斗 (Collaborative Review & Decision Funnel)\n`);
       if (primaryCards.length > 0) {
-        lines.push(`### ⭐️ 核心主选方案 (Primary Candidates)`);
+        lines.push(`### ⭐️ 喜欢收藏的方向 (Favorite Directions)`);
         primaryCards.forEach((c) => lines.push(`- ⭐️ **${c}**`));
         lines.push("");
       }

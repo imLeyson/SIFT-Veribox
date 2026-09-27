@@ -79,7 +79,7 @@ describe("Module 3: Card Tagging & Collaborative Spotlight System", () => {
     );
 
     expect(htmlNormal).toContain("⭐️");
-    expect(htmlNormal).toContain("核心");
+    expect(htmlNormal).toContain("喜欢");
     expect(htmlNormal).toContain(CARD_TAG_CONFIG.primary.badgeClass);
 
     // 2. Spotlight mode: filter by 'primary' -> primary node is spotlighted (scale-[1.01], opacity-100)
@@ -172,7 +172,7 @@ describe("Module 3: Card Tagging & Collaborative Spotlight System", () => {
     const markdown = generateDossierMarkdown(mockStore);
 
     expect(markdown).toContain("团队协同标记与决策漏斗");
-    expect(markdown).toContain("⭐️ 核心主选方案");
+    expect(markdown).toContain("⭐️ 喜欢收藏的方向");
     expect(markdown).toContain("钛金暗黑杯");
     expect(markdown).toContain("❓ 待团队/导师重点表决");
     expect(markdown).toContain("Behance工艺分型检索");
