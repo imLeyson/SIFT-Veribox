@@ -139,6 +139,22 @@ function nonEmpty(v: unknown, fallback: string): string {
     : fallback;
 }
 
+const FIXED_THEME_LABELS = ["物性本真", "诗意人本", "工业精密"] as const;
+
+function adaptiveThemeName(raw: string, input: RoutesInput, index: number, startingPoint: string, focusDimension: string): string {
+  const value = raw.trim();
+  if (!FIXED_THEME_LABELS.some((label) => value.includes(label))) return value;
+
+  const source = `${startingPoint} ${focusDimension} ${input.state.brief.goal ?? input.rawBrief}`
+    .replace(/[《》【】]/g, "")
+    .replace(/[^\u4e00-\u9fa5a-zA-Z0-9]+/g, " ")
+    .trim();
+  const chunks = source.split(/\s+/).filter(Boolean);
+  const base = (chunks[index % Math.max(chunks.length, 1)] || "设计方向").slice(0, 6);
+  const suffixes = ["切面", "转译", "构成", "语法", "折线"];
+  return `《${base}${suffixes[index % suffixes.length]}》`;
+}
+
 export function normalizeLiveRoutesPayload(
   raw: unknown,
   input: RoutesInput,
@@ -645,14 +661,17 @@ export function normalizeLiveRoutesPayload(
       ? sanitizeLeakedVariables(r.sensoryMetaphor.trim())
       : (defaultSensoryMetaphors[i] ?? defaultSensoryMetaphors[0]);
 
+    const resolvedFocusDimension = sanitizeAntiTeleology(nonEmpty(r.focusDimension, defaultDimensions[i] ?? "视觉美学探索"));
+    const resolvedThemeName = adaptiveThemeName(themeName, input, i, starting, resolvedFocusDimension);
+
     return {
       id: routeId,
       title: sanitizeAntiTeleology(title),
-      themeName: sanitizeAntiTeleology(themeName),
+      themeName: sanitizeAntiTeleology(resolvedThemeName),
       visualSnapshot: sanitizeAntiTeleology(visualSnapshot),
       sensoryMetaphor: sanitizeAntiTeleology(sensoryMetaphor),
       startingPoint: sanitizeAntiTeleology(starting),
-      focusDimension: sanitizeAntiTeleology(nonEmpty(r.focusDimension, defaultDimensions[i] ?? "视觉美学探索")),
+      focusDimension: resolvedFocusDimension,
       coreProblem: sanitizeAntiTeleology(nonEmpty(r.coreProblem, defaultCoreProblems[i] ?? defaultCoreProblems[0])),
       purpose: sanitizeAntiTeleology(nonEmpty(r.purpose, defaultPurposes[i] ?? defaultPurposes[0])),
       pros: sanitizeAntiTeleology(nonEmpty(r.pros, defaultPros[i] ?? defaultPros[0])),

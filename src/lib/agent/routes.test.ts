@@ -217,6 +217,43 @@ describe("routes agent generation", () => {
     expect(normalized.routes[2].recommendedReason).toBeNull();
   });
 
+  it("replaces fixed theme template labels with input-derived names", () => {
+    const normalized = normalizeLiveRoutesPayload(
+      {
+        routes: [
+          {
+            id: "fixed-1",
+            themeName: "物性本真",
+            title: "再生纸纤维 × 微压凹",
+            startingPoint: "回收纤维颗粒",
+            focusDimension: "颗粒与压凹",
+            coreProblem: "保留粗粝度",
+            purpose: "观察触感",
+            pros: "有辨识度",
+            cons: "需控粗糙",
+            recommendedReason: "贴合 Brief",
+            steps: [
+              { id: "s1", title: "颗粒观察", question: "如何观察？", purpose: "记录" },
+              { id: "s2", title: "光影观察", question: "如何对照？", purpose: "记录" },
+              { id: "s3", title: "触感观察", question: "如何验证？", purpose: "记录" },
+            ],
+          },
+        ],
+        recommendedRouteId: "fixed-1",
+      },
+      {
+        sessionId: "s-fixed",
+        requestId: "req-fixed",
+        baseRevision: 1,
+        rawBrief: "回收纤维产品设计",
+        state: confirmedState,
+      },
+    );
+
+    expect(normalized.routes[0].themeName).not.toContain("物性本真");
+    expect(normalized.routes[0].themeName).toContain("回收");
+  });
+
   it("generates pet-anchored fallback routes and steps for pet visual briefs", () => {
     const petNormalized = normalizeLiveRoutesPayload(
       { routes: [] },
