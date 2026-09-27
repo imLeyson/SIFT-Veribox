@@ -84,7 +84,7 @@ export type CustomEdgeInput = z.input<typeof CustomEdgeSchema>;
 export const CardTagSchema = z.enum(["primary", "review"]);
 export type CardTag = z.infer<typeof CardTagSchema>;
 
-export const FilterTagSchema = z.enum(["all", "curated", "primary", "review"]);
+export const FilterTagSchema = z.enum(["all", "primary", "review"]);
 export type FilterTag = z.infer<typeof FilterTagSchema>;
 
 /** Keep old local sessions readable while the product uses only two tags. */
@@ -96,7 +96,7 @@ export function normalizeCardTags(value: unknown): Record<string, CardTag> {
 }
 
 export function normalizeFilterTag(value: unknown): FilterTag {
-  return value === "primary" || value === "review" || value === "curated" ? value : "all";
+  return value === "primary" || value === "review" ? value : "all";
 }
 
 const SessionSchema = z

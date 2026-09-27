@@ -119,7 +119,6 @@ const FILTER_OPTIONS: {
   countKey?: "primary" | "review";
 }[] = [
   { value: "all", label: "全部" },
-  { value: "curated", label: "精选" },
   { value: "primary", label: "喜欢", countKey: "primary" },
   { value: "review", label: "待审", countKey: "review" },
 ];
@@ -343,13 +342,13 @@ export function CanvasToolBar({
           <Maximize2 className="h-4 w-4" />
         </button>
 
-        {/* Curated View Filters (when any cards are starred/tagged) */}
+        {/* Tag filters (when any cards are tagged) */}
         {tagCounts.totalTagged > 0 && (
           <>
             <div className="h-4 w-px bg-white/20 mx-1" />
-            <div className="flex items-center gap-0.5 rounded-xl border border-white/10 bg-white/[0.06] p-0.5" role="group" aria-label="精选视图筛选">
+            <div className="flex items-center gap-0.5 rounded-xl border border-white/10 bg-white/[0.06] p-0.5" role="group" aria-label="标记筛选">
               {FILTER_OPTIONS.map((option) => {
-                const count = option.countKey ? tagCounts[option.countKey] : option.value === "curated" ? tagCounts.totalTagged : undefined;
+                const count = option.countKey ? tagCounts[option.countKey] : undefined;
                 const isActive = activeFilterTag === option.value;
                 return (
                   <button
@@ -364,9 +363,7 @@ export function CanvasToolBar({
                     title={
                       option.value === "all"
                         ? "显示全部探索链路"
-                        : option.value === "curated"
-                          ? "聚焦所有已标记卡片，并保留来源链路"
-                          : `只看${option.label}，并保留来源链路`
+                        : `只看${option.label}，并保留来源链路`
                     }
                     aria-pressed={isActive}
                   >

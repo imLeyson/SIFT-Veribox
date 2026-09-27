@@ -22,7 +22,7 @@ export const CARD_TAG_CONFIG: Record<CardTag, {
     icon: "⭐️",
     badgeClass: "bg-amber-50 text-amber-900 border-amber-300",
     activeClass: "ring-1 ring-amber-400/60 border-amber-400/40 shadow-xs",
-    description: "标记后进入精选视图",
+    description: "标记后可按喜欢筛选",
   },
   review: {
     label: "待审",
@@ -180,7 +180,7 @@ export function NodeShell({
 
     const selectedIds = new Set(
       Object.entries(activeCardTags ?? {})
-        .filter(([, tag]) => currentFilterTag === "curated" || tag === currentFilterTag)
+        .filter(([, tag]) => tag === currentFilterTag)
         .map(([id]) => id),
     );
     const reverseEdges = new Map<string, string[]>();
@@ -219,10 +219,7 @@ export function NodeShell({
 
   // Spotlight Calculation
   const isSpotlightActive = currentFilterTag !== "all";
-  const isSpotlightMatched =
-    currentFilterTag === "curated"
-      ? Boolean(currentTag)
-      : Boolean(currentTag && currentTag === currentFilterTag);
+  const isSpotlightMatched = Boolean(currentTag && currentTag === currentFilterTag);
   const isSourceInSpotlightChain = Boolean(nodeId && spotlightSourceIds.has(nodeId));
 
   let spotlightClass = "";

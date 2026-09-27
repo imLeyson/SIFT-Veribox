@@ -23,7 +23,6 @@ import {
 import {
   CollaboratorPeer,
   PRESET_AVATAR_COLORS,
-  PRESET_ROLES,
 } from "@/lib/collaboration/types";
 
 export function CollaborationBar() {
@@ -119,11 +118,6 @@ export function CollaborationBar() {
 
   const handleSelectColor = (color: string) => {
     const updated = updateLocalPeer({ color });
-    setLocalPeer(updated);
-  };
-
-  const handleSelectRole = (role: any) => {
-    const updated = updateLocalPeer({ role });
     setLocalPeer(updated);
   };
 
@@ -363,23 +357,6 @@ export function CollaborationBar() {
               </div>
             </div>
 
-            {/* Role Selection */}
-            <div className="flex items-center gap-1 pt-0.5 flex-wrap">
-              {PRESET_ROLES.map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => handleSelectRole(role)}
-                  className={`text-[9.5px] px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
-                    localPeer.role === role
-                      ? "bg-stone-900 text-white font-medium"
-                      : "bg-white border border-stone-200 text-stone-600 hover:bg-stone-100"
-                  }`}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Active Collaborators List */}
