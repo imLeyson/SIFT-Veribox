@@ -141,11 +141,18 @@ export async function POST(request: Request) {
     (op) => op.seq > sinceCursor && op.userId !== callerPeerId,
   );
 
+  // Only return the snapshot when the server revision differs from
+  // what the client reported (baseRevision). This prevents the server
+  // from echoing back the client's own snapshot every heartbeat.
+  const clientBaseRevision = typeof baseRevision === "number" ? baseRevision : -1;
+  const shouldReturnSnapshot =
+    room.snapshot && (clientBaseRevision !== room.revision || !hasContent(snapshot));
+
   return NextResponse.json({
     roomId,
     peers: activePeers,
     ops: deltaOps,
-    snapshot: room.snapshot || null,
+    snapshot: shouldReturnSnapshot ? room.snapshot : null,
     revision: room.revision,
     cursor: room.cursor,
     serverTime: now,

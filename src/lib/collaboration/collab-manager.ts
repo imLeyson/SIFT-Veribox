@@ -173,6 +173,10 @@ class CollaborationManager {
   private activeLocalNodeId: string | null = null;
   private cardConflicts = new Map<string, CardConflict>();
   private conflictListeners = new Set<(conflicts: CardConflict[]) => void>();
+  /** Hash of the last snapshot we uploaded — skip re-upload if unchanged */
+  private lastUploadedSnapshotHash = "";
+  /** The server revision at the time we last uploaded — skip re-apply of our own write */
+  private lastUploadedAtRevision = -1;
 
   constructor() {
     this.localPeer = getLocalPeer();
@@ -212,7 +216,7 @@ class CollaborationManager {
             const snapshot = this.getCanvasSnapshot();
             this.pendingSnapshot = snapshot;
 
-            // Broadcast canvas sync to tabs
+            // Broadcast canvas sync to same-device tabs only (not through server ops)
             if (this.broadcastChannel) {
               try {
                 this.broadcastChannel.postMessage({
@@ -223,12 +227,6 @@ class CollaborationManager {
                 // ignore
               }
             }
-
-            // Also broadcast canvas:sync op for server queue
-            this.broadcastOp({
-              type: "canvas:sync",
-              snapshot,
-            });
           }, 250);
         });
       } catch {
@@ -390,6 +388,33 @@ class CollaborationManager {
     };
   }
 
+  /**
+   * Compute a lightweight fingerprint of content-bearing snapshot fields.
+   * Excludes `updatedAt` and `revision` so that identical content always
+   * produces the same hash regardless of when it was captured.
+   */
+  private snapshotFingerprint(snap: CanvasSyncSnapshot): string {
+    const parts = [
+      snap.rawBrief || "",
+      snap.routes?.length || 0,
+      snap.customCards?.length || 0,
+      snap.customEdges?.length || 0,
+      snap.platformPlans?.length || 0,
+      Object.keys(snap.positions || {}).length,
+      // Include a content-level hash of the most volatile fields
+      snap.customCards?.map((c) => `${c.id}:${c.title || ""}:${(c as any).data?.notes?.length || 0}`).join(",") || "",
+      snap.routes?.map((r) => `${r.id}:${r.themeName || ""}`).join(",") || "",
+      JSON.stringify(snap.deletedNodeIds || []),
+    ];
+    // Simple djb2 hash
+    const str = parts.join("|");
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) + hash + str.charCodeAt(i)) >>> 0;
+    }
+    return hash.toString(36);
+  }
+
   public hasMeaningfulCanvasState(snap?: CanvasSyncSnapshot): boolean {
     const s = snap || (isBrowser() ? useSiftStore.getState() : null);
     if (!s) return false;
@@ -484,9 +509,12 @@ class CollaborationManager {
     } catch (err) {
       console.warn("[Collab] Failed to apply canvas snapshot:", err);
     } finally {
+      // Keep the guard active longer than the store-subscription debounce (250ms)
+      // to guarantee the debounced callback sees isProcessingRemoteOp === true
+      // and skips the echo broadcast.
       setTimeout(() => {
         this.isProcessingRemoteOp = false;
-      }, 100);
+      }, 350);
     }
   }
 
@@ -500,6 +528,8 @@ class CollaborationManager {
     this.lastAppliedSnapshotTimestamp = 0;
     this.roomRevision = 0;
     this.roomCursor = 0;
+    this.lastUploadedSnapshotHash = "";
+    this.lastUploadedAtRevision = -1;
     this.seenRemoteOpIds.clear();
     this.cardConflicts.clear();
     this.activeLocalNodeId = null;
@@ -796,7 +826,7 @@ class CollaborationManager {
     } finally {
       setTimeout(() => {
         this.isProcessingRemoteOp = false;
-      }, 100);
+      }, 350);
     }
   }
 
@@ -852,10 +882,22 @@ class CollaborationManager {
     const opsToSend = [...this.pendingOps];
     this.pendingOps = [];
 
-    const snapshotToSend =
-      this.pendingSnapshot ||
-      (this.hasMeaningfulCanvasState() ? this.getCanvasSnapshot() : undefined);
-    this.pendingSnapshot = null;
+    // Only send a snapshot if local state actually changed since our last upload.
+    // This prevents the deadly echo loop: upload → server stores → next poll
+    // → "server is newer" → apply → store change → upload again → …
+    let snapshotToSend: CanvasSyncSnapshot | undefined;
+    if (this.pendingSnapshot) {
+      snapshotToSend = this.pendingSnapshot;
+      this.pendingSnapshot = null;
+    } else if (this.hasMeaningfulCanvasState()) {
+      const candidate = this.getCanvasSnapshot();
+      // Compute a lightweight fingerprint of the content-bearing fields
+      const fingerprint = this.snapshotFingerprint(candidate);
+      if (fingerprint !== this.lastUploadedSnapshotHash) {
+        snapshotToSend = candidate;
+      }
+      // else: nothing changed since our last upload, skip sending
+    }
 
     try {
       const payload: any = {
@@ -880,6 +922,13 @@ class CollaborationManager {
         const data = await res.json();
         if (typeof data.revision === "number") this.roomRevision = data.revision;
         if (typeof data.cursor === "number") this.roomCursor = data.cursor;
+
+        // Track what we just uploaded so we don't re-apply our own snapshot
+        if (snapshotToSend) {
+          this.lastUploadedSnapshotHash = this.snapshotFingerprint(snapshotToSend);
+          this.lastUploadedAtRevision = data.revision;
+        }
+
         if (data.peers && Array.isArray(data.peers)) {
           data.peers.forEach((p: CollaboratorPeer) => {
             if (p.id !== this.localPeer.id) {
@@ -890,17 +939,24 @@ class CollaborationManager {
 
         if (data.ops && Array.isArray(data.ops)) {
           data.ops.forEach((op: CollaborationOp) => {
+            // Skip canvas:sync ops — snapshot application is handled separately
+            if (op.type === "canvas:sync") return;
             this.handleRemoteOp(op);
           });
         }
 
-        // If room has canvas snapshot on server, apply if local is empty or server is newer
+        // Apply server snapshot ONLY if:
+        // 1. Local canvas is empty (initial join), OR
+        // 2. Server revision is ahead of what we last uploaded (someone else changed it)
+        //    AND we didn't just upload in this same cycle
         if (data.snapshot && typeof data.snapshot === "object") {
           const isLocalEmpty = !this.hasMeaningfulCanvasState();
-          const serverUpdatedAt = data.snapshot.updatedAt || 0;
-          const isServerNewer = serverUpdatedAt > this.lastAppliedSnapshotTimestamp;
+          const isSomeoneElsesWrite =
+            typeof data.revision === "number" &&
+            data.revision > this.lastUploadedAtRevision &&
+            !snapshotToSend; // don't re-apply during the same cycle we uploaded
 
-          if (isLocalEmpty || (isServerNewer && !snapshotToSend)) {
+          if (isLocalEmpty || isSomeoneElsesWrite) {
             this.applyCanvasSnapshot(data.snapshot, "server-heartbeat");
           }
         }
