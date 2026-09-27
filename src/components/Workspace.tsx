@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { InfiniteCanvas } from "./flow/InfiniteCanvas";
@@ -11,7 +11,7 @@ import { ResultPanel } from "./results/ResultPanel";
 import { ProjectSwitcher } from "./project/ProjectSwitcher";
 import { CollaborationBar } from "./collaboration/CollaborationBar";
 import { createProject } from "@/lib/project-manager";
-import { CheckSquare, FileDown, MessageSquare, Plus } from "lucide-react";
+import { FileDown, Layers, MessageSquare, Plus } from "lucide-react";
 import { ReactFlowProvider } from "@xyflow/react";
 
 function subscribeHydration(onChange: () => void) {
@@ -29,16 +29,7 @@ export function Workspace() {
   const [dossierOpen, setDossierOpen] = useState(false);
   const [advisorOpen, setAdvisorOpen] = useState(false);
   const [resultsOpen, setResultsOpen] = useState(false);
-  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
-  const outcomeCount = useSiftStore((s) => s.outcomeItems.length);
-  const handleSelectionChange = useCallback((nodeIds: string[]) => {
-    setSelectedNodeIds((current) => {
-      if (current.length === nodeIds.length && current.every((id, index) => id === nodeIds[index])) {
-        return current;
-      }
-      return nodeIds;
-    });
-  }, []);
+  const outcomeCount = useSiftStore((s) => s.outcomeGroups.length);
 
   useEffect(() => {
     void useSiftStore.persist.rehydrate();
@@ -106,10 +97,10 @@ export function Workspace() {
                   ? "border-stone-300 bg-stone-100 text-stone-900 shadow-2xs"
                   : "border-stone-200/90 bg-white/80 text-stone-600 hover:bg-stone-100/80 hover:text-stone-900"
               }`}
-              title="查看已收纳的探索成果和方案"
+              title="用喜欢的方向组成方案"
             >
-              <CheckSquare className="h-3.5 w-3.5 text-stone-500" />
-              <span>成果</span>
+              <Layers className="h-3.5 w-3.5 text-stone-500" />
+              <span>方案</span>
               {outcomeCount > 0 && (
                 <span className="min-w-4 rounded-full bg-stone-900 px-1 text-center text-[9px] font-semibold text-white">
                   {outcomeCount}
@@ -198,7 +189,6 @@ export function Workspace() {
           <CanvasErrorBoundary>
             <InfiniteCanvas
               onOpenDossier={() => setDossierOpen(true)}
-              onSelectionChange={handleSelectionChange}
             />
           </CanvasErrorBoundary>
         </div>
@@ -212,7 +202,6 @@ export function Workspace() {
           <ResultPanel
             isOpen={resultsOpen}
             onClose={() => setResultsOpen(false)}
-            selectedNodeIds={selectedNodeIds}
           />
         )}
       </div>

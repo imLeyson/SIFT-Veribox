@@ -255,11 +255,7 @@ function deriveNewCardWithContext({
   };
 }
 
-function FlowInner({
-  onSelectionChange,
-}: {
-  onSelectionChange?: (nodeIds: string[]) => void;
-}) {
+function FlowInner() {
   const history = useSiftStore((s) => s.history);
   const next = useSiftStore((s) => s.next);
   const hasState = useSiftStore((s) => Boolean(s.state));
@@ -1178,9 +1174,6 @@ function FlowInner({
         edges={safeEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
-        onSelectionChange={({ nodes: selected }) => {
-          onSelectionChange?.(selected.map((node) => node.id));
-        }}
         onNodeClick={(_e, node) => {
           collabManager.setActiveNode(node.id);
         }}
@@ -1440,14 +1433,12 @@ function FlowInner({
 
 export function InfiniteCanvas({
   onOpenDossier: _onOpenDossier,
-  onSelectionChange,
 }: {
   onOpenDossier?: () => void;
-  onSelectionChange?: (nodeIds: string[]) => void;
 } = {}) {
   return (
     <div className="h-full w-full">
-      <FlowInner onSelectionChange={onSelectionChange} />
+      <FlowInner />
     </div>
   );
 }

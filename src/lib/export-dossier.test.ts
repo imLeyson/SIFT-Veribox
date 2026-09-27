@@ -20,7 +20,7 @@ describe("generateDossierMarkdown", () => {
       ],
     });
 
-    expect(md).toContain("## 已收纳成果与方案");
+    expect(md).toContain("## 方案整理");
     expect(md).toContain("方案一：材质与结构");
     expect(md).toContain("纸感留白");
     expect(md).toContain("冷静结构");

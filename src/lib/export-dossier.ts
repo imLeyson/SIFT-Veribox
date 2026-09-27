@@ -195,8 +195,8 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
   }
 
   if (outcomeItems.length > 0 || outcomeGroups.length > 0) {
-    lines.push(`## 已收纳成果与方案`);
-    lines.push(`> 以下内容由设计师从画布中主动纳入，保留原卡片来源，可继续回到画布编辑。\n`);
+    lines.push(`## 方案整理`);
+    lines.push(`> 以下方案由设计师从喜欢的方向中组合，保留原卡片来源，可继续回到画布编辑。\n`);
 
     const groupItemIds = new Set(outcomeGroups.flatMap((group) => group.itemIds));
     const renderItem = (id: string) => {

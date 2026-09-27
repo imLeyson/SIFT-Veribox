@@ -1066,8 +1066,8 @@ export function createSiftStore(providedStorage?: StateStorage) {
           const state = get();
           const ids = Array.from(
             new Set(
-              (itemIds ?? state.outcomeItems).filter((id) =>
-                state.outcomeItems.includes(id),
+              (itemIds ?? state.outcomeItems).filter(
+                (id) => typeof id === "string" && id.trim(),
               ),
             ),
           );
@@ -1078,9 +1078,10 @@ export function createSiftStore(providedStorage?: StateStorage) {
             itemIds: ids,
             createdAt: new Date().toISOString(),
           };
-          set({ outcomeGroups: [...state.outcomeGroups, group] });
+          const nextItems = Array.from(new Set([...state.outcomeItems, ...ids]));
+          set({ outcomeItems: nextItems, outcomeGroups: [...state.outcomeGroups, group] });
           notifyMutation("outcome:update", {
-            outcomeItems: state.outcomeItems,
+            outcomeItems: nextItems,
             outcomeGroups: [...state.outcomeGroups, group],
           });
           return group.id;
