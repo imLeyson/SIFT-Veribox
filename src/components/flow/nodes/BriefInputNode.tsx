@@ -11,8 +11,7 @@ import {
   type BriefInputImeEvent,
   type BriefInputImeState,
 } from "@/lib/brief-input-ime";
-import { ImagePlus, Plus, X, Eye, Sparkles } from "lucide-react";
-import { evaluateBriefIntentSync } from "@/lib/agent/system-one";
+import { ImagePlus, Plus, X, Eye } from "lucide-react";
 
 export function BriefInputNode({ id, data, selected }: NodeProps) {
   const isCustom = id !== "brief";
@@ -59,11 +58,6 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
     imeStateRef.current = { value: externalRawBrief, composing: false };
     setRawBrief(externalRawBrief);
   }, [externalRawBrief]);
-
-  const briefDiagnostics =
-    rawBrief.trim().length >= 4 ? evaluateBriefIntentSync(rawBrief) : null;
-  const confirmedDiagnostics =
-    state && rawBrief ? evaluateBriefIntentSync(rawBrief) : null;
 
   const handleSetRawBrief = (text: string) => {
     if (isCustom) {
@@ -190,13 +184,9 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
             <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
               已锁定
             </span>
-          ) : state && confirmedDiagnostics ? (
+          ) : state ? (
             <span className="text-[10px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded">
-              {confirmedDiagnostics.domainLabel || "已解析"}
-            </span>
-          ) : !state && briefDiagnostics ? (
-            <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
-              {briefDiagnostics.domainLabel}
+              已解析
             </span>
           ) : (
             <span className="text-[10px] font-medium text-stone-500 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
@@ -212,11 +202,6 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
                 <span className="h-1.5 w-1.5 rounded-full bg-stone-600" />
                 设计任务核心
               </span>
-              {confirmedDiagnostics?.domainLabel && (
-                <span className="font-mono text-[9.5px] bg-stone-100 text-stone-600 px-1.5 py-0.2 rounded">
-                  {confirmedDiagnostics.domainLabel}
-                </span>
-              )}
             </div>
             <p className="text-xs font-serif leading-relaxed text-ink line-clamp-3">
               {rawBrief.trim() || "尚未输入设计意图…"}
@@ -229,22 +214,6 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink font-serif">
               {rawBrief}
             </p>
-            {confirmedDiagnostics?.sensorySeeds && (
-              <div className="rounded-xl border border-stone-200/80 bg-stone-50/70 p-2.5 text-[10.5px] space-y-1.5">
-                <div className="flex items-center gap-1.5 font-semibold text-stone-700">
-                  <Sparkles className="h-3 w-3 text-amber-600" />
-                  <span>前置美学感官种子</span>
-                </div>
-                <div className="flex flex-wrap gap-1 text-[10px] text-stone-600">
-                  <span className="bg-white border border-stone-200/70 rounded px-1.5 py-0.5">
-                    触感: {confirmedDiagnostics.sensorySeeds.tactile}
-                  </span>
-                  <span className="bg-white border border-stone-200/70 rounded px-1.5 py-0.5">
-                    光影: {confirmedDiagnostics.sensorySeeds.light}
-                  </span>
-                </div>
-              </div>
-            )}
             {briefImages.length > 0 && (
               <div className="pt-2 border-t border-line/60">
                 <span className="text-[10px] font-semibold text-stone-500 block mb-1.5">
@@ -346,41 +315,6 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
                 </span>
               )}
             </div>
-
-            {/* Live Brief Diagnostics */}
-            {rawBrief.trim().length >= 4 && briefDiagnostics && (
-              <div className="rounded-lg border border-line/60 bg-stone-50/70 px-3 py-2 space-y-1.5 text-stone-600">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-medium text-ink">
-                    {briefDiagnostics.domainLabel}
-                  </span>
-                  <span className="font-mono text-[10px] text-stone-400">
-                    清晰度 {briefDiagnostics.clarityScore}%
-                  </span>
-                </div>
-                <div className="h-1 w-full overflow-hidden rounded-full bg-stone-200">
-                  <div
-                    className="h-full rounded-full bg-stone-700 transition-all duration-300"
-                    style={{ width: `${briefDiagnostics.clarityScore}%` }}
-                  />
-                </div>
-                {briefDiagnostics.suggestion && (
-                  <p className="text-[10.5px] text-stone-500 leading-snug pt-0.5">
-                    {briefDiagnostics.suggestion.replace(/^(?:💡|✨|⚡️)\s*/u, "")}
-                  </p>
-                )}
-                {briefDiagnostics.sensorySeeds && (
-                  <div className="flex flex-wrap gap-1 pt-1 border-t border-stone-200/50 text-[10px] text-stone-600">
-                    <span className="bg-white/90 border border-stone-200/80 rounded px-1.5 py-0.5">
-                      触感: {briefDiagnostics.sensorySeeds.tactile}
-                    </span>
-                    <span className="bg-white/90 border border-stone-200/80 rounded px-1.5 py-0.5">
-                      光影: {briefDiagnostics.sensorySeeds.light}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Hidden File Input */}
             <input
