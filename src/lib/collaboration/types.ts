@@ -9,6 +9,17 @@ export interface CollaboratorPeer {
   isSelf?: boolean;
 }
 
+export type CardConflictResolution = "local" | "remote" | "merge";
+
+export interface CardConflict {
+  cardId: string;
+  fields: string[];
+  localPatch: Record<string, any>;
+  remotePatch: Record<string, any>;
+  remotePeer: Pick<CollaboratorPeer, "id" | "name" | "color">;
+  timestamp: number;
+}
+
 export type CollaborationOpType =
   | "cursor"
   | "node:move"

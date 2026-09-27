@@ -6,6 +6,8 @@ import {
   CollaborationOp,
   CollaborationOpInput,
   CanvasSyncSnapshot,
+  CardConflict,
+  CardConflictResolution,
   PRESET_AVATAR_COLORS,
   PRESET_ROLES,
 } from "./types";
@@ -28,6 +30,28 @@ function safeId(prefix = "peer"): string {
     return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
   }
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+export function mergeCardConflict(conflict: CardConflict): Record<string, any> {
+  const merged: Record<string, any> = {};
+  conflict.fields.forEach((field) => {
+    const local = conflict.localPatch[field];
+    const remote = conflict.remotePatch[field];
+    if (field === "content" && typeof local === "string" && typeof remote === "string") {
+      merged[field] = local === remote ? local : `${local}\n\n${remote}`;
+    } else if (
+      field === "data" &&
+      local &&
+      typeof local === "object" &&
+      remote &&
+      typeof remote === "object"
+    ) {
+      merged[field] = { ...local, ...remote };
+    } else {
+      merged[field] = local ?? remote;
+    }
+  });
+  return merged;
 }
 
 /**
@@ -146,6 +170,9 @@ class CollaborationManager {
   private roomCursor = 0;
   private isProcessingRemoteOp = false;
   private seenRemoteOpIds = new Set<string>();
+  private activeLocalNodeId: string | null = null;
+  private cardConflicts = new Map<string, CardConflict>();
+  private conflictListeners = new Set<(conflicts: CardConflict[]) => void>();
 
   constructor() {
     this.localPeer = getLocalPeer();
@@ -244,6 +271,84 @@ class CollaborationManager {
     this.statusListeners.add(listener);
     listener(this.status);
     return () => this.statusListeners.delete(listener);
+  }
+
+  public subscribeConflicts(listener: (conflicts: CardConflict[]) => void): () => void {
+    this.conflictListeners.add(listener);
+    listener(Array.from(this.cardConflicts.values()));
+    return () => this.conflictListeners.delete(listener);
+  }
+
+  public getCardConflict(cardId: string): CardConflict | null {
+    return this.cardConflicts.get(cardId) || null;
+  }
+
+  private notifyConflictListeners() {
+    const conflicts = Array.from(this.cardConflicts.values());
+    this.conflictListeners.forEach((listener) => {
+      try {
+        listener(conflicts);
+      } catch {
+        // ignore listener errors
+      }
+    });
+  }
+
+  private registerCardConflict(op: Extract<CollaborationOp, { type: "card:update" }>): string[] {
+    if (this.activeLocalNodeId !== op.cardId) return [];
+
+    const current = useSiftStore.getState().customCards.find((card) => card.id === op.cardId);
+    if (!current) return [];
+
+    const fields = Object.keys(op.patch).filter((field) => {
+      if (field === "data") return Boolean(op.patch.data && current.data);
+      return (current as Record<string, unknown>)[field] !== undefined;
+    });
+    if (fields.length === 0) return [];
+
+    const localPatch = fields.reduce<Record<string, any>>((patch, field) => {
+      patch[field] = field === "data" ? current.data : (current as Record<string, any>)[field];
+      return patch;
+    }, {});
+    const remotePatch = fields.reduce<Record<string, any>>((patch, field) => {
+      patch[field] = op.patch[field];
+      return patch;
+    }, {});
+    const remotePeer = this.peersMap.get(op.userId);
+    this.cardConflicts.set(op.cardId, {
+      cardId: op.cardId,
+      fields,
+      localPatch,
+      remotePatch,
+      remotePeer: {
+        id: op.userId,
+        name: remotePeer?.name || "协作者",
+        color: remotePeer?.color || "#6366f1",
+      },
+      timestamp: Date.now(),
+    });
+    this.setStatus("conflict");
+    this.notifyConflictListeners();
+    return fields;
+  }
+
+  public resolveCardConflict(cardId: string, resolution: CardConflictResolution) {
+    const conflict = this.cardConflicts.get(cardId);
+    if (!conflict) return;
+
+    if (resolution === "remote") {
+      useSiftStore.getState().updateCustomCard(cardId, conflict.remotePatch);
+    } else if (resolution === "merge") {
+      useSiftStore.getState().updateCustomCard(cardId, mergeCardConflict(conflict));
+    } else {
+      useSiftStore.getState().updateCustomCard(cardId, conflict.localPatch);
+    }
+
+    this.cardConflicts.delete(cardId);
+    if (this.cardConflicts.size === 0 && this.status === "conflict") {
+      this.setStatus("connected");
+    }
+    this.notifyConflictListeners();
   }
 
   private setStatus(status: CollaborationStatus) {
@@ -430,6 +535,7 @@ class CollaborationManager {
   }
 
   public setActiveNode(nodeId: string | null) {
+    this.activeLocalNodeId = nodeId;
     if (this.localPeer.activeNodeId === nodeId) return;
     this.localPeer.activeNodeId = nodeId;
     this.broadcastPresence(this.localPeer.cursor || null, nodeId);
@@ -558,10 +664,11 @@ class CollaborationManager {
     this.opListeners.forEach((fn) => fn(op));
 
     // Automatically apply remote operation to Zustand store without triggering echo
-    this.applyOpToStore(op);
+    const conflictFields = op.type === "card:update" ? this.registerCardConflict(op) : [];
+    this.applyOpToStore(op, conflictFields);
   }
 
-  private applyOpToStore(op: CollaborationOp) {
+  private applyOpToStore(op: CollaborationOp, conflictFields: string[] = []) {
     this.isProcessingRemoteOp = true;
     try {
       const store = useSiftStore.getState();
@@ -578,7 +685,10 @@ class CollaborationManager {
           break;
         }
         case "card:update": {
-          store.updateCustomCard(op.cardId, op.patch);
+          const patch = conflictFields.length
+            ? Object.fromEntries(Object.entries(op.patch).filter(([field]) => !conflictFields.includes(field)))
+            : op.patch;
+          if (Object.keys(patch).length > 0) store.updateCustomCard(op.cardId, patch);
           break;
         }
         case "card:delete": {
@@ -843,6 +953,24 @@ export function useRemoteCollaboratorsOnNode(nodeId: string | undefined): Collab
   }, [nodeId]);
 
   return peers;
+}
+
+export function useCardConflict(cardId: string | undefined): CardConflict | null {
+  const [conflict, setConflict] = useState<CardConflict | null>(() =>
+    cardId ? collabManager.getCardConflict(cardId) : null,
+  );
+
+  useEffect(() => {
+    if (!cardId) {
+      setConflict(null);
+      return;
+    }
+    return collabManager.subscribeConflicts((conflicts) => {
+      setConflict(conflicts.find((item) => item.cardId === cardId) || null);
+    });
+  }, [cardId]);
+
+  return conflict;
 }
 
 /**
