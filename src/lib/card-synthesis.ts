@@ -222,9 +222,9 @@ export function blendThemes(themeA: Route, themeB: Route): Route {
   const blendId = `route-blend-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   const blendVariant = blendGeneration++;
 
-  // Use the invocation id as part of the seed so “重新生成” can produce a
-  // genuinely different concept from the same two inputs.
-  const blendSeed = hashString(`${metaA.zh}|${metaB.zh}|${blendId}`);
+  // Use stable input hash with monotonically incrementing blendVariant so “重新生成”
+  // is guaranteed to produce a different concept on consecutive runs.
+  const blendSeed = hashString(`${metaA.zh}|${metaB.zh}`);
   const fusedThemeName = synthesizeConceptName(metaA, metaB, blendSeed, blendVariant);
 
   // 2. Synthesize a natural visual proposition from both inputs.
