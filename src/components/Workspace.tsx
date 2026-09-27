@@ -86,16 +86,6 @@ export function Workspace() {
           <div className="flex items-center gap-1.5">
             {/* Multi-user real-time collaboration */}
             <CollaborationBar />
-          {state?.status === "questioning" && (
-            <button
-              type="button"
-              className="px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
-              onClick={siftActions.converge}
-              title="停止追问，按当前状态进入人工检查点"
-            >
-              快速收敛
-            </button>
-          )}
 
           {Boolean(state) && (
             <button
