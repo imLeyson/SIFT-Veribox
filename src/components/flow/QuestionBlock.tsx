@@ -121,22 +121,25 @@ export function QuestionBlock({
 
   const answeredCount = questions.filter(isQuestionAnswered).length;
 
+  const submitQuestions = () => {
+    if (disabled) return;
+    if (onSubmit) {
+      void onSubmit(drafts);
+    } else {
+      void siftActions.answer();
+    }
+  };
+
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        if (!disabled) {
-          if (onSubmit) {
-            void onSubmit(drafts);
-          } else {
-            void siftActions.answer();
-          }
-        }
+        submitQuestions();
       }}
       onKeyDown={(e) => {
         if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
           e.preventDefault();
-          if (!disabled) void siftActions.answer();
+          submitQuestions();
         }
       }}
       className="space-y-4"
