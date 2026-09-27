@@ -7,7 +7,6 @@ import { RouteNode } from "@/components/flow/nodes/RouteNode";
 import { StepNode } from "@/components/flow/nodes/StepNode";
 import { PlatformPlanNode } from "@/components/flow/nodes/PlatformPlanNode";
 import { ImageGenNode } from "@/components/flow/nodes/ImageGenNode";
-import { CardChatPanel } from "@/components/flow/CardChatPanel";
 import type { Route } from "@/types/routes";
 
 describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
@@ -404,47 +403,4 @@ describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
     expect(rendered).toContain("推导概念画面");
   });
 
-  it("keeps the legacy chat panel isolated from active card rendering", () => {
-    // 1. Render CardChatPanel directly
-    let appliedPatch: any = null;
-    const chatHtml = renderToString(
-      React.createElement(CardChatPanel, {
-        nodeId: "test-node",
-        cardType: "imageGen",
-        cardTitle: "《极简冷萃壶》",
-        cardData: { prompt: "极简白瓷冷萃壶" },
-        upstreamContext: { themeName: "重构秩序" },
-        onApplyUpdate: (patch) => {
-          appliedPatch = patch;
-        },
-        onClose: () => {},
-      })
-    );
-
-    // Verify Copilot greeting and starter chips are rendered
-    expect(chatHtml).toContain("卡片协同 Co-pilot");
-    expect(chatHtml).toContain("重构秩序");
-    expect(chatHtml).toContain("快捷建议:");
-    expect(chatHtml).toContain("强化高级影棚 45° 立体侧光");
-    expect(chatHtml).toContain("注入哑光半透骨瓷阻尼触感");
-    expect(chatHtml).toContain("返回卡片");
-
-    // 2. Render ImageGenNode and verify the active card shell has no chat switcher.
-    const imageGenHtml = renderToString(
-      React.createElement(
-        ReactFlowProvider,
-        null,
-        React.createElement(ImageGenNode, {
-          id: "card-chat-test",
-          data: {
-            prompt: "测试提示词",
-            themeName: "重构秩序",
-          },
-          selected: true,
-        } as any)
-      )
-    );
-
-    expect(imageGenHtml).not.toContain("追问");
-  });
 });

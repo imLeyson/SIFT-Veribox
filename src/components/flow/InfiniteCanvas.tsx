@@ -649,10 +649,9 @@ function FlowInner() {
         style: { stroke: "#6366f1", strokeWidth: 2 },
       });
 
-      // 3. Auto-synthesize target card (e.g. 03 -> 04, 04 -> 05, or Theme Blending)
-      setTimeout(() => {
-        synthesizeCard(connection.target);
-      }, 40);
+      // Keep linking and generation separate. A connection is reversible and
+      // should not spend a model request or overwrite a target card until the
+      // user explicitly chooses a generation action on that card.
     },
     [addCustomEdge, deleteCustomEdge, customEdges, synthesizeCard],
   );

@@ -17,12 +17,12 @@ export const CARD_TAG_CONFIG: Record<CardTag, {
   description: string;
 }> = {
   primary: {
-    label: "核心候选",
-    shortLabel: "核心",
+    label: "喜欢收藏",
+    shortLabel: "喜欢",
     icon: "⭐️",
     badgeClass: "bg-amber-50 text-amber-900 border-amber-300",
     activeClass: "ring-1 ring-amber-400/60 border-amber-400/40 shadow-xs",
-    description: "经过验证的核心主推方案，优先进入导出提案",
+    description: "用户主动收藏的方向，进入精选视图",
   },
   serendipity: {
     label: "意外灵感",
@@ -303,14 +303,14 @@ export function NodeShell({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setCardTag(nodeId, currentTag === "primary" ? null : "primary");
+                    setCardTag(nodeId, currentTag === "primary" ? null : "primary");
                     }}
                     className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-all flex items-center gap-1 cursor-pointer border ${
                       currentTag === "primary"
                         ? CARD_TAG_CONFIG.primary.badgeClass
                         : "border-transparent text-stone-400 hover:text-amber-500 hover:bg-stone-100 opacity-0 group-hover:opacity-100 focus:opacity-100"
                     }`}
-                    title={currentTag === "primary" ? "已收藏为核心方案 (点击取消)" : "收藏为核心方案 (★ 收藏)"}
+                    title={currentTag === "primary" ? "已标记喜欢 (点击取消)" : "标记为喜欢 (★)"}
                   >
                     <Star
                       className={`h-3 w-3 ${

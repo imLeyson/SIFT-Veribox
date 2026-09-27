@@ -2,7 +2,6 @@
 import { useState } from "react";
 import type { NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
-import { CardChatPanel } from "../CardChatPanel";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { hasDirection, type DesignState } from "@/types/convergence";
@@ -91,8 +90,6 @@ export function StateNode({ id, data, selected }: NodeProps) {
   const checkpoint = next?.type === "checkpoint";
   const confirmed = state.status === "confirmed";
 
-  const [viewMode, setViewMode] = useState<"card" | "chat">("card");
-
   const directionStarterChips = [
     "强化纯粹几何与秩序感",
     "增加触感温润与亲肤阻尼",
@@ -121,41 +118,6 @@ export function StateNode({ id, data, selected }: NodeProps) {
       }
     }
   };
-
-  const chatPanel = (
-    <CardChatPanel
-      nodeId={id}
-      cardType="state"
-      cardTitle="核心策略基准"
-      cardData={{
-        goal: state?.brief?.goal,
-        hypothesis: state?.currentHypothesis,
-        intent: state?.direction?.intent?.text,
-        priorities: state?.direction?.priorities?.map((p) => p.text),
-        avoid: state?.direction?.avoid?.map((a) => a.text),
-        criteria: state?.direction?.criteria?.map((c) => c.text),
-      }}
-      upstreamContext={{
-        goal: state?.brief?.goal ?? undefined,
-        strategyIntent: state?.direction?.intent?.text ?? undefined,
-        priorities: state?.direction?.priorities?.map((p) => p.text) ?? undefined,
-        avoid: state?.direction?.avoid?.map((a) => a.text) ?? undefined,
-      }}
-      starterChips={[
-        "强化设计假设在工业落地中的可行性",
-        "补充坚决规避的视觉红线",
-        "细化视觉坚持与设计工效",
-      ]}
-      onApplyUpdate={async (patch) => {
-        const feedback = patch.cons || patch.pros || patch.feedback || patch.correction;
-        if (feedback) {
-          setCorrectionDraft(feedback);
-          await siftActions.correct();
-        }
-      }}
-      onClose={() => setViewMode("card")}
-    />
-  );
 
   return (
     <NodeShell

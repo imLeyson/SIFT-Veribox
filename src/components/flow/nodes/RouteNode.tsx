@@ -486,18 +486,6 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
                 </div>
               )}
 
-              {/* 推荐理由 (若有) */}
-              {route.recommendedReason && (
-                <div className="space-y-0.5 pt-0.5">
-                  <span className="text-[10px] font-semibold text-emerald-800 flex items-center gap-1">
-                    <Compass className="h-3 w-3 text-emerald-600" />
-                    <span>推荐解题意图</span>
-                  </span>
-                  <p className="text-stone-600 leading-relaxed pl-2 border-l-2 border-emerald-200">
-                    {toInspirationCopy(cleanText(route.recommendedReason))}
-                  </p>
-                </div>
-              )}
             </div>
           </details>
 
