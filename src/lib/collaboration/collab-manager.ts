@@ -414,6 +414,39 @@ class CollaborationManager {
     this.isProcessingRemoteOp = true;
     try {
       useSiftStore.setState((prev) => {
+        let nextCustomCards = snapshot.customCards;
+        if (this.activeLocalNodeId && Array.isArray(nextCustomCards)) {
+          const localCard = prev.customCards.find((card) => card.id === this.activeLocalNodeId);
+          const remoteCard = nextCustomCards.find((card) => card.id === this.activeLocalNodeId);
+          if (localCard && remoteCard) {
+            const fields = ["title", "content", "data"].filter((field) =>
+              JSON.stringify((localCard as Record<string, unknown>)[field]) !==
+              JSON.stringify((remoteCard as Record<string, unknown>)[field]),
+            );
+            if (fields.length > 0) {
+              const remotePeer = Array.from(this.peersMap.values()).find((peer) =>
+                peer.activeNodeId === this.activeLocalNodeId,
+              );
+              this.cardConflicts.set(this.activeLocalNodeId, {
+                cardId: this.activeLocalNodeId,
+                fields,
+                localPatch: Object.fromEntries(fields.map((field) => [field, (localCard as Record<string, unknown>)[field]])),
+                remotePatch: Object.fromEntries(fields.map((field) => [field, (remoteCard as Record<string, unknown>)[field]])),
+                remotePeer: {
+                  id: remotePeer?.id || "remote",
+                  name: remotePeer?.name || "协作者",
+                  color: remotePeer?.color || "#6366f1",
+                },
+                timestamp: Date.now(),
+              });
+              this.setStatus("conflict");
+              this.notifyConflictListeners();
+              nextCustomCards = nextCustomCards.map((card) =>
+                card.id === this.activeLocalNodeId ? localCard : card,
+              );
+            }
+          }
+        }
         const mergedPositions = {
           ...prev.positions,
           ...(snapshot.positions || {}),
@@ -433,7 +466,7 @@ class CollaborationManager {
           ...(snapshot.exploredRouteIds !== undefined ? { exploredRouteIds: snapshot.exploredRouteIds } : {}),
           ...(snapshot.explorationStage !== undefined ? { explorationStage: snapshot.explorationStage } : {}),
           ...(snapshot.platformPlans !== undefined ? { platformPlans: snapshot.platformPlans } : {}),
-          ...(snapshot.customCards !== undefined ? { customCards: snapshot.customCards } : {}),
+          ...(nextCustomCards !== undefined ? { customCards: nextCustomCards } : {}),
           ...(snapshot.customEdges !== undefined ? { customEdges: snapshot.customEdges } : {}),
           positions: mergedPositions,
           ...(snapshot.deletedNodeIds !== undefined ? { deletedNodeIds: snapshot.deletedNodeIds } : {}),
@@ -468,6 +501,9 @@ class CollaborationManager {
     this.roomRevision = 0;
     this.roomCursor = 0;
     this.seenRemoteOpIds.clear();
+    this.cardConflicts.clear();
+    this.activeLocalNodeId = null;
+    this.notifyConflictListeners();
     this.setStatus("connecting");
 
     if (this.broadcastChannel) {
@@ -840,7 +876,7 @@ class CollaborationManager {
       });
 
       if (res.ok) {
-        this.setStatus("connected");
+        this.setStatus(this.cardConflicts.size > 0 ? "conflict" : "connected");
         const data = await res.json();
         if (typeof data.revision === "number") this.roomRevision = data.revision;
         if (typeof data.cursor === "number") this.roomCursor = data.cursor;
