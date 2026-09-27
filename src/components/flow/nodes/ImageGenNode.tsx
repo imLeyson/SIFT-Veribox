@@ -108,22 +108,16 @@ export function ImageGenNode({ id, data, selected }: NodeProps) {
   const refWeight = cardData.refWeight ?? 50;
 
   // Title extraction
-  const { conceptTitle, englishTag } = useMemo(() => {
+  const conceptTitle = useMemo(() => {
     const cleanRaw = rawTheme
       .replace(/^[《【](.*?)[》】]/, "$1")
       .replace(/[《》【】]/g, "")
       .trim();
     const match = cleanRaw.match(/^([^\w\s·]+(?:[·\s]+[^\w\s·]+)*)\s*([a-zA-Z\s\/\-_]+)?$/);
     if (match && match[1]) {
-      return {
-        conceptTitle: `《${match[1].trim()}》`,
-        englishTag: (match[2] || "").trim().toUpperCase(),
-      };
+      return `《${match[1].trim()}》`;
     }
-    return {
-      conceptTitle: `《${cleanRaw}》`,
-      englishTag: "",
-    };
+    return `《${cleanRaw}》`;
   }, [rawTheme]);
 
   const displayTitle = cardData.customTitle || conceptTitle;

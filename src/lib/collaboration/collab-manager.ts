@@ -961,16 +961,13 @@ export function useCardConflict(cardId: string | undefined): CardConflict | null
   );
 
   useEffect(() => {
-    if (!cardId) {
-      setConflict(null);
-      return;
-    }
+    if (!cardId) return;
     return collabManager.subscribeConflicts((conflicts) => {
       setConflict(conflicts.find((item) => item.cardId === cardId) || null);
     });
   }, [cardId]);
 
-  return conflict;
+  return cardId ? conflict : null;
 }
 
 /**
