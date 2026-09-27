@@ -8,6 +8,7 @@ import { siftActions } from "@/lib/convergence-client";
 import { cleanStepLabel, type Route, type RouteStep } from "@/types/routes";
 import { toInspirationCopy } from "@/lib/exploration-copy";
 import { Sparkles, ArrowRight, Compass, RefreshCw, Copy, Check } from "lucide-react";
+import { copyToClipboard } from "@/lib/clipboard";
 
 const DEFAULT_FALLBACK_ROUTE: Route = {
   id: "custom-route",
@@ -194,7 +195,7 @@ export function StepNode({ id, data, selected }: NodeProps) {
       .filter(Boolean)
       .join("\n\n");
     try {
-      await navigator.clipboard.writeText(text);
+      if (!(await copyToClipboard(text))) return;
       setCopiedStep(true);
       setTimeout(() => setCopiedStep(false), 1800);
     } catch {

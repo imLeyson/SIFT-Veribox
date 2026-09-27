@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
+import { copyToClipboard } from "@/lib/clipboard";
 
 export type PlatformPlanNodeData = {
   plan: PlatformPlan;
@@ -207,7 +208,7 @@ export function PlatformPlanNode({
     }
 
     try {
-      await navigator.clipboard.writeText(textToCopy);
+      if (!(await copyToClipboard(textToCopy))) return;
       setCopiedAllKw(true);
       setTimeout(() => setCopiedAllKw(false), 1800);
     } catch {

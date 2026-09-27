@@ -24,12 +24,14 @@ import {
   CollaboratorPeer,
   PRESET_AVATAR_COLORS,
 } from "@/lib/collaboration/types";
+import { copyToClipboard } from "@/lib/clipboard";
 
 export function CollaborationBar() {
   const [isOpen, setIsOpen] = useState(false);
   const [peers, setPeers] = useState<CollaboratorPeer[]>([]);
   const [localPeer, setLocalPeer] = useState<CollaboratorPeer>(getLocalPeer);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(localPeer.name);
 
@@ -99,12 +101,14 @@ export function CollaborationBar() {
         ? "bg-stone-400"
         : "bg-indigo-400";
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     const url = new URL(window.location.href);
     url.searchParams.set("room", roomId);
-    void navigator.clipboard.writeText(url.toString());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const success = await copyToClipboard(url.toString());
+    setCopyError(!success);
+    setCopied(success);
+    if (success) setTimeout(() => setCopied(false), 2000);
+    else setTimeout(() => setCopyError(false), 3000);
   };
 
   const handleSaveName = (e?: React.FormEvent) => {
@@ -234,6 +238,11 @@ export function CollaborationBar() {
                     <>
                       <Check className="h-3 w-3 text-emerald-400" />
                       <span>已复制</span>
+                    </>
+                  ) : copyError ? (
+                    <>
+                      <Copy className="h-3 w-3 text-amber-300" />
+                      <span>复制失败</span>
                     </>
                   ) : (
                     <>

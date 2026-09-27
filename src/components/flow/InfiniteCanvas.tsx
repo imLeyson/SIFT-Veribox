@@ -307,9 +307,15 @@ function FlowInner() {
 
   // Image Drag-and-Drop & Clipboard Paste state & refs
   const [isDraggingImageOver, setIsDraggingImageOver] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const lastMousePosRef = useRef<{ x: number; y: number } | null>(null);
   const pendingImagePosRef = useRef<{ x: number; y: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const reportImageError = useCallback((fileName?: string) => {
+    setImageError(`${fileName ? `“${fileName}”` : "图片"}读取失败，请检查格式或文件大小后重试。`);
+    window.setTimeout(() => setImageError(null), 4500);
+  }, []);
 
   const START_X = 60;
   const START_Y = 80;
@@ -802,13 +808,14 @@ function FlowInner() {
           setPosition(cardId, cardPos);
         } catch (err) {
           console.error("Failed to process image file:", err);
+          reportImageError(file.name);
         }
       }
 
       e.target.value = "";
       pendingImagePosRef.current = null;
     },
-    [addCustomCard, screenToFlowPosition, setPosition],
+    [addCustomCard, reportImageError, screenToFlowPosition, setPosition],
   );
 
   // Global Clipboard Paste Handler (Cmd+V / Ctrl+V directly on canvas)
@@ -872,13 +879,14 @@ function FlowInner() {
           setPosition(cardId, cardPos);
         } catch (err) {
           console.error("Failed to process pasted image:", err);
+          reportImageError(file.name);
         }
       }
     };
 
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
-  }, [addCustomCard, screenToFlowPosition, setPosition]);
+  }, [addCustomCard, reportImageError, screenToFlowPosition, setPosition]);
 
   // Keyboard shortcut: Press 'g' / 'G' to collapse/expand selected nodes or branch (Chain Grouping)
   useEffect(() => {
@@ -984,10 +992,11 @@ function FlowInner() {
           setPosition(cardId, cardPos);
         } catch (err) {
           console.error("Failed to process dropped image:", err);
+          reportImageError(file.name);
         }
       }
     },
-    [addCustomCard, screenToFlowPosition, setPosition],
+    [addCustomCard, reportImageError, screenToFlowPosition, setPosition],
   );
 
   // Tidy Up Auto Layout: Strict Column-by-Column, Top-to-Bottom, Non-overlapping Layout
@@ -1166,6 +1175,16 @@ function FlowInner() {
             <ImageIcon className="h-4 w-4 text-blue-500 animate-bounce" />
             <span>松开即可将参考图片添加至此画布位置</span>
           </div>
+        </div>
+      )}
+
+      {imageError && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-auto absolute left-1/2 top-4 z-40 -translate-x-1/2 rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs font-medium text-amber-900 shadow-lg"
+        >
+          {imageError}
         </div>
       )}
 

@@ -17,6 +17,7 @@ import {
   saveProjectChatHistory,
   clearProjectChatHistory,
 } from "@/lib/project-manager";
+import { copyToClipboard } from "@/lib/clipboard";
 
 interface GlobalChatViewProps {
   onClose?: () => void;
@@ -199,10 +200,11 @@ export function GlobalChatView({ onClose }: GlobalChatViewProps) {
     }
   };
 
-  const handleCopy = (id: string, text: string) => {
-    void navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const handleCopy = async (id: string, text: string) => {
+    if (await copyToClipboard(text)) {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
   };
 
   const handleResetChat = () => {
