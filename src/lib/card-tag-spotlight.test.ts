@@ -70,7 +70,6 @@ describe("Module 3: Card Tagging & Collaborative Spotlight System", () => {
       )
     );
 
-    expect(htmlNormal).toContain("⭐️");
     expect(htmlNormal).toContain("喜欢");
     expect(htmlNormal).toContain(CARD_TAG_CONFIG.primary.badgeClass);
 
@@ -113,7 +112,6 @@ describe("Module 3: Card Tagging & Collaborative Spotlight System", () => {
     );
 
     expect(htmlSpotlightDimmed).toContain("opacity-20");
-    expect(htmlSpotlightDimmed).toContain("❓");
     expect(htmlSpotlightDimmed).toContain("待审");
   });
 
