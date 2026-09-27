@@ -13,6 +13,7 @@ import {
   type BriefInputImeState,
 } from "@/lib/brief-input-ime";
 import { ImagePlus, Plus, X, Eye } from "lucide-react";
+import { collabManager } from "@/lib/collaboration/collab-manager";
 
 export function BriefInputNode({ id, data, selected }: NodeProps) {
   const isCustom = id !== "brief";
@@ -289,9 +290,11 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
                 value={rawBrief}
                 onFocus={() => {
                   textareaFocusedRef.current = true;
+                  collabManager.setActiveNode(id);
                 }}
                 onBlur={() => {
                   textareaFocusedRef.current = false;
+                  collabManager.setActiveNode(null);
                   if (rawBrief !== externalRawBrief) handleSetRawBrief(rawBrief);
                 }}
                 onCompositionStart={() => applyImeEvent({ type: "compositionstart" })}

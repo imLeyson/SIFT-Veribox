@@ -28,6 +28,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { copyToClipboard } from "@/lib/clipboard";
+import { collabManager } from "@/lib/collaboration/collab-manager";
 
 export type AspectRatioType = "1:1" | "3:4" | "4:3" | "16:9" | "9:16";
 export type StylePresetType = "realistic" | "minimal" | "clay" | "cinematic";
@@ -767,6 +768,8 @@ export function ImageGenNode({ id, data, selected }: NodeProps) {
               <textarea
                 ref={textareaRef}
                 value={prompt}
+                onFocus={() => collabManager.setActiveNode(id)}
+                onBlur={() => collabManager.setActiveNode(null)}
                 onChange={(e) => updateField({ prompt: e.target.value })}
                 onKeyDown={(e) => {
                   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {

@@ -4,7 +4,8 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Handle, Position, useReactFlow } from "@xyflow/react";
 import { GripHorizontal, Copy, Trash2, ChevronDown, ChevronUp, RefreshCw, Bookmark, Check, Star, MessageSquare } from "lucide-react";
 import { useSiftStore, type CardTag } from "@/lib/convergence-store";
-import { useRemoteCollaboratorsOnNode } from "@/lib/collaboration/collab-manager";
+import { useCardConflict, useRemoteCollaboratorsOnNode } from "@/lib/collaboration/collab-manager";
+import { CardConflictBanner } from "@/components/collaboration/CardConflictBanner";
 
 export type CardTagType = CardTag;
 
@@ -250,6 +251,7 @@ export function NodeShell({
   }
 
   const remoteCollaborators = useRemoteCollaboratorsOnNode(nodeId);
+  const conflict = useCardConflict(nodeId);
   const isBeingEdited = remoteCollaborators.length > 0;
   const primaryEditor = remoteCollaborators[0];
 
@@ -468,6 +470,8 @@ export function NodeShell({
             </div>
           )}
         </div>
+
+        {conflict && <CardConflictBanner conflict={conflict} />}
 
         {/* Collapsible Card Body / Chat Mode Body */}
         {isCollapsed ? (

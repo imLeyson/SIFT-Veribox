@@ -9,6 +9,7 @@ import {
   useCardConflict,
   useRemoteCollaboratorsOnNode,
 } from "@/lib/collaboration/collab-manager";
+import { CardConflictBanner } from "@/components/collaboration/CardConflictBanner";
 
 const COLOR_VARIANTS = {
   amber: {
@@ -210,44 +211,7 @@ export function StickyNoteNode({ id, data }: NodeProps) {
 
       <div className={`h-1.5 w-full ${theme.accent}`} />
 
-      {conflict && (
-        <div
-          role="alert"
-          className="border-b border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[11px] text-amber-950"
-        >
-          <div className="font-semibold">
-            {conflict.remotePeer.name} 同时编辑了这张便签
-          </div>
-          <div className="mt-1 text-amber-800/80">
-            {conflict.fields.includes("content") ? "文字内容发生冲突，请选择保留方式。" : "部分内容发生冲突，请选择保留方式。"}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              onClick={() => collabManager.resolveCardConflict(id, "local")}
-              className="rounded-md border border-amber-300 bg-white px-2 py-1 font-medium text-amber-900 hover:bg-amber-100"
-            >
-              保留我的
-            </button>
-            <button
-              type="button"
-              onClick={() => collabManager.resolveCardConflict(id, "remote")}
-              className="rounded-md border border-amber-300 bg-white px-2 py-1 font-medium text-amber-900 hover:bg-amber-100"
-            >
-              采用对方
-            </button>
-            {conflict.fields.includes("content") && (
-              <button
-                type="button"
-                onClick={() => collabManager.resolveCardConflict(id, "merge")}
-                className="rounded-md bg-amber-900 px-2 py-1 font-medium text-white hover:bg-amber-800"
-              >
-                合并文字
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      {conflict && <CardConflictBanner conflict={conflict} />}
 
       {/* Header with drag handle and controls */}
       <div
