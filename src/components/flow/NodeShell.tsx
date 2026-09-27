@@ -257,6 +257,7 @@ export function NodeShell({
 
   return (
     <article
+      data-nodeid={nodeId}
       className={`vb-node card relative transition-all duration-200 ${className ?? "w-[380px]"} ${selected ? "vb-node-selected" : ""} ${spotlightClass}`}
       style={
         isBeingEdited

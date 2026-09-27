@@ -440,38 +440,37 @@ class CollaborationManager {
     try {
       useSiftStore.setState((prev) => {
         let nextCustomCards = snapshot.customCards;
-        if (this.activeLocalNodeId && Array.isArray(nextCustomCards)) {
-          const localCard = prev.customCards.find((card) => card.id === this.activeLocalNodeId);
-          const remoteCard = nextCustomCards.find((card) => card.id === this.activeLocalNodeId);
-          if (localCard && remoteCard) {
-            const fields = ["title", "content", "data"].filter((field) =>
-              JSON.stringify((localCard as Record<string, unknown>)[field]) !==
-              JSON.stringify((remoteCard as Record<string, unknown>)[field]),
-            );
-            if (fields.length > 0) {
-              const remotePeer = Array.from(this.peersMap.values()).find((peer) =>
-                peer.activeNodeId === this.activeLocalNodeId,
-              );
-              this.cardConflicts.set(this.activeLocalNodeId, {
-                cardId: this.activeLocalNodeId,
-                fields,
-                localPatch: Object.fromEntries(fields.map((field) => [field, (localCard as Record<string, unknown>)[field]])),
-                remotePatch: Object.fromEntries(fields.map((field) => [field, (remoteCard as Record<string, unknown>)[field]])),
-                remotePeer: {
-                  id: remotePeer?.id || "remote",
-                  name: remotePeer?.name || "协作者",
-                  color: remotePeer?.color || "#6366f1",
-                },
-                timestamp: Date.now(),
-              });
-              this.setStatus("conflict");
-              this.notifyConflictListeners();
+
+        // Surgical field-level protection: only protect the exact field
+        // the local user is actively typing in (detected via focus).
+        // Previously, clicking ANY card locked the entire card from remote
+        // updates, causing the "occupation" problem.
+        if (Array.isArray(nextCustomCards) && Array.isArray(prev.customCards)) {
+          const activeEl = typeof document !== "undefined" ? document.activeElement : null;
+          const activeInputNodeId = activeEl?.closest?.("[data-nodeid]")?.getAttribute("data-nodeid") || null;
+
+          if (activeInputNodeId) {
+            const localCard = prev.customCards.find((card) => card.id === activeInputNodeId);
+            const remoteCard = nextCustomCards.find((card) => card.id === activeInputNodeId);
+            if (localCard && remoteCard) {
+              // Merge: take remote card as base, overlay the locally-focused fields
+              const merged = { ...remoteCard };
+              // Detect which field the user is typing in via input/textarea name or a heuristic
+              const fieldName = (activeEl as HTMLElement)?.dataset?.field;
+              if (fieldName && (localCard as Record<string, unknown>)[fieldName] !== undefined) {
+                (merged as Record<string, unknown>)[fieldName] = (localCard as Record<string, unknown>)[fieldName];
+              } else {
+                // Fallback: if we can't detect the exact field, preserve title + content
+                if (localCard.title !== undefined) merged.title = localCard.title;
+                if ((localCard as any).content !== undefined) (merged as any).content = (localCard as any).content;
+              }
               nextCustomCards = nextCustomCards.map((card) =>
-                card.id === this.activeLocalNodeId ? localCard : card,
+                card.id === activeInputNodeId ? merged : card,
               );
             }
           }
         }
+
         const mergedPositions = {
           ...prev.positions,
           ...(snapshot.positions || {}),
@@ -666,7 +665,7 @@ class CollaborationManager {
 
   public broadcastNodeMove(nodeId: string, position: { x: number; y: number }, force = false) {
     const now = Date.now();
-    if (!force && now - this.lastMoveThrottleTime < 35) return;
+    if (!force && now - this.lastMoveThrottleTime < 80) return;
     this.lastMoveThrottleTime = now;
 
     this.broadcastOp({
@@ -1001,8 +1000,10 @@ class CollaborationManager {
     if (document.hidden) {
       interval = 7000;
     } else if (this.peersMap.size > 0) {
-      // High-cadence adaptive poll (450ms) when other collaborators are present in room
-      interval = 450;
+      // Balanced poll interval when collaborators present.
+      // 1200ms provides near-real-time sync while avoiding the heavy
+      // JSON serialisation + fetch overhead that caused UI jank at 450ms.
+      interval = 1200;
     }
 
     this.heartbeatTimer = setTimeout(() => {

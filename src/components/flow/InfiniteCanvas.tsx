@@ -1138,7 +1138,7 @@ function FlowInner() {
   const handleCanvasPointerMove = useCallback(
     (flowPos: { x: number; y: number }) => {
       const now = Date.now();
-      if (now - lastCursorBroadcastRef.current > 35) {
+      if (now - lastCursorBroadcastRef.current > 80) {
         lastCursorBroadcastRef.current = now;
         collabManager.broadcastPresence(flowPos, null);
       }

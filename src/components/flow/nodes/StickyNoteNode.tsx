@@ -172,6 +172,7 @@ export function StickyNoteNode({ id, data }: NodeProps) {
 
   return (
     <article
+      data-nodeid={id}
       className={`card relative w-[330px] max-w-[440px] overflow-hidden rounded-2xl border shadow-sm backdrop-blur-xs transition-all duration-200 hover:shadow-md ${theme.bg} ${theme.border}`}
       style={
         isBeingEdited
@@ -286,6 +287,7 @@ export function StickyNoteNode({ id, data }: NodeProps) {
             collabManager.setActiveNode(null);
           }}
           placeholder="便签标题…"
+          data-field="title"
           className={`w-full bg-transparent text-xs font-semibold focus:outline-hidden border-b border-transparent hover:border-black/10 focus:border-black/20 pb-0.5 ${theme.text}`}
         />
 
@@ -299,6 +301,7 @@ export function StickyNoteNode({ id, data }: NodeProps) {
           }}
           placeholder="随手记录你的灵感、设计手记、评审反馈或排版约束…"
           rows={estimatedRows}
+          data-field="content"
           className={`w-full bg-transparent text-xs leading-relaxed focus:outline-hidden placeholder:text-stone-400/70 whitespace-pre-wrap break-words resize-y ${theme.text}`}
         />
       </div>
