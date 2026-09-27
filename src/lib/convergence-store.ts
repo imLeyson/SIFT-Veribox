@@ -821,6 +821,14 @@ export function createSiftStore(providedStorage?: StateStorage) {
             }
           );
 
+          const synthesis = {
+            sourceCardIds: upstreamIds,
+            sourceCount: upstreamIds.length,
+            sourceStateRevision: state.state?.revision ?? null,
+            generatedAt: new Date().toISOString(),
+            outputType: targetCard.type,
+          };
+
           let nextRoutes = state.routes;
           if (synthesized.data?.route) {
             const rawRoute = synthesized.data.route as Route;
@@ -865,6 +873,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
                     data: {
                       ...c.data,
                       ...synthesized.data,
+                      synthesis,
                       isEmpty: false,
                     },
                   }
@@ -1296,4 +1305,3 @@ export function getUpstreamSummary(
     hasStep,
   };
 }
-

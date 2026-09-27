@@ -649,11 +649,16 @@ function FlowInner() {
         style: { stroke: "#6366f1", strokeWidth: 2 },
       });
 
-      // Keep linking and generation separate. A connection is reversible and
-      // should not spend a model request or overwrite a target card until the
-      // user explicitly chooses a generation action on that card.
+      // Most targets wait for an explicit generation action. Inspiration
+      // search is the one direct-action exception: connecting a theme should
+      // open the cross-platform search plan without the old intermediate step.
+      if (getNode(connection.target)?.type === "platformPlan") {
+        setTimeout(() => {
+          synthesizeCard(connection.target);
+        }, 40);
+      }
     },
-    [addCustomEdge, deleteCustomEdge, customEdges, synthesizeCard],
+    [addCustomEdge, deleteCustomEdge, customEdges, getNode, synthesizeCard],
   );
 
   // Drag-to-spawn Handlers (FigJam style)

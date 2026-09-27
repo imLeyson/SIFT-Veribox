@@ -349,6 +349,9 @@ describe("convergence session", () => {
     const targetAfter = store.getState().customCards.find((c) => c.id === "card-target");
     expect(targetAfter?.data?.isEmpty).toBe(false);
     expect(targetAfter?.data?.isBlended).toBe(true);
+    expect(targetAfter?.data?.synthesis?.sourceCardIds).toEqual(["card-r1", "card-r2"]);
+    expect(targetAfter?.data?.synthesis?.sourceCount).toBe(2);
+    expect(targetAfter?.data?.synthesis?.outputType).toBe("route");
     expect(targetAfter?.data?.route.themeName).toContain("《");
     expect(targetAfter?.data?.route.startingPoint).toContain("极简几何");
 
@@ -487,4 +490,3 @@ describe("convergence session", () => {
     expect(stepSummary.labels[0]).toContain("4 视点推进");
   });
 });
-
