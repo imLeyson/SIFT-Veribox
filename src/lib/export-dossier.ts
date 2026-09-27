@@ -1,4 +1,4 @@
-import type { SiftStore } from "./convergence-store";
+import { resolveNodeContext, type SiftStore } from "./convergence-store";
 import { evaluateBriefIntentSync } from "./agent/system-one";
 
 export function generateDossierMarkdown(store: Partial<SiftStore>): string {
@@ -11,6 +11,8 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     platformPlans = [],
     stepNotes = {},
     completedCriteria = {},
+    outcomeItems = [],
+    outcomeGroups = [],
   } = store;
 
   const now = new Date().toLocaleDateString("zh-CN", {
@@ -190,6 +192,32 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
       lines.push(`- **核心问题**：${r.coreProblem}`);
       lines.push(`- **视觉亮点 / 防跑偏**：${r.pros} / ${r.cons}\n`);
     });
+  }
+
+  if (outcomeItems.length > 0 || outcomeGroups.length > 0) {
+    lines.push(`## 已收纳成果与方案`);
+    lines.push(`> 以下内容由设计师从画布中主动纳入，保留原卡片来源，可继续回到画布编辑。\n`);
+
+    const groupItemIds = new Set(outcomeGroups.flatMap((group) => group.itemIds));
+    const renderItem = (id: string) => {
+      const resolved = resolveNodeContext(id, store);
+      if (!resolved) return `- [${id}](#)`;
+      const detail = resolved.route?.visualSnapshot || resolved.route?.purpose || resolved.data?.content;
+      return `- **${resolved.label}**${detail ? `：${String(detail).slice(0, 180)}` : ""}`;
+    };
+
+    outcomeGroups.forEach((group) => {
+      lines.push(`### ${group.title}`);
+      group.itemIds.forEach((id) => lines.push(renderItem(id)));
+      lines.push("");
+    });
+
+    const ungroupedItems = outcomeItems.filter((id) => !groupItemIds.has(id));
+    if (ungroupedItems.length > 0) {
+      lines.push(`### 尚未分组`);
+      ungroupedItems.forEach((id) => lines.push(renderItem(id)));
+      lines.push("");
+    }
   }
 
   // Module 3: Collaborative Decision Funnel & Tagged Cards

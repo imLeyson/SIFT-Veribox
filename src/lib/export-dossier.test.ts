@@ -3,6 +3,29 @@ import { generateDossierMarkdown } from "./export-dossier";
 import type { SiftStore } from "./convergence-store";
 
 describe("generateDossierMarkdown", () => {
+  it("includes the curated result set and named proposal groups", () => {
+    const md = generateDossierMarkdown({
+      outcomeItems: ["route-a", "route-b"],
+      outcomeGroups: [
+        {
+          id: "group-1",
+          title: "方案一：材质与结构",
+          itemIds: ["route-a", "route-b"],
+          createdAt: "2026-09-27T00:00:00.000Z",
+        },
+      ],
+      routes: [
+        { id: "route-a", title: "纸感留白", themeName: "纸感留白", steps: [] } as any,
+        { id: "route-b", title: "冷静结构", themeName: "冷静结构", steps: [] } as any,
+      ],
+    });
+
+    expect(md).toContain("## 已收纳成果与方案");
+    expect(md).toContain("方案一：材质与结构");
+    expect(md).toContain("纸感留白");
+    expect(md).toContain("冷静结构");
+  });
+
   it("generates markdown with brief, direction, chosen route, steps and checklist", () => {
     const mockStore: Partial<SiftStore> = {
       rawBrief: "冷泡茶包装设计，追求克制有品质的日常仪式感，避免红金罐。",

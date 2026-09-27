@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { InfiniteCanvas } from "./flow/InfiniteCanvas";
@@ -7,10 +7,11 @@ import { CanvasErrorBoundary } from "./flow/CanvasErrorBoundary";
 import { ThinkingProgress } from "./canvas/ThinkingProgress";
 import { DossierModal } from "./dossier/DossierModal";
 import { GlobalChatView } from "./chat/GlobalChatView";
+import { ResultPanel } from "./results/ResultPanel";
 import { ProjectSwitcher } from "./project/ProjectSwitcher";
 import { CollaborationBar } from "./collaboration/CollaborationBar";
 import { createProject } from "@/lib/project-manager";
-import { FileDown, MessageSquare, Plus } from "lucide-react";
+import { CheckSquare, FileDown, MessageSquare, Plus } from "lucide-react";
 import { ReactFlowProvider } from "@xyflow/react";
 
 function subscribeHydration(onChange: () => void) {
@@ -27,6 +28,17 @@ export function Workspace() {
   const [runtimeMode, setRuntimeMode] = useState<"live" | "mock" | null>(null);
   const [dossierOpen, setDossierOpen] = useState(false);
   const [advisorOpen, setAdvisorOpen] = useState(false);
+  const [resultsOpen, setResultsOpen] = useState(false);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+  const outcomeCount = useSiftStore((s) => s.outcomeItems.length);
+  const handleSelectionChange = useCallback((nodeIds: string[]) => {
+    setSelectedNodeIds((current) => {
+      if (current.length === nodeIds.length && current.every((id, index) => id === nodeIds[index])) {
+        return current;
+      }
+      return nodeIds;
+    });
+  }, []);
 
   useEffect(() => {
     void useSiftStore.persist.rehydrate();
@@ -40,7 +52,7 @@ export function Workspace() {
 
   useEffect(() => {
     window.dispatchEvent(new Event("resize"));
-  }, [advisorOpen]);
+  }, [advisorOpen, resultsOpen]);
 
   if (!ready)
     return (
@@ -66,7 +78,10 @@ export function Workspace() {
             {/* Strategy Advisor Drawer Toggle */}
             <button
               type="button"
-              onClick={() => setAdvisorOpen(!advisorOpen)}
+              onClick={() => {
+                setAdvisorOpen(!advisorOpen);
+                setResultsOpen(false);
+              }}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer select-none ${
                 advisorOpen
                   ? "bg-stone-100 text-stone-900 border-stone-300 shadow-2xs font-semibold"
@@ -77,6 +92,28 @@ export function Workspace() {
               <span>策略顾问</span>
               {Boolean(state) && (
                 <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setResultsOpen(!resultsOpen);
+                setAdvisorOpen(false);
+              }}
+              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all cursor-pointer select-none ${
+                resultsOpen
+                  ? "border-stone-300 bg-stone-100 text-stone-900 shadow-2xs"
+                  : "border-stone-200/90 bg-white/80 text-stone-600 hover:bg-stone-100/80 hover:text-stone-900"
+              }`}
+              title="查看已收纳的探索成果和方案"
+            >
+              <CheckSquare className="h-3.5 w-3.5 text-stone-500" />
+              <span>成果</span>
+              {outcomeCount > 0 && (
+                <span className="min-w-4 rounded-full bg-stone-900 px-1 text-center text-[9px] font-semibold text-white">
+                  {outcomeCount}
+                </span>
               )}
             </button>
           </div>
@@ -159,7 +196,10 @@ export function Workspace() {
       <div className="relative min-h-0 flex-1 flex">
         <div className="relative min-h-0 flex-1">
           <CanvasErrorBoundary>
-            <InfiniteCanvas onOpenDossier={() => setDossierOpen(true)} />
+            <InfiniteCanvas
+              onOpenDossier={() => setDossierOpen(true)}
+              onSelectionChange={handleSelectionChange}
+            />
           </CanvasErrorBoundary>
         </div>
 
@@ -167,6 +207,13 @@ export function Workspace() {
           <div className="w-[400px] border-l border-line/70 bg-white/95 backdrop-blur-sm shadow-xl flex flex-col z-10 shrink-0">
             <GlobalChatView onClose={() => setAdvisorOpen(false)} />
           </div>
+        )}
+        {resultsOpen && (
+          <ResultPanel
+            isOpen={resultsOpen}
+            onClose={() => setResultsOpen(false)}
+            selectedNodeIds={selectedNodeIds}
+          />
         )}
       </div>
 

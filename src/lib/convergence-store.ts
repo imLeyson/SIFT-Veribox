@@ -87,6 +87,19 @@ export type CardTag = z.infer<typeof CardTagSchema>;
 export const FilterTagSchema = z.enum(["all", "primary", "review"]);
 export type FilterTag = z.infer<typeof FilterTagSchema>;
 
+/**
+ * A result item is a reference to an existing canvas node. Keeping the node id
+ * instead of copying its content means the result panel always follows edits
+ * made on the source card and preserves provenance.
+ */
+export const OutcomeGroupSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1).max(80),
+  itemIds: z.array(z.string()).default([]),
+  createdAt: z.string(),
+});
+export type OutcomeGroup = z.infer<typeof OutcomeGroupSchema>;
+
 /** Keep old local sessions readable while the product uses only two tags. */
 export function normalizeCardTags(value: unknown): Record<string, CardTag> {
   if (!value || typeof value !== "object") return {};
@@ -141,6 +154,8 @@ const SessionSchema = z
     collapsedNodeIds: z.array(z.string()).default([]),
     cardTags: z.record(z.string(), CardTagSchema).default({}),
     activeFilterTag: FilterTagSchema.default("all"),
+    outcomeItems: z.array(z.string()).default([]),
+    outcomeGroups: z.array(OutcomeGroupSchema).default([]),
   })
   .superRefine((value, ctx) => {
     if (
@@ -208,6 +223,11 @@ export type SiftStore = Session & {
   expandAllNodes: () => void;
   setCardTag: (nodeId: string, tag: CardTag | null) => void;
   setActiveFilterTag: (tag: FilterTag) => void;
+  addOutcomeItems: (nodeIds: string[]) => void;
+  removeOutcomeItem: (nodeId: string) => void;
+  createOutcomeGroup: (title: string, itemIds?: string[]) => string | null;
+  renameOutcomeGroup: (groupId: string, title: string) => void;
+  deleteOutcomeGroup: (groupId: string) => void;
   reset: () => void;
 };
 
@@ -266,6 +286,8 @@ function emptySession(): Session {
     collapsedNodeIds: [],
     cardTags: {},
     activeFilterTag: "all",
+    outcomeItems: [],
+    outcomeGroups: [],
   };
 }
 
@@ -769,6 +791,11 @@ export function createSiftStore(providedStorage?: StateStorage) {
             customEdges: get().customEdges.filter(
               (e) => e.source !== id && e.target !== id
             ),
+            outcomeItems: get().outcomeItems.filter((itemId) => itemId !== id),
+            outcomeGroups: get().outcomeGroups.map((group) => ({
+              ...group,
+              itemIds: group.itemIds.filter((itemId) => itemId !== id),
+            })),
           });
           notifyMutation("card:delete", { nodeId: id });
         },
@@ -1008,6 +1035,76 @@ export function createSiftStore(providedStorage?: StateStorage) {
           }),
         setActiveFilterTag: (tag: FilterTag) =>
           set({ activeFilterTag: tag }),
+        addOutcomeItems: (nodeIds: string[]) => {
+          const nextItems = Array.from(
+            new Set([
+              ...get().outcomeItems,
+              ...nodeIds.filter((id) => typeof id === "string" && id.trim()),
+            ]),
+          );
+          set({ outcomeItems: nextItems });
+          notifyMutation("outcome:update", {
+            outcomeItems: nextItems,
+            outcomeGroups: get().outcomeGroups,
+          });
+        },
+        removeOutcomeItem: (nodeId: string) => {
+          const nextItems = get().outcomeItems.filter((id) => id !== nodeId);
+          const nextGroups = get().outcomeGroups.map((group) => ({
+            ...group,
+            itemIds: group.itemIds.filter((id) => id !== nodeId),
+          }));
+          set({ outcomeItems: nextItems, outcomeGroups: nextGroups });
+          notifyMutation("outcome:update", {
+            outcomeItems: nextItems,
+            outcomeGroups: nextGroups,
+          });
+        },
+        createOutcomeGroup: (title: string, itemIds?: string[]) => {
+          const cleanTitle = title.trim().slice(0, 80);
+          if (!cleanTitle) return null;
+          const state = get();
+          const ids = Array.from(
+            new Set(
+              (itemIds ?? state.outcomeItems).filter((id) =>
+                state.outcomeItems.includes(id),
+              ),
+            ),
+          );
+          if (ids.length === 0) return null;
+          const group: OutcomeGroup = {
+            id: safeId("outcome-group-"),
+            title: cleanTitle,
+            itemIds: ids,
+            createdAt: new Date().toISOString(),
+          };
+          set({ outcomeGroups: [...state.outcomeGroups, group] });
+          notifyMutation("outcome:update", {
+            outcomeItems: state.outcomeItems,
+            outcomeGroups: [...state.outcomeGroups, group],
+          });
+          return group.id;
+        },
+        renameOutcomeGroup: (groupId: string, title: string) => {
+          const cleanTitle = title.trim().slice(0, 80);
+          if (!cleanTitle) return;
+          const nextGroups = get().outcomeGroups.map((group) =>
+            group.id === groupId ? { ...group, title: cleanTitle } : group,
+          );
+          set({ outcomeGroups: nextGroups });
+          notifyMutation("outcome:update", {
+            outcomeItems: get().outcomeItems,
+            outcomeGroups: nextGroups,
+          });
+        },
+        deleteOutcomeGroup: (groupId: string) => {
+          const nextGroups = get().outcomeGroups.filter((group) => group.id !== groupId);
+          set({ outcomeGroups: nextGroups });
+          notifyMutation("outcome:update", {
+            outcomeItems: get().outcomeItems,
+            outcomeGroups: nextGroups,
+          });
+        },
         reset: () =>
           set({ ...emptySession(), activeRequest: null, error: null }),
       }),
@@ -1045,6 +1142,8 @@ export function createSiftStore(providedStorage?: StateStorage) {
           collapsedNodeIds,
           cardTags,
           activeFilterTag,
+          outcomeItems,
+          outcomeGroups,
         }) => ({
           sessionId,
           rawBrief,
@@ -1074,6 +1173,8 @@ export function createSiftStore(providedStorage?: StateStorage) {
           collapsedNodeIds,
           cardTags,
           activeFilterTag,
+          outcomeItems,
+          outcomeGroups,
         }),
         merge: (saved, current) => {
           if (!saved) return { ...current, storageWarning: readWarning };

@@ -438,6 +438,37 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
             </div>
           )}
 
+          {isBlended && (
+            <div className="rounded-xl border border-stone-200/80 bg-white/80 p-3 text-[11px]">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="font-semibold text-stone-800">融合记录</span>
+                <span className="font-mono text-[10px] text-stone-400">{upstream.count} 个输入</span>
+              </div>
+              <dl className="space-y-2.5">
+                <div>
+                  <dt className="text-[10px] font-semibold text-stone-500">输入主题</dt>
+                  <dd className="mt-1 leading-relaxed text-stone-700">{upstream.labels.join(" + ")}</dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-semibold text-stone-500">融合理由</dt>
+                  <dd className="mt-1 leading-relaxed text-stone-700">
+                    {cleanText(route.recommendedReason || route.purpose)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-semibold text-stone-500">冲突与取舍</dt>
+                  <dd className="mt-1 leading-relaxed text-stone-700">{coreProblemText || consText}</dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-semibold text-stone-500">下一步视点</dt>
+                  <dd className="mt-1 leading-relaxed text-stone-700">
+                    {cleanText(route.steps?.[0]?.question || route.steps?.[0]?.title || "继续验证融合后的视觉母题")}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          )}
+
           {/* 1. 视觉意象 (单层呼吸表面，纯净质感呈现) */}
           <div className="rounded-xl border border-stone-200/80 bg-stone-50/60 p-3 space-y-1.5">
             <div className="flex items-center justify-between text-[11px]">

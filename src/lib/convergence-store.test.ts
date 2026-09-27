@@ -18,6 +18,53 @@ function response(store: ReturnType<typeof createSiftStore>): TurnResult {
 }
 
 describe("convergence session", () => {
+  it("keeps selected result items and named groups across session persistence", async () => {
+    const storage = memoryStorage();
+    const first = createSiftStore(storage);
+    first.getState().addCustomCard({
+      id: "theme-1",
+      type: "route",
+      title: "纸感留白",
+      position: { x: 0, y: 0 },
+    });
+    first.getState().addCustomCard({
+      id: "theme-2",
+      type: "route",
+      title: "冷静结构",
+      position: { x: 0, y: 300 },
+    });
+
+    first.getState().addOutcomeItems(["theme-1", "theme-2"]);
+    const groupId = first.getState().createOutcomeGroup("方案一：材质与结构", ["theme-1", "theme-2"]);
+
+    expect(groupId).toBeTruthy();
+    expect(first.getState().outcomeItems).toHaveLength(2);
+    expect(first.getState().outcomeGroups[0]).toMatchObject({
+      title: "方案一：材质与结构",
+      itemIds: ["theme-1", "theme-2"],
+    });
+
+    await first.persist.rehydrate();
+    const second = createSiftStore(storage);
+    await second.persist.rehydrate();
+    expect(second.getState().outcomeItems).toEqual(["theme-1", "theme-2"]);
+    expect(second.getState().outcomeGroups).toHaveLength(1);
+    expect(second.getState().outcomeGroups[0].id).toBe(groupId);
+  });
+
+  it("does not duplicate result items and removes deleted cards from groups", () => {
+    const store = createSiftStore(memoryStorage());
+    store.getState().addOutcomeItems(["route-1", "route-1", "route-2"]);
+    expect(store.getState().outcomeItems).toEqual(["route-1", "route-2"]);
+
+    const groupId = store.getState().createOutcomeGroup("方案二", ["route-1", "route-2"]);
+    store.getState().removeOutcomeItem("route-1");
+    expect(store.getState().outcomeItems).toEqual(["route-2"]);
+    expect(store.getState().outcomeGroups.find((group) => group.id === groupId)?.itemIds).toEqual([
+      "route-2",
+    ]);
+  });
+
   it("commits a response and retains batch drafts until commit", () => {
     const store = createSiftStore(memoryStorage());
     const result = response(store);
@@ -168,11 +215,15 @@ describe("convergence session", () => {
     });
     expect(store.getState().customEdges).toHaveLength(1);
 
+    store.getState().addOutcomeItems([noteId, dupId!]);
+    expect(store.getState().outcomeItems).toEqual([noteId, dupId]);
+
     // 5. Delete node cleans up custom edges
     store.getState().deleteNodeById(noteId);
     expect(store.getState().customCards.find((c) => c.id === noteId)).toBeUndefined();
     expect(store.getState().deletedNodeIds).toContain(noteId);
     expect(store.getState().customEdges).toHaveLength(0);
+    expect(store.getState().outcomeItems).toEqual([dupId]);
   });
 
   it("supports adding, selecting, and duplicating custom route cards seamlessly", () => {

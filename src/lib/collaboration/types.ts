@@ -18,6 +18,7 @@ export type CollaborationOpType =
   | "edge:add"
   | "edge:delete"
   | "card:synthesize"
+  | "outcome:update"
   | "full:sync:request"
   | "full:sync"
   | "canvas:sync";
@@ -45,6 +46,8 @@ export interface CanvasSyncSnapshot {
   activeFilterTag?: "all" | "primary" | "review";
   stepNotes?: Record<string, string[]>;
   completedCriteria?: Record<string, string[]>;
+  outcomeItems?: string[];
+  outcomeGroups?: any[];
   updatedAt?: number;
   revision?: number;
 }
@@ -94,6 +97,11 @@ export type CollaborationOp =
       type: "card:synthesize";
       cardId: string;
       synthesized: any;
+    })
+  | (BaseCollaborationOp & {
+      type: "outcome:update";
+      outcomeItems: string[];
+      outcomeGroups: any[];
     })
   | (BaseCollaborationOp & {
       type: "full:sync:request";

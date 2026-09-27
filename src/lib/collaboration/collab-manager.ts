@@ -278,6 +278,8 @@ class CollaborationManager {
       activeFilterTag: s.activeFilterTag,
       stepNotes: s.stepNotes,
       completedCriteria: s.completedCriteria,
+      outcomeItems: s.outcomeItems,
+      outcomeGroups: s.outcomeGroups,
       revision: this.roomRevision,
       updatedAt: Date.now(),
     };
@@ -335,6 +337,8 @@ class CollaborationManager {
           ...(snapshot.activeFilterTag !== undefined ? { activeFilterTag: normalizeFilterTag(snapshot.activeFilterTag) } : {}),
           ...(snapshot.stepNotes !== undefined ? { stepNotes: snapshot.stepNotes } : {}),
           ...(snapshot.completedCriteria !== undefined ? { completedCriteria: snapshot.completedCriteria } : {}),
+          ...(snapshot.outcomeItems !== undefined ? { outcomeItems: snapshot.outcomeItems } : {}),
+          ...(snapshot.outcomeGroups !== undefined ? { outcomeGroups: snapshot.outcomeGroups } : {}),
         };
       });
 
@@ -593,6 +597,13 @@ class CollaborationManager {
         }
         case "card:synthesize": {
           store.updateCustomCard(op.cardId, op.synthesized);
+          break;
+        }
+        case "outcome:update": {
+          useSiftStore.setState({
+            outcomeItems: op.outcomeItems,
+            outcomeGroups: op.outcomeGroups,
+          });
           break;
         }
         case "canvas:sync": {
