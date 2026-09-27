@@ -333,7 +333,7 @@ type SynthesisRun = {
 
 ## 8. 服务与接口要求
 
-当前工程已有 `brief`、`clarify`、`routes`、`platform-plan`、`image-gen`、`global-chat`、`card-chat` 和 `collaboration/room` 能力。v4.0 需要统一为以画布和项目为中心的接口：
+当前工程已有 `brief`、`clarify`、`routes`、`platform-plan`、`image-gen`、`global-chat` 和 `collaboration/room` 能力。主题卡片追问接口已移除，v4.0 需要统一为以画布和项目为中心的接口：
 
 - `POST /api/projects`：创建、复制项目。
 - `GET /api/projects/:id`：读取项目和画布快照。
