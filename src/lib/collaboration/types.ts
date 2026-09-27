@@ -42,6 +42,7 @@ export interface CanvasSyncSnapshot {
   deletedNodeIds?: string[];
   collapsedNodeIds?: string[];
   cardTags?: Record<string, any>;
+  activeFilterTag?: "all" | "curated" | "primary" | "review";
   stepNotes?: Record<string, string[]>;
   completedCriteria?: Record<string, string[]>;
   updatedAt?: number;

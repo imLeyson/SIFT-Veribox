@@ -20,7 +20,6 @@ import {
   HelpCircle,
   Star,
   Zap,
-  Archive,
   Layers,
 } from "lucide-react";
 
@@ -72,7 +71,7 @@ export function DossierModal({
     const customCards = store.customCards ?? [];
     const routes = store.routes ?? [];
 
-    const result: Record<"primary" | "review" | "serendipity" | "stashed", Array<{
+    const result: Record<"primary" | "review", Array<{
       id: string;
       title: string;
       typeLabel: string;
@@ -80,8 +79,6 @@ export function DossierModal({
     }>> = {
       primary: [],
       review: [],
-      serendipity: [],
-      stashed: [],
     };
 
     for (const [id, tag] of Object.entries(cardTags)) {
@@ -151,10 +148,7 @@ export function DossierModal({
   const state = store.state;
   const goalTitle = state?.brief.goal || "视觉策略探索提案";
   const hasTaggedCards =
-    taggedItems.primary.length > 0 ||
-    taggedItems.review.length > 0 ||
-    taggedItems.serendipity.length > 0 ||
-    taggedItems.stashed.length > 0;
+    taggedItems.primary.length > 0 || taggedItems.review.length > 0;
 
   return (
     <div
@@ -493,7 +487,7 @@ export function DossierModal({
                   <div className="p-4 rounded-xl bg-stone-50 border border-stone-200/60 text-xs text-stone-500 text-center space-y-1">
                     <p className="font-medium text-stone-700">画布卡片当前处于全量探索态</p>
                     <p className="text-[11px] text-stone-400">
-                      在画布卡片右上角点击标记（⭐️ 喜欢收藏 / ❓ 待团队评估 / 💡 意外灵感），将自动在此归拢沉淀为汇报决策依据。
+                      在画布卡片右上角标记“喜欢”或“待审”，这里会自动汇总为评审依据。
                     </p>
                   </div>
                 ) : (
@@ -502,7 +496,7 @@ export function DossierModal({
                     {taggedItems.primary.length > 0 && (
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-900">
-                          <span>⭐️ 喜欢收藏的方向 (Favorite Directions)</span>
+                          <span>⭐️ 喜欢 (Favorite)</span>
                           <span className="text-[10px] text-amber-700/80 font-mono">
                             ({taggedItems.primary.length})
                           </span>
@@ -536,7 +530,7 @@ export function DossierModal({
                     {taggedItems.review.length > 0 && (
                       <div className="space-y-1.5 pt-2">
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-900">
-                          <span>❓ 待团队/导师重点表决 (Items for Review)</span>
+                          <span>❓ 待审 (Needs Review)</span>
                           <span className="text-[10px] text-sky-700/80 font-mono">
                             ({taggedItems.review.length})
                           </span>
@@ -566,68 +560,6 @@ export function DossierModal({
                       </div>
                     )}
 
-                    {/* Serendipity Items */}
-                    {taggedItems.serendipity.length > 0 && (
-                      <div className="space-y-1.5 pt-2">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-900">
-                          <span>💡 突破性意外灵感 (Sparks & Serendipity)</span>
-                          <span className="text-[10px] text-purple-700/80 font-mono">
-                            ({taggedItems.serendipity.length})
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {taggedItems.serendipity.map((item) => (
-                            <div
-                              key={item.id}
-                              className="p-3 rounded-xl bg-purple-50/50 border border-purple-200/70 text-xs space-y-1"
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-semibold text-purple-950 truncate">
-                                  {item.title}
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-100/80 text-purple-800 shrink-0">
-                                  {item.typeLabel}
-                                </span>
-                              </div>
-                              {item.detail && (
-                                <p className="text-[11px] text-stone-600 line-clamp-2 leading-relaxed">
-                                  {item.detail}
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Stashed Items */}
-                    {taggedItems.stashed.length > 0 && (
-                      <div className="space-y-1.5 pt-2">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-600">
-                          <span>💤 反例 / 归档 (Counterexamples & Stashed)</span>
-                          <span className="text-[10px] text-stone-400 font-mono">
-                            ({taggedItems.stashed.length})
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {taggedItems.stashed.map((item) => (
-                            <div
-                              key={item.id}
-                              className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/70 text-xs space-y-1 opacity-75"
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium text-stone-700 truncate">
-                                  {item.title}
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-stone-200/60 text-stone-600 shrink-0">
-                                  {item.typeLabel}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>

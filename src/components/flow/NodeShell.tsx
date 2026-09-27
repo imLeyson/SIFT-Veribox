@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Handle, Position, useReactFlow } from "@xyflow/react";
-import { GripHorizontal, Copy, Trash2, ChevronDown, ChevronUp, RefreshCw, Bookmark, Check, Star, MessageSquare, Lightbulb, Archive } from "lucide-react";
+import { GripHorizontal, Copy, Trash2, ChevronDown, ChevronUp, RefreshCw, Bookmark, Check, Star, MessageSquare } from "lucide-react";
 import { useSiftStore, type CardTag } from "@/lib/convergence-store";
 import { useRemoteCollaboratorsOnNode } from "@/lib/collaboration/collab-manager";
 
@@ -17,36 +17,20 @@ export const CARD_TAG_CONFIG: Record<CardTag, {
   description: string;
 }> = {
   primary: {
-    label: "喜欢收藏",
+    label: "喜欢",
     shortLabel: "喜欢",
     icon: "⭐️",
     badgeClass: "bg-amber-50 text-amber-900 border-amber-300",
     activeClass: "ring-1 ring-amber-400/60 border-amber-400/40 shadow-xs",
-    description: "用户主动收藏的方向，进入精选视图",
-  },
-  serendipity: {
-    label: "意外灵感",
-    shortLabel: "灵感",
-    icon: "💡",
-    badgeClass: "bg-purple-50 text-purple-900 border-purple-300",
-    activeClass: "ring-1 ring-purple-400/60 border-purple-400/40 shadow-xs",
-    description: "突破性跨界偶然启发，极具探索价值",
+    description: "标记后进入精选视图",
   },
   review: {
-    label: "待团队评估",
-    shortLabel: "待评",
+    label: "待审",
+    shortLabel: "待审",
     icon: "❓",
     badgeClass: "bg-sky-50 text-sky-900 border-sky-300",
     activeClass: "ring-1 ring-sky-400/60 border-sky-400/40 shadow-xs",
-    description: "关键分水岭卡片，需团队/导师协助表决",
-  },
-  stashed: {
-    label: "反例 / 归档",
-    shortLabel: "反例",
-    icon: "💤",
-    badgeClass: "bg-stone-100 text-stone-600 border-stone-300",
-    activeClass: "opacity-65",
-    description: "暂不采用或已替代，保留为反例和备选",
+    description: "需要团队继续核对的方向",
   },
 };
 
@@ -362,10 +346,7 @@ export function NodeShell({
                       }`}
                     />
                     {currentTag === "primary" && (
-                      <>
-                        <span className="text-[10px]">⭐️</span>
-                        <span>{CARD_TAG_CONFIG.primary.shortLabel}</span>
-                      </>
+                      <span>{CARD_TAG_CONFIG.primary.shortLabel}</span>
                     )}
                   </button>
 
@@ -381,7 +362,7 @@ export function NodeShell({
                         ? CARD_TAG_CONFIG.review.badgeClass
                         : "border-transparent text-stone-400 hover:text-sky-500 hover:bg-stone-100 opacity-0 group-hover:opacity-100 focus:opacity-100"
                     }`}
-                    title={currentTag === "review" ? "已标记待团队评估 (点击取消)" : "标记待团队评估 (💬 待评)"}
+                    title={currentTag === "review" ? "已标记待审 (点击取消)" : "标记为待审"}
                   >
                     <MessageSquare
                       className={`h-3 w-3 ${
@@ -391,47 +372,8 @@ export function NodeShell({
                       }`}
                     />
                     {currentTag === "review" && (
-                      <>
-                        <span className="text-[10px]">❓</span>
-                        <span>{CARD_TAG_CONFIG.review.shortLabel}</span>
-                      </>
+                      <span>{CARD_TAG_CONFIG.review.shortLabel}</span>
                     )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCardTag(nodeId, currentTag === "serendipity" ? null : "serendipity");
-                    }}
-                    className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-all flex items-center gap-1 cursor-pointer border ${
-                      currentTag === "serendipity"
-                        ? CARD_TAG_CONFIG.serendipity.badgeClass
-                        : "border-transparent text-stone-400 hover:text-purple-600 hover:bg-stone-100 opacity-0 group-hover:opacity-100 focus:opacity-100"
-                    }`}
-                    title={currentTag === "serendipity" ? "已标记灵感 (点击取消)" : "标记为意外灵感"}
-                    aria-label={currentTag === "serendipity" ? "取消灵感标记" : "标记为意外灵感"}
-                  >
-                    <Lightbulb className={`h-3 w-3 ${currentTag === "serendipity" ? "text-purple-600" : "text-stone-400"}`} />
-                    {currentTag === "serendipity" && <span>{CARD_TAG_CONFIG.serendipity.shortLabel}</span>}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCardTag(nodeId, currentTag === "stashed" ? null : "stashed");
-                    }}
-                    className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-all flex items-center gap-1 cursor-pointer border ${
-                      currentTag === "stashed"
-                        ? CARD_TAG_CONFIG.stashed.badgeClass
-                        : "border-transparent text-stone-400 hover:text-stone-700 hover:bg-stone-100 opacity-0 group-hover:opacity-100 focus:opacity-100"
-                    }`}
-                    title={currentTag === "stashed" ? "已标记反例 / 归档 (点击取消)" : "标记为反例 / 归档"}
-                    aria-label={currentTag === "stashed" ? "取消反例标记" : "标记为反例 / 归档"}
-                  >
-                    <Archive className={`h-3 w-3 ${currentTag === "stashed" ? "text-stone-600" : "text-stone-400"}`} />
-                    {currentTag === "stashed" && <span>{CARD_TAG_CONFIG.stashed.shortLabel}</span>}
                   </button>
 
                 </div>

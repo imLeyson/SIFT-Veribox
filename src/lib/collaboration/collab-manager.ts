@@ -10,7 +10,12 @@ import {
   PRESET_ROLES,
 } from "./types";
 import { getActiveProjectId } from "@/lib/project-manager";
-import { useSiftStore, setStoreMutationListener } from "@/lib/convergence-store";
+import {
+  normalizeCardTags,
+  normalizeFilterTag,
+  useSiftStore,
+  setStoreMutationListener,
+} from "@/lib/convergence-store";
 
 const USER_STORAGE_KEY = "sift-collab-user-v1";
 
@@ -270,6 +275,7 @@ class CollaborationManager {
       deletedNodeIds: s.deletedNodeIds,
       collapsedNodeIds: s.collapsedNodeIds,
       cardTags: s.cardTags,
+      activeFilterTag: s.activeFilterTag,
       stepNotes: s.stepNotes,
       completedCriteria: s.completedCriteria,
       revision: this.roomRevision,
@@ -325,7 +331,8 @@ class CollaborationManager {
           positions: mergedPositions,
           ...(snapshot.deletedNodeIds !== undefined ? { deletedNodeIds: snapshot.deletedNodeIds } : {}),
           ...(snapshot.collapsedNodeIds !== undefined ? { collapsedNodeIds: snapshot.collapsedNodeIds } : {}),
-          ...(snapshot.cardTags !== undefined ? { cardTags: snapshot.cardTags } : {}),
+          ...(snapshot.cardTags !== undefined ? { cardTags: normalizeCardTags(snapshot.cardTags) } : {}),
+          ...(snapshot.activeFilterTag !== undefined ? { activeFilterTag: normalizeFilterTag(snapshot.activeFilterTag) } : {}),
           ...(snapshot.stepNotes !== undefined ? { stepNotes: snapshot.stepNotes } : {}),
           ...(snapshot.completedCriteria !== undefined ? { completedCriteria: snapshot.completedCriteria } : {}),
         };

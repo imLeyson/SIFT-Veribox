@@ -200,8 +200,6 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
   if (taggedIds.length > 0) {
     const primaryCards: string[] = [];
     const reviewCards: string[] = [];
-    const serendipityCards: string[] = [];
-    const stashedCards: string[] = [];
 
     taggedIds.forEach((id) => {
       const tag = cardTags[id];
@@ -222,30 +220,18 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
 
       if (tag === "primary") primaryCards.push(cardLabel);
       else if (tag === "review") reviewCards.push(cardLabel);
-      else if (tag === "serendipity") serendipityCards.push(cardLabel);
-      else if (tag === "stashed") stashedCards.push(cardLabel);
     });
 
-    if (primaryCards.length > 0 || reviewCards.length > 0 || serendipityCards.length > 0 || stashedCards.length > 0) {
+    if (primaryCards.length > 0 || reviewCards.length > 0) {
       lines.push(`## 团队协同标记与决策漏斗 (Collaborative Review & Decision Funnel)\n`);
       if (primaryCards.length > 0) {
-        lines.push(`### ⭐️ 喜欢收藏的方向 (Favorite Directions)`);
+        lines.push(`### ⭐️ 喜欢 (Favorite)`);
         primaryCards.forEach((c) => lines.push(`- ⭐️ **${c}**`));
         lines.push("");
       }
       if (reviewCards.length > 0) {
-        lines.push(`### ❓ 待团队/导师重点表决 (Items for Review)`);
+        lines.push(`### ❓ 待审 (Needs Review)`);
         reviewCards.forEach((c) => lines.push(`- ❓ **${c}**`));
-        lines.push("");
-      }
-      if (serendipityCards.length > 0) {
-        lines.push(`### 💡 突破性意外灵感 (Serendipitous Sparks)`);
-        serendipityCards.forEach((c) => lines.push(`- 💡 **${c}**`));
-        lines.push("");
-      }
-      if (stashedCards.length > 0) {
-        lines.push(`### 💤 反例 / 归档 (Counterexamples & Stashed)`);
-        stashedCards.forEach((c) => lines.push(`- 💤 **${c}**`));
         lines.push("");
       }
       lines.push("---\n");

@@ -116,15 +116,12 @@ const TOOL_OPTIONS: {
 const FILTER_OPTIONS: {
   value: FilterTag;
   label: string;
-  icon: string;
-  countKey?: "primary" | "review" | "serendipity" | "stashed";
+  countKey?: "primary" | "review";
 }[] = [
-  { value: "all", label: "全部", icon: "◇" },
-  { value: "curated", label: "精选", icon: "✦" },
-  { value: "primary", label: "喜欢", icon: "⭐️", countKey: "primary" },
-  { value: "review", label: "待评审", icon: "❓", countKey: "review" },
-  { value: "serendipity", label: "灵感", icon: "💡", countKey: "serendipity" },
-  { value: "stashed", label: "反例", icon: "↺", countKey: "stashed" },
+  { value: "all", label: "全部" },
+  { value: "curated", label: "精选" },
+  { value: "primary", label: "喜欢", countKey: "primary" },
+  { value: "review", label: "待审", countKey: "review" },
 ];
 
 export function CanvasToolBar({
@@ -144,7 +141,7 @@ export function CanvasToolBar({
   const setActiveFilterTag = useSiftStore((s) => s.setActiveFilterTag);
 
   const tagCounts = useMemo(() => {
-    const counts = { primary: 0, review: 0, serendipity: 0, stashed: 0, totalTagged: 0 };
+    const counts = { primary: 0, review: 0, totalTagged: 0 };
     for (const tag of Object.values(cardTags || {})) {
       if (tag && tag in counts) {
         counts[tag as keyof typeof counts]++;
@@ -350,7 +347,7 @@ export function CanvasToolBar({
         {tagCounts.totalTagged > 0 && (
           <>
             <div className="h-4 w-px bg-white/20 mx-1" />
-            <div className="flex items-center gap-0.5 rounded-xl bg-white/5 p-0.5" role="group" aria-label="精选视图筛选">
+            <div className="flex items-center gap-0.5 rounded-xl border border-white/10 bg-white/[0.06] p-0.5" role="group" aria-label="精选视图筛选">
               {FILTER_OPTIONS.map((option) => {
                 const count = option.countKey ? tagCounts[option.countKey] : option.value === "curated" ? tagCounts.totalTagged : undefined;
                 const isActive = activeFilterTag === option.value;
@@ -361,7 +358,7 @@ export function CanvasToolBar({
                     onClick={() => setActiveFilterTag(option.value)}
                     className={`flex h-8 items-center gap-1 rounded-lg px-1.5 transition-all cursor-pointer text-[10px] ${
                       isActive
-                        ? "bg-amber-400/20 text-amber-100 border border-amber-400/40 font-medium shadow-xs"
+                        ? "border border-stone-300/70 bg-stone-100 text-stone-900 font-medium shadow-xs"
                         : "border border-transparent text-stone-400 hover:bg-white/10 hover:text-white"
                     }`}
                     title={
@@ -373,7 +370,6 @@ export function CanvasToolBar({
                     }
                     aria-pressed={isActive}
                   >
-                    <span aria-hidden="true">{option.icon}</span>
                     <span>{option.label}</span>
                     {count !== undefined && <span className="font-mono opacity-70">{count}</span>}
                   </button>

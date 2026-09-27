@@ -81,11 +81,23 @@ export const CustomEdgeSchema = z.object({
 export type CustomEdge = z.infer<typeof CustomEdgeSchema>;
 export type CustomEdgeInput = z.input<typeof CustomEdgeSchema>;
 
-export const CardTagSchema = z.enum(["primary", "serendipity", "review", "stashed"]);
+export const CardTagSchema = z.enum(["primary", "review"]);
 export type CardTag = z.infer<typeof CardTagSchema>;
 
-export const FilterTagSchema = z.enum(["all", "curated", "primary", "serendipity", "review", "stashed"]);
+export const FilterTagSchema = z.enum(["all", "curated", "primary", "review"]);
 export type FilterTag = z.infer<typeof FilterTagSchema>;
+
+/** Keep old local sessions readable while the product uses only two tags. */
+export function normalizeCardTags(value: unknown): Record<string, CardTag> {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(([, tag]) => tag === "primary" || tag === "review"),
+  ) as Record<string, CardTag>;
+}
+
+export function normalizeFilterTag(value: unknown): FilterTag {
+  return value === "primary" || value === "review" || value === "curated" ? value : "all";
+}
 
 const SessionSchema = z
   .object({
@@ -1065,7 +1077,12 @@ export function createSiftStore(providedStorage?: StateStorage) {
         }),
         merge: (saved, current) => {
           if (!saved) return { ...current, storageWarning: readWarning };
-          const parsed = SessionSchema.safeParse(saved);
+          const savedRecord = saved as Record<string, unknown>;
+          const parsed = SessionSchema.safeParse({
+            ...savedRecord,
+            cardTags: normalizeCardTags(savedRecord.cardTags),
+            activeFilterTag: normalizeFilterTag(savedRecord.activeFilterTag),
+          });
           if (!parsed.success) {
             return {
               ...current,

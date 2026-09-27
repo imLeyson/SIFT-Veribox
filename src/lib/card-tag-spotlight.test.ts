@@ -26,14 +26,6 @@ describe("Module 3: Card Tagging & Collaborative Spotlight System", () => {
     store.setCardTag("node-2", "review");
     expect(useSiftStore.getState().cardTags["node-2"]).toBe("review");
 
-    // Tag node-3 as serendipity
-    store.setCardTag("node-3", "serendipity");
-    expect(useSiftStore.getState().cardTags["node-3"]).toBe("serendipity");
-
-    // Tag node-4 as stashed
-    store.setCardTag("node-4", "stashed");
-    expect(useSiftStore.getState().cardTags["node-4"]).toBe("stashed");
-
     // Update node-2 to primary
     store.setCardTag("node-2", "primary");
     expect(useSiftStore.getState().cardTags["node-2"]).toBe("primary");
@@ -122,7 +114,7 @@ describe("Module 3: Card Tagging & Collaborative Spotlight System", () => {
 
     expect(htmlSpotlightDimmed).toContain("opacity-20");
     expect(htmlSpotlightDimmed).toContain("❓");
-    expect(htmlSpotlightDimmed).toContain("待评");
+    expect(htmlSpotlightDimmed).toContain("待审");
   });
 
   it("includes collaborative review decision funnel in export dossier", () => {
@@ -165,18 +157,16 @@ describe("Module 3: Card Tagging & Collaborative Spotlight System", () => {
       cardTags: {
         "card-img-1": "primary",
         "card-plan-1": "review",
-        "route-r1": "serendipity",
       },
     };
 
     const markdown = generateDossierMarkdown(mockStore);
 
     expect(markdown).toContain("团队协同标记与决策漏斗");
-    expect(markdown).toContain("⭐️ 喜欢收藏的方向");
+    expect(markdown).toContain("⭐️ 喜欢 (Favorite)");
     expect(markdown).toContain("钛金暗黑杯");
-    expect(markdown).toContain("❓ 待团队/导师重点表决");
+    expect(markdown).toContain("❓ 待审 (Needs Review)");
     expect(markdown).toContain("Behance工艺分型检索");
-    expect(markdown).toContain("💡 突破性意外灵感");
     expect(markdown).toContain("纯粹秩序");
   });
 });
