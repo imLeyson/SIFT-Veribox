@@ -133,27 +133,6 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
           >
             {isRunning ? "正在生成策略…" : "确认选择，生成策略 →"}
           </button>
-          <button
-            type="button"
-            className="btn-ghost w-full text-xs !py-1.5 text-stone-600 hover:text-ink cursor-pointer"
-            disabled={isRunning}
-            onClick={async () => {
-              try {
-                await runIndependentAskConvergence({
-                  askCardId: id,
-                  parentBriefId: data.parentBriefId,
-                  rawBrief: data.rawBrief || "",
-                  state: data.state,
-                  answers: [],
-                  skipToConverge: true,
-                });
-              } catch (e) {
-                console.error(e);
-              }
-            }}
-          >
-            跳过问题，直接进入主题 →
-          </button>
         </div>
       </NodeShell>
     );
