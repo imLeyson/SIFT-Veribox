@@ -1,11 +1,16 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { runIndependentBrief } from "@/lib/independent-chain-runner";
 import { compressImageFile } from "@/lib/image-utils";
+import {
+  applyBriefInputImeEvent,
+  type BriefInputImeEvent,
+  type BriefInputImeState,
+} from "@/lib/brief-input-ime";
 import { ImagePlus, Plus, X, Eye, Sparkles } from "lucide-react";
 import { evaluateBriefIntentSync } from "@/lib/agent/system-one";
 
@@ -26,7 +31,13 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
   const [isEditingCustom, setIsEditingCustom] = useState(false);
 
   // Unified getters based on node identity
-  const rawBrief = isCustom ? (customData.rawBrief ?? "") : storeRawBrief;
+  const externalRawBrief = isCustom ? (customData.rawBrief ?? "") : storeRawBrief;
+  const [rawBrief, setRawBrief] = useState(externalRawBrief);
+  const imeStateRef = useRef<BriefInputImeState>({
+    value: externalRawBrief,
+    composing: false,
+  });
+  const textareaFocusedRef = useRef(false);
   const briefImages = isCustom ? (customData.briefImages ?? []) : storeBriefImages;
   const state = isCustom ? (customData.state ?? null) : storeState;
   const isLocked = Boolean(state) && (!isCustom || !isEditingCustom);
@@ -40,6 +51,15 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
   const [dragOver, setDragOver] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
+  // Keep remote/store updates in sync without replacing text while the user is
+  // focused or an IME is composing a Chinese/Japanese/Korean character.
+  useEffect(() => {
+    if (textareaFocusedRef.current || imeStateRef.current.composing) return;
+    if (imeStateRef.current.value === externalRawBrief) return;
+    imeStateRef.current = { value: externalRawBrief, composing: false };
+    setRawBrief(externalRawBrief);
+  }, [externalRawBrief]);
+
   const briefDiagnostics =
     rawBrief.trim().length >= 4 ? evaluateBriefIntentSync(rawBrief) : null;
   const confirmedDiagnostics =
@@ -51,6 +71,13 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
     } else {
       storeSetRawBrief(text);
     }
+  };
+
+  const applyImeEvent = (event: BriefInputImeEvent) => {
+    const result = applyBriefInputImeEvent(imeStateRef.current, event);
+    imeStateRef.current = result.state;
+    setRawBrief(result.state.value);
+    if (result.commit !== null) handleSetRawBrief(result.commit);
   };
 
   const processFiles = async (files: FileList | File[]) => {
@@ -121,6 +148,9 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
   };
 
   const handleStartConvergence = async (fastStart = false) => {
+    // A submit can happen immediately after compositionend. Commit the local
+    // draft explicitly so the independent chain always receives the latest text.
+    if (rawBrief !== externalRawBrief) handleSetRawBrief(rawBrief);
     if (isCustom) {
       setIsEditingCustom(false);
       try {
@@ -287,7 +317,23 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
               <textarea
                 id={`brief-${id}`}
                 value={rawBrief}
-                onChange={(e) => handleSetRawBrief(e.target.value)}
+                onFocus={() => {
+                  textareaFocusedRef.current = true;
+                }}
+                onBlur={() => {
+                  textareaFocusedRef.current = false;
+                  if (rawBrief !== externalRawBrief) handleSetRawBrief(rawBrief);
+                }}
+                onCompositionStart={() => applyImeEvent({ type: "compositionstart" })}
+                onCompositionEnd={(e) =>
+                  applyImeEvent({
+                    type: "compositionend",
+                    value: e.currentTarget.value,
+                  })
+                }
+                onChange={(e) =>
+                  applyImeEvent({ type: "change", value: e.target.value })
+                }
                 disabled={Boolean(activeRequest)}
                 maxLength={10000}
                 rows={4}
