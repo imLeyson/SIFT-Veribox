@@ -141,14 +141,31 @@ export function CanvasToolBar({
 
   const tagCounts = useMemo(() => {
     const counts = { primary: 0, review: 0, totalTagged: 0 };
-    for (const tag of Object.values(cardTags || {})) {
+    const taggableIds = new Set(
+      getNodes()
+        .filter((node) => node.type === "route" || node.type === "imageGen")
+        .map((node) => node.id),
+    );
+    for (const [id, tag] of Object.entries(cardTags || {})) {
+      if (!taggableIds.has(id)) continue;
       if (tag && tag in counts) {
         counts[tag as keyof typeof counts]++;
         counts.totalTagged++;
       }
     }
     return counts;
-  }, [cardTags]);
+  }, [cardTags, getNodes]);
+
+  useEffect(() => {
+    const activeCount = activeFilterTag === "primary"
+      ? tagCounts.primary
+      : activeFilterTag === "review"
+        ? tagCounts.review
+        : 0;
+    if (activeFilterTag !== "all" && activeCount === 0) {
+      setActiveFilterTag("all");
+    }
+  }, [activeFilterTag, setActiveFilterTag, tagCounts]);
 
   const allCollapsed = collapsedNodeIds.length > 0;
   const handleToggleAll = () => {

@@ -161,15 +161,22 @@ export function NodeShell({
   const cardTags = useSiftStore((s) => s.cardTags);
   const activeFilterTag = useSiftStore((s) => s.activeFilterTag);
   const setCardTag = useSiftStore((s) => s.setCardTag);
-  const { getEdges } = useReactFlow();
+  const { getEdges, getNodes } = useReactFlow();
 
   const [localCollapsed, setLocalCollapsed] = useState(false);
   const activeCollapsedList = typeof window === "undefined" ? useSiftStore.getState().collapsedNodeIds : (collapsedNodeIds ?? []);
   const isCollapsed = nodeId ? activeCollapsedList.includes(nodeId) : localCollapsed;
 
+  const stageConfig = resolveStage(kicker, stage);
+  const canTagCard = stageConfig?.id === "3" || stageConfig?.id === "5";
   const activeCardTags = typeof window === "undefined" ? useSiftStore.getState().cardTags : cardTags;
   const currentFilterTag = typeof window === "undefined" ? useSiftStore.getState().activeFilterTag : activeFilterTag;
-  const currentTag = (nodeId && activeCardTags ? activeCardTags[nodeId] : undefined) as CardTag | undefined;
+  const currentTag = (canTagCard && nodeId && activeCardTags ? activeCardTags[nodeId] : undefined) as CardTag | undefined;
+
+  const taggableNodeIds = useMemo(
+    () => new Set(getNodes().filter((node) => node.type === "route" || node.type === "imageGen").map((node) => node.id)),
+    [getNodes, activeCardTags],
+  );
 
   const edgeSignature = getEdges()
     .map((edge) => `${edge.source}>${edge.target}`)
@@ -180,7 +187,7 @@ export function NodeShell({
 
     const selectedIds = new Set(
       Object.entries(activeCardTags ?? {})
-        .filter(([, tag]) => tag === currentFilterTag)
+        .filter(([id, tag]) => tag === currentFilterTag && taggableNodeIds.has(id))
         .map(([id]) => id),
     );
     const reverseEdges = new Map<string, string[]>();
@@ -202,7 +209,7 @@ export function NodeShell({
       }
     }
     return sourceIds;
-  }, [activeCardTags, currentFilterTag, edgeSignature, getEdges]);
+  }, [activeCardTags, currentFilterTag, edgeSignature, getEdges, taggableNodeIds]);
 
   const handleToggle = () => {
     if (nodeId) {
@@ -212,7 +219,6 @@ export function NodeShell({
     }
   };
 
-  const stageConfig = resolveStage(kicker, stage);
   const cleanKicker = kicker
     .replace(/^(?:0?[0-7]|简报解析|视觉抉择|策略基准|风格主题|视点推进|灵感检索|画面生成|生成图片|DIRECTION|RECORD|领地\s*0?[1-3])\s*·\s*/i, "")
     .trim();
@@ -321,7 +327,7 @@ export function NodeShell({
 
             <div className="flex items-center gap-1 shrink-0">
               {/* Direct Intuitive Card Actions: Star & Review */}
-              {nodeId && (
+              {canTagCard && nodeId && (
                 <div className="flex items-center gap-1">
                   {/* Star / Curate Toggle Button */}
                   <button
