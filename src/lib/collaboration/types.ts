@@ -53,6 +53,8 @@ export interface BaseCollaborationOp {
   roomId: string;
   userId: string;
   timestamp: number;
+  /** Client revision used to detect stale writes and make replay safe. */
+  baseRevision?: number;
 }
 
 export type CollaborationOp =

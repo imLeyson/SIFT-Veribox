@@ -9,6 +9,7 @@ interface RoomState {
   revision: number;
   cursor: number;
   updatedAt: number;
+  appliedOpIds: Set<string>;
 }
 
 // In-memory room store for serverless instances
@@ -24,6 +25,7 @@ function getOrCreateRoom(roomId: string): RoomState {
       revision: 0,
       cursor: 0,
       updatedAt: Date.now(),
+      appliedOpIds: new Set(),
     };
     rooms.set(roomId, room);
   }
@@ -108,11 +110,18 @@ export async function POST(request: Request) {
   // 2. Append new ops from client
   if (Array.isArray(ops) && ops.length > 0) {
     for (const op of ops) {
-      if (op && op.id && !room.ops.some((existing) => existing.id === op.id)) {
+      if (op && op.id && !room.appliedOpIds.has(op.id)) {
+        room.appliedOpIds.add(op.id);
         room.cursor += 1;
         room.revision += 1;
         room.ops.push({ ...op, seq: room.cursor });
       }
+    }
+    // Keep replay protection bounded while retaining enough history for
+    // clients that reconnect after a short outage.
+    if (room.appliedOpIds.size > 5000) {
+      const retained = room.ops.slice(-1000).map((op) => op.id);
+      room.appliedOpIds = new Set(retained);
     }
     // Limit ops log to last 100 operations per room
     if (room.ops.length > 100) {

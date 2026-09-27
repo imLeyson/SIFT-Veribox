@@ -301,4 +301,20 @@ describe("Multi-user Real-time Collaboration Engine", () => {
     const secondPoll = await post(peerA, [], firstPoll.cursor);
     expect(secondPoll.ops.map((item: { nodeId: string }) => item.nodeId)).toEqual(["second"]);
   });
+
+  it("does not append a replayed operation twice", async () => {
+    const roomId = `room-idempotent-${crypto.randomUUID()}`;
+    const peerA = { id: "editor-a", name: "A", color: "#6366f1", role: "视觉设计", lastActive: Date.now() };
+    const peerB = { id: "editor-b", name: "B", color: "#10b981", role: "设计策略", lastActive: Date.now() };
+    const op = { id: "stable-op", roomId, userId: peerB.id, type: "node:move", nodeId: "card-1", position: { x: 3, y: 4 }, timestamp: 1 };
+    const post = (peer: typeof peerA, ops: object[]) => handleRoomApi(new Request("http://localhost/api/collaboration/room", {
+      method: "POST", body: JSON.stringify({ roomId, peer, ops, since: 0 }),
+    }));
+
+    await post(peerB, [op]);
+    await post(peerB, [op]);
+    const poll = await post(peerA, []);
+    const data = await poll.json();
+    expect(data.ops.filter((item: { id: string }) => item.id === "stable-op")).toHaveLength(1);
+  });
 });

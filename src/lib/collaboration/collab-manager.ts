@@ -140,6 +140,7 @@ class CollaborationManager {
   private roomRevision = 0;
   private roomCursor = 0;
   private isProcessingRemoteOp = false;
+  private seenRemoteOpIds = new Set<string>();
 
   constructor() {
     this.localPeer = getLocalPeer();
@@ -350,6 +351,7 @@ class CollaborationManager {
     this.lastAppliedSnapshotTimestamp = 0;
     this.roomRevision = 0;
     this.roomCursor = 0;
+    this.seenRemoteOpIds.clear();
     this.setStatus("connecting");
 
     if (this.broadcastChannel) {
@@ -499,6 +501,7 @@ class CollaborationManager {
       roomId: this.currentRoomId,
       userId: this.localPeer.id,
       timestamp: Date.now(),
+      baseRevision: this.roomRevision,
     } as CollaborationOp;
 
     this.pendingOps.push(op);
@@ -532,6 +535,12 @@ class CollaborationManager {
   private handleRemoteOp(op: CollaborationOp) {
     if (!op || op.userId === this.localPeer.id) return;
     if (op.roomId && op.roomId !== this.currentRoomId) return;
+    if (this.seenRemoteOpIds.has(op.id)) return;
+    this.seenRemoteOpIds.add(op.id);
+    if (this.seenRemoteOpIds.size > 5000) {
+      const oldest = this.seenRemoteOpIds.values().next().value;
+      if (oldest) this.seenRemoteOpIds.delete(oldest);
+    }
 
 
     // Notify listeners
