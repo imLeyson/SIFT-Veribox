@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { copyToClipboard } from "@/lib/clipboard";
 
 export type AspectRatioType = "1:1" | "3:4" | "4:3" | "16:9" | "9:16";
 export type StylePresetType = "realistic" | "minimal" | "clay" | "cinematic";
@@ -177,59 +178,62 @@ export function ImageGenNode({ id, data, selected }: NodeProps) {
   );
 
   // Copy prompt handler
-  const handleCopyPrompt = () => {
+  const handleCopyPrompt = async () => {
     if (!prompt) return;
-    navigator.clipboard.writeText(prompt);
-    setCopiedPrompt(true);
-    setTimeout(() => setCopiedPrompt(false), 2000);
+    if (await copyToClipboard(prompt)) {
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 2000);
+    }
   };
 
-  // Generate / Roll a new candidate via gpt-image-2.5 API
-  const handleGenerateCandidate = async () => {
+  // Generate one or a small set of candidates via gpt-image-2.5 API.
+  const handleGenerateCandidate = async (count = 1) => {
     const effectivePrompt = (prompt || cardData.prompt || "极简概念工业设计摄影").trim();
     if (!effectivePrompt) return;
 
     setGenError(null);
     updateField({ isGenerating: true, isEmpty: false });
+    let nextCandidates = [...candidates];
 
     try {
-      const res = await fetch("/api/image-gen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: effectivePrompt,
-          aspectRatio,
-          stylePreset,
-          referenceImageUrl: connectedRefImage?.src,
-          refWeight,
-        }),
-      });
+      for (let i = 0; i < count; i += 1) {
+        const res = await fetch("/api/image-gen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: effectivePrompt,
+            aspectRatio,
+            stylePreset,
+            referenceImageUrl: connectedRefImage?.src,
+            refWeight,
+          }),
+        });
 
-      const data = await res.json();
-      if (!res.ok || !data.success || !data.url) {
-        throw new Error(data.error || `出图失败 (状态码 ${res.status})`);
+        const result = await res.json();
+        if (!res.ok || !result.success || !result.url) {
+          throw new Error(result.error || `出图失败 (状态码 ${res.status})`);
+        }
+
+        const newCandidate: ImageCandidate = {
+          id: `cand-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+          url: result.url,
+          createdAt: result.created ? result.created * 1000 : Date.now(),
+          variantIndex: nextCandidates.length,
+        };
+        nextCandidates = [newCandidate, ...nextCandidates];
+        updateField({
+          isGenerating: i < count - 1,
+          isEmpty: false,
+          candidates: nextCandidates,
+          activeCandidateIndex: 0,
+          imageUrl: result.url,
+        });
       }
-
-      const nextVariantIndex = candidates.length;
-      const newCandidate: ImageCandidate = {
-        id: `cand-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-        url: data.url,
-        createdAt: data.created ? data.created * 1000 : Date.now(),
-        variantIndex: nextVariantIndex,
-      };
-      const nextCandidates = [newCandidate, ...candidates];
-      updateField({
-        isGenerating: false,
-        isEmpty: false,
-        candidates: nextCandidates,
-        activeCandidateIndex: 0,
-        imageUrl: data.url,
-      });
     } catch (err: any) {
       console.error("[ImageGenNode] Error generating image:", err);
       const errMsg = err?.message || "出图请求失败，请稍后重试";
       setGenError(errMsg);
-      updateField({ isGenerating: false });
+      updateField({ isGenerating: false, candidates: nextCandidates });
     }
   };
 
@@ -617,7 +621,7 @@ export function ImageGenNode({ id, data, selected }: NodeProps) {
 
                   <button
                     type="button"
-                    onClick={handleGenerateCandidate}
+              onClick={() => void handleGenerateCandidate()}
                     className="flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] text-violet-700 hover:bg-violet-50 transition-colors cursor-pointer font-medium"
                     title="生成新版本对比"
                   >
@@ -791,13 +795,22 @@ export function ImageGenNode({ id, data, selected }: NodeProps) {
 
                 <button
                   type="button"
-                  onClick={handleGenerateCandidate}
+                  onClick={() => void handleGenerateCandidate()}
                   disabled={isGenerating}
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-violet-700 hover:bg-violet-600 active:scale-95 text-white text-[11px] font-semibold transition-all shadow-xs cursor-pointer disabled:opacity-50"
                   title="快捷键：⌘+Enter 直接出图"
                 >
                   <Wand2 className={`h-3 w-3 ${isGenerating ? "animate-spin" : ""}`} />
                   <span>{isGenerating ? "渲染中..." : candidates.length > 0 ? "重新渲染新版" : "推导概念画面"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleGenerateCandidate(4)}
+                  disabled={isGenerating}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-violet-200 bg-white text-violet-800 hover:bg-violet-50 text-[11px] font-medium transition-colors cursor-pointer disabled:opacity-50"
+                  title="连续生成 4 个候选画面，便于比较"
+                >
+                  <span>生成 4 版候选</span>
                 </button>
               </div>
             </div>

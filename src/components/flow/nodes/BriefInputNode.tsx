@@ -173,11 +173,11 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
         nodeId={id}
         stage="0"
         kicker="0 简报解析"
-        title={
-          isLocked
-            ? "设计简报"
-            : isCustom
-              ? "新设计目标与意图"
+          title={
+            isLocked
+              ? "设计简报"
+              : isCustom
+              ? "新建分支"
               : "设计目标与背景"
         }
         badge={
@@ -424,7 +424,7 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
             )}
 
             {/* Action Buttons */}
-            <div className="grid gap-2 sm:grid-cols-2 pt-0.5">
+            <div className="pt-0.5">
               <button
                 type="submit"
                 className="btn-primary w-full text-xs flex items-center justify-center gap-1.5 cursor-pointer py-2.5 shadow-sm"
@@ -435,7 +435,7 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
                   {activeRequest
                     ? "正在推演策略…"
                     : isCustom
-                      ? "开启新链路收敛"
+                      ? "开始分支收敛"
                       : "开始策略收敛"}
                 </span>
                 {!activeRequest && rawBrief.trim() && (
@@ -443,15 +443,6 @@ export function BriefInputNode({ id, data, selected }: NodeProps) {
                     ⌘↵
                   </kbd>
                 )}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost w-full text-xs cursor-pointer py-2.5 border border-line/80 text-stone-600 hover:text-ink hover:bg-stone-50 transition-colors"
-                disabled={Boolean(activeRequest) || !rawBrief.trim()}
-                onClick={() => void handleStartConvergence(true)}
-                title="跳过提问，直接推导风格主题"
-              >
-                跳过提问 · 生成主题
               </button>
             </div>
 

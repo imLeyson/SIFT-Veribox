@@ -247,7 +247,11 @@ export function PlatformPlanNode({
         >
           <div className="space-y-3 py-1">
             {hasUpstream ? (
-              <div className="rounded-xl border border-amber-200/90 bg-amber-50/60 p-4 text-center space-y-3">
+              <div
+                role="status"
+                aria-live="polite"
+                className="rounded-xl border border-amber-200/90 bg-amber-50/60 p-4 text-center space-y-3"
+              >
                 <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-700 shadow-xs">
                   <Search className="h-5 w-5 animate-pulse" />
                 </div>
@@ -267,14 +271,9 @@ export function PlatformPlanNode({
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => synthesizeCard(id)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-[0.99] text-white text-xs font-semibold shadow-md shadow-amber-200 transition-all cursor-pointer"
-                >
-                  <Search className="h-3.5 w-3.5 text-amber-200" />
-                  <span>点击根据已连主题生成检索方案</span>
-                </button>
+                <p className="text-[11px] text-amber-900/75">
+                  已自动开始跨平台灵感检索，稍候查看结构、材质和气质关键词。
+                </p>
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-amber-200/90 bg-amber-50/40 p-4 text-center space-y-2">
@@ -286,7 +285,7 @@ export function PlatformPlanNode({
                     尚未关联风格主题
                   </h4>
                   <p className="mt-0.5 text-[11px] text-stone-500 leading-relaxed">
-                    从任意「3 风格主题」拖动引线至此卡片，然后点击下方按钮生成
+                    从任意「3 风格主题」拖动引线至此卡片，将自动开始检索
                   </p>
                 </div>
 
