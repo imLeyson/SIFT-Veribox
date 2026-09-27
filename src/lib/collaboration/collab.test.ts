@@ -261,5 +261,44 @@ describe("Multi-user Real-time Collaboration Engine", () => {
     expect(emptyData.snapshot.rawBrief).toBe("智能复古咖啡机外观概念设计");
     expect(emptyData.snapshot.routes.length).toBe(1);
   });
-});
 
+  it("rejects a stale canvas write and keeps the newer room version", async () => {
+    const roomId = `room-conflict-${crypto.randomUUID()}`;
+    const peer = { id: "editor-a", name: "A", color: "#6366f1", role: "视觉设计", lastActive: Date.now() };
+    const post = (snapshot: object, baseRevision: number) => handleRoomApi(new Request("http://localhost/api/collaboration/room", {
+      method: "POST",
+      body: JSON.stringify({ roomId, peer, snapshot, baseRevision, since: 0 }),
+    }));
+
+    const first = await post({ rawBrief: "版本一" }, 0);
+    expect(first.status).toBe(200);
+    expect((await first.json()).revision).toBe(1);
+
+    const second = await post({ rawBrief: "版本二" }, 1);
+    expect(second.status).toBe(200);
+    expect((await second.json()).revision).toBe(2);
+
+    const stale = await post({ rawBrief: "过时版本" }, 1);
+    expect(stale.status).toBe(409);
+    const conflict = await stale.json();
+    expect(conflict.revision).toBe(2);
+    expect(conflict.snapshot.rawBrief).toBe("版本二");
+  });
+
+  it("uses a server cursor so equal client timestamps cannot hide operations", async () => {
+    const roomId = `room-cursor-${crypto.randomUUID()}`;
+    const peerA = { id: "editor-a", name: "A", color: "#6366f1", role: "视觉设计", lastActive: Date.now() };
+    const peerB = { ...peerA, id: "editor-b", name: "B" };
+    const op = (id: string) => ({ id, roomId, userId: peerB.id, type: "node:move", nodeId: id, position: { x: 1, y: 2 }, timestamp: 100 });
+    const post = async (peer: typeof peerA, ops: object[], since: number) => (await handleRoomApi(new Request("http://localhost/api/collaboration/room", {
+      method: "POST", body: JSON.stringify({ roomId, peer, ops, since }),
+    }))).json();
+
+    await post(peerB, [op("first")], 0);
+    const firstPoll = await post(peerA, [], 0);
+    expect(firstPoll.ops.map((item: { nodeId: string }) => item.nodeId)).toEqual(["first"]);
+    await post(peerB, [op("second")], 0);
+    const secondPoll = await post(peerA, [], firstPoll.cursor);
+    expect(secondPoll.ops.map((item: { nodeId: string }) => item.nodeId)).toEqual(["second"]);
+  });
+});

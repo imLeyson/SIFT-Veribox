@@ -45,6 +45,7 @@ export interface CanvasSyncSnapshot {
   stepNotes?: Record<string, string[]>;
   completedCriteria?: Record<string, string[]>;
   updatedAt?: number;
+  revision?: number;
 }
 
 export interface BaseCollaborationOp {

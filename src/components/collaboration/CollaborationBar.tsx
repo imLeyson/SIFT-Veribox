@@ -18,6 +18,7 @@ import {
   updateLocalPeer,
   getCurrentRoomId,
   useFollowingPeer,
+  type CollaborationStatus,
 } from "@/lib/collaboration/collab-manager";
 import {
   CollaboratorPeer,
@@ -35,6 +36,7 @@ export function CollaborationBar() {
 
   const [showJoinInput, setShowJoinInput] = useState(false);
   const [joinRoomInput, setJoinRoomInput] = useState("");
+  const [connectionStatus, setConnectionStatus] = useState<CollaborationStatus>(() => collabManager.getStatus());
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const { setCenter, getNode } = useReactFlow();
@@ -64,6 +66,8 @@ export function CollaborationBar() {
     });
   }, []);
 
+  useEffect(() => collabManager.subscribeStatus(setConnectionStatus), []);
+
   // Click outside to close popover
   useEffect(() => {
     if (!isOpen) return;
@@ -81,6 +85,20 @@ export function CollaborationBar() {
   );
   const remotePeers = activePeers.filter((p) => !p.isSelf);
   const isMultiplayer = remotePeers.length > 0;
+  const statusLabel = connectionStatus === "connected"
+    ? "已连接"
+    : connectionStatus === "conflict"
+      ? "需同步"
+      : connectionStatus === "offline"
+        ? "离线保存"
+        : "连接中";
+  const statusColor = connectionStatus === "connected"
+    ? "bg-emerald-500"
+    : connectionStatus === "conflict"
+      ? "bg-amber-500"
+      : connectionStatus === "offline"
+        ? "bg-stone-400"
+        : "bg-indigo-400";
 
   const handleCopyLink = () => {
     const url = new URL(window.location.href);
@@ -174,9 +192,7 @@ export function CollaborationBar() {
           {isMultiplayer ? `${activePeers.length} 人在线` : "协同"}
         </span>
 
-        {isMultiplayer && (
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-        )}
+        <span className={`h-1.5 w-1.5 rounded-full ${statusColor} ${connectionStatus === "connecting" ? "animate-pulse" : ""}`} />
 
         <ChevronDown
           className={`h-3 w-3 text-stone-400 transition-transform ${
@@ -197,6 +213,7 @@ export function CollaborationBar() {
                   <span className="font-semibold text-stone-900 text-xs shrink-0">
                     协同房间
                   </span>
+                  <span className="text-[10px] text-stone-500">{statusLabel}</span>
                   <span className="text-[10px] font-mono text-stone-600 bg-stone-100 px-1.5 py-0.5 rounded truncate max-w-[105px]">
                     {roomId}
                   </span>
@@ -253,9 +270,24 @@ export function CollaborationBar() {
                 </button>
               </form>
             ) : (
-              <span className="text-[10px] text-stone-400 block">
-                复制链接发送给队友，打开链接即可自动联机
-              </span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] text-stone-400 block">
+                  {connectionStatus === "conflict"
+                    ? "检测到较新的协作版本，已优先同步最新画布。"
+                    : connectionStatus === "offline"
+                      ? "当前离线，改动会先保存在本地，恢复连接后继续同步。"
+                      : "复制链接发送给队友，打开链接即可自动联机"}
+                </span>
+                {(connectionStatus === "offline" || connectionStatus === "conflict") && (
+                  <button
+                    type="button"
+                    onClick={() => void collabManager.flushNow()}
+                    className="shrink-0 rounded-md border border-stone-200 bg-white px-2 py-1 text-[10px] font-medium text-indigo-700 hover:bg-indigo-50 cursor-pointer"
+                  >
+                    重新同步
+                  </button>
+                )}
+              </div>
             )}
           </div>
 

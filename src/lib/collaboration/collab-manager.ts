@@ -114,6 +114,7 @@ export function getCurrentRoomId(): string {
 
 type PeerListener = (peers: CollaboratorPeer[]) => void;
 type OpListener = (op: CollaborationOp) => void;
+export type CollaborationStatus = "connecting" | "connected" | "offline" | "conflict";
 
 class CollaborationManager {
   private localPeer: CollaboratorPeer;
@@ -133,7 +134,11 @@ class CollaborationManager {
   private isFlushing = false;
   private followingPeerId: string | null = null;
   private followListeners = new Set<(peer: CollaboratorPeer | null) => void>();
+  private status: CollaborationStatus = "connecting";
+  private statusListeners = new Set<(status: CollaborationStatus) => void>();
   private lastPolledTimestamp = 0;
+  private roomRevision = 0;
+  private roomCursor = 0;
   private isProcessingRemoteOp = false;
 
   constructor() {
@@ -225,6 +230,22 @@ class CollaborationManager {
     };
   }
 
+  public getStatus(): CollaborationStatus {
+    return this.status;
+  }
+
+  public subscribeStatus(listener: (status: CollaborationStatus) => void): () => void {
+    this.statusListeners.add(listener);
+    listener(this.status);
+    return () => this.statusListeners.delete(listener);
+  }
+
+  private setStatus(status: CollaborationStatus) {
+    if (this.status === status) return;
+    this.status = status;
+    this.statusListeners.forEach((listener) => listener(status));
+  }
+
   public getCanvasSnapshot(): CanvasSyncSnapshot {
     if (!isBrowser()) return {};
     const s = useSiftStore.getState();
@@ -250,6 +271,7 @@ class CollaborationManager {
       cardTags: s.cardTags,
       stepNotes: s.stepNotes,
       completedCriteria: s.completedCriteria,
+      revision: this.roomRevision,
       updatedAt: Date.now(),
     };
   }
@@ -326,6 +348,9 @@ class CollaborationManager {
     this.pendingSnapshot = null;
     this.lastPolledTimestamp = 0;
     this.lastAppliedSnapshotTimestamp = 0;
+    this.roomRevision = 0;
+    this.roomCursor = 0;
+    this.setStatus("connecting");
 
     if (this.broadcastChannel) {
       try {
@@ -664,7 +689,8 @@ class CollaborationManager {
         roomId: this.currentRoomId,
         peer: this.localPeer,
         ops: opsToSend,
-        since: this.lastPolledTimestamp,
+        since: this.roomCursor,
+        baseRevision: this.roomRevision,
       };
       if (snapshotToSend) {
         payload.snapshot = snapshotToSend;
@@ -677,7 +703,10 @@ class CollaborationManager {
       });
 
       if (res.ok) {
+        this.setStatus("connected");
         const data = await res.json();
+        if (typeof data.revision === "number") this.roomRevision = data.revision;
+        if (typeof data.cursor === "number") this.roomCursor = data.cursor;
         if (data.peers && Array.isArray(data.peers)) {
           data.peers.forEach((p: CollaboratorPeer) => {
             if (p.id !== this.localPeer.id) {
@@ -706,9 +735,29 @@ class CollaborationManager {
         if (typeof data.serverTime === "number") {
           this.lastPolledTimestamp = data.serverTime;
         }
+      } else if (res.status === 409) {
+        this.setStatus("conflict");
+        this.pendingOps = [...opsToSend, ...this.pendingOps];
+        const conflict = await res.json().catch(() => null);
+        if (conflict && typeof conflict.revision === "number") {
+          this.roomRevision = conflict.revision;
+        }
+        if (conflict && typeof conflict.cursor === "number") {
+          this.roomCursor = conflict.cursor;
+        }
+        if (conflict?.snapshot) {
+          this.applyCanvasSnapshot(conflict.snapshot, "conflict");
+        }
+        this.scheduleFlush(180);
+      } else {
+        this.pendingOps = [...opsToSend, ...this.pendingOps];
+        if (snapshotToSend) this.pendingSnapshot = snapshotToSend;
       }
     } catch {
       // offline or network hiccup; local BroadcastChannel continues to work
+      this.setStatus("offline");
+      this.pendingOps = [...opsToSend, ...this.pendingOps];
+      if (snapshotToSend) this.pendingSnapshot = snapshotToSend;
     } finally {
       this.isFlushing = false;
       this.scheduleNextHeartbeat();
@@ -783,5 +832,3 @@ export function useFollowingPeer(): CollaboratorPeer | null {
 
   return peer;
 }
-
-
