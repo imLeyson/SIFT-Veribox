@@ -7,11 +7,10 @@ import { CanvasErrorBoundary } from "./flow/CanvasErrorBoundary";
 import { ThinkingProgress } from "./canvas/ThinkingProgress";
 import { DossierModal } from "./dossier/DossierModal";
 import { GlobalChatView } from "./chat/GlobalChatView";
-import { ResultPanel } from "./results/ResultPanel";
 import { ProjectSwitcher } from "./project/ProjectSwitcher";
 import { CollaborationBar } from "./collaboration/CollaborationBar";
 import { createProject } from "@/lib/project-manager";
-import { FileDown, Layers, MessageSquare, Plus } from "lucide-react";
+import { FileDown, MessageSquare, Plus } from "lucide-react";
 import { ReactFlowProvider } from "@xyflow/react";
 
 function subscribeHydration(onChange: () => void) {
@@ -28,8 +27,6 @@ export function Workspace() {
   const [runtimeMode, setRuntimeMode] = useState<"live" | "mock" | null>(null);
   const [dossierOpen, setDossierOpen] = useState(false);
   const [advisorOpen, setAdvisorOpen] = useState(false);
-  const [resultsOpen, setResultsOpen] = useState(false);
-  const outcomeCount = useSiftStore((s) => s.outcomeGroups.length);
 
   useEffect(() => {
     void useSiftStore.persist.rehydrate();
@@ -43,7 +40,7 @@ export function Workspace() {
 
   useEffect(() => {
     window.dispatchEvent(new Event("resize"));
-  }, [advisorOpen, resultsOpen]);
+  }, [advisorOpen]);
 
   if (!ready)
     return (
@@ -69,10 +66,7 @@ export function Workspace() {
             {/* Strategy Advisor Drawer Toggle */}
             <button
               type="button"
-              onClick={() => {
-                setAdvisorOpen(!advisorOpen);
-                setResultsOpen(false);
-              }}
+              onClick={() => setAdvisorOpen(!advisorOpen)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer select-none ${
                 advisorOpen
                   ? "bg-stone-100 text-stone-900 border-stone-300 shadow-2xs font-semibold"
@@ -86,27 +80,6 @@ export function Workspace() {
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setResultsOpen(!resultsOpen);
-                setAdvisorOpen(false);
-              }}
-              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all cursor-pointer select-none ${
-                resultsOpen
-                  ? "border-stone-300 bg-stone-100 text-stone-900 shadow-2xs"
-                  : "border-stone-200/90 bg-white/80 text-stone-600 hover:bg-stone-100/80 hover:text-stone-900"
-              }`}
-              title="用喜欢的方向组成方案"
-            >
-              <Layers className="h-3.5 w-3.5 text-stone-500" />
-              <span>方案</span>
-              {outcomeCount > 0 && (
-                <span className="min-w-4 rounded-full bg-stone-900 px-1 text-center text-[9px] font-semibold text-white">
-                  {outcomeCount}
-                </span>
-              )}
-            </button>
           </div>
 
           {/* Right side utility actions */}
@@ -197,12 +170,6 @@ export function Workspace() {
           <div className="w-[400px] border-l border-line/70 bg-white/95 backdrop-blur-sm shadow-xl flex flex-col z-10 shrink-0">
             <GlobalChatView onClose={() => setAdvisorOpen(false)} />
           </div>
-        )}
-        {resultsOpen && (
-          <ResultPanel
-            isOpen={resultsOpen}
-            onClose={() => setResultsOpen(false)}
-          />
         )}
       </div>
 

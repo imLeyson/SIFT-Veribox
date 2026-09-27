@@ -220,7 +220,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     }
   }
 
-  // Module 3: Collaborative Decision Funnel & Tagged Cards
+  // Module 3: Collaborative Review & Tagged Cards
   const cardTags = store.cardTags ?? {};
   const customCards = store.customCards ?? [];
   const taggedIds = Object.keys(cardTags);

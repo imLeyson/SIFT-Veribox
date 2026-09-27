@@ -475,11 +475,11 @@ export function DossierModal({
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs font-bold text-stone-400">03</span>
                     <h3 className="text-sm font-bold text-stone-900 tracking-tight">
-                      团队协同决策与方案沉淀 (Collaborative Decision Funnel)
+                      标记卡片与评审依据 (Collaborative Review)
                     </h3>
                   </div>
                   <span className="text-[11px] text-stone-400 font-mono">
-                    {hasTaggedCards ? "已沉淀标记方案" : "待标记"}
+                    {hasTaggedCards ? "已有标记" : "待标记"}
                   </span>
                 </div>
 
