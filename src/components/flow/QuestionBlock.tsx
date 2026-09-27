@@ -4,6 +4,7 @@ import type { Answer, Question } from "@/types/convergence";
 import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { PenLine, Check, HelpCircle } from "lucide-react";
+import { questionSubmitLabel } from "./flow-copy";
 
 function answerFor(drafts: Answer[], questionId: string) {
   return drafts.find((answer) => answer.questionId === questionId) ?? null;
@@ -33,11 +34,15 @@ export function QuestionBlock({
   drafts: externalDrafts,
   setDrafts: externalSetDrafts,
   disabled: externalDisabled,
+  showSubmit = true,
+  onSubmit,
 }: {
   questions: Question[];
   drafts?: Answer[];
   setDrafts?: (drafts: Answer[]) => void;
   disabled?: boolean;
+  showSubmit?: boolean;
+  onSubmit?: (drafts: Answer[]) => void | Promise<void>;
 }) {
   const { drafts: storeDrafts, activeRequest, setDrafts: storeSetDrafts } = useSiftStore();
   const drafts = externalDrafts ?? storeDrafts;
@@ -120,7 +125,13 @@ export function QuestionBlock({
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        if (!disabled) void siftActions.answer();
+        if (!disabled) {
+          if (onSubmit) {
+            void onSubmit(drafts);
+          } else {
+            void siftActions.answer();
+          }
+        }
       }}
       onKeyDown={(e) => {
         if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -315,40 +326,24 @@ export function QuestionBlock({
         );
       })}
 
-      <button
-        type="submit"
-        className={`w-full py-2.5 text-xs font-medium flex items-center justify-center gap-1.5 rounded-xl shadow-xs transition-all ${
-          disabled
-            ? "bg-stone-200 text-stone-400 cursor-not-allowed"
-            : "btn-primary hover:shadow cursor-pointer"
-        }`}
-        disabled={disabled}
-      >
-        {disabled ? (
-          "正在整理判断…"
-        ) : answeredCount === questions.length ? (
-          <>
-            <span>确认视觉取向 →</span>
+      {showSubmit && (
+        <button
+          type="submit"
+          className={`w-full py-2.5 text-xs font-medium flex items-center justify-center gap-1.5 rounded-xl shadow-xs transition-all ${
+            disabled
+              ? "bg-stone-200 text-stone-400 cursor-not-allowed"
+              : "btn-primary hover:shadow cursor-pointer"
+          }`}
+          disabled={disabled}
+        >
+          <span>{questionSubmitLabel(answeredCount, questions.length, disabled)}</span>
+          {!disabled && (
             <kbd className="hidden sm:inline-block rounded bg-white/20 px-1 py-0.2 text-[10px] font-sans opacity-80">
               ⌘↵
             </kbd>
-          </>
-        ) : answeredCount > 0 ? (
-          <>
-            <span>确认已选 ({answeredCount}/{questions.length}) 并继续 →</span>
-            <kbd className="hidden sm:inline-block rounded bg-white/20 px-1 py-0.2 text-[10px] font-sans opacity-80">
-              ⌘↵
-            </kbd>
-          </>
-        ) : (
-          <>
-            <span>暂不确定，直接推进 →</span>
-            <kbd className="hidden sm:inline-block rounded bg-white/20 px-1 py-0.2 text-[10px] font-sans opacity-80">
-              ⌘↵
-            </kbd>
-          </>
-        )}
-      </button>
+          )}
+        </button>
+      )}
     </form>
   );
 }

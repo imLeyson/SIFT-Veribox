@@ -7,6 +7,7 @@ import { useSiftStore } from "@/lib/convergence-store";
 import { siftActions } from "@/lib/convergence-client";
 import { answerText, type Answer, type Question } from "@/types/convergence";
 import { runIndependentAskConvergence } from "@/lib/independent-chain-runner";
+import { revisionLabel } from "../flow-copy";
 
 export type FlowData = {
   historyId?: string;
@@ -88,7 +89,7 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
         title="关键视觉抉择"
         badge={
           <span className="text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded">
-            待抉择
+            待确认
           </span>
         }
         selected={selected}
@@ -109,6 +110,7 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
           drafts={localDrafts}
           setDrafts={setLocalDrafts}
           disabled={isRunning}
+          showSubmit={false}
         />
         <div className="mt-3 border-t border-line/60 pt-2.5 space-y-2">
           <button
@@ -129,7 +131,7 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
               }
             }}
           >
-            {isRunning ? "正在推进策略…" : "确认抉择，推进策略基准 →"}
+            {isRunning ? "正在生成策略…" : "确认选择，生成策略 →"}
           </button>
           <button
             type="button"
@@ -150,7 +152,7 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
               }
             }}
           >
-            跳过提问，收敛策略基准 →
+            跳过问题，直接进入主题 →
           </button>
         </div>
       </NodeShell>
@@ -168,7 +170,7 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
           title="关键视觉抉择"
           badge={
             <span className="text-[10px] font-medium text-sky-800 bg-sky-50 border border-sky-200/80 px-1.5 py-0.5 rounded">
-              分水岭抉择
+              待确认
             </span>
           }
           selected={selected}
@@ -193,20 +195,18 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
             </div>
           }
         >
-          <QuestionBlock questions={next.questions} />
-          <div className="mt-3 border-t border-line/60 pt-2.5">
-            <button
-              type="button"
-              className="btn-ghost w-full text-xs !py-1.5 text-stone-600 hover:text-ink cursor-pointer"
-              disabled={Boolean(activeRequest)}
-              onClick={siftActions.converge}
-            >
-              跳过提问，收敛策略基准 →
-            </button>
-            <p className="mt-1 text-center text-[10px] text-stone-400">
-              通过分水岭提问排除模糊地带，精准收敛设计策略基准
-            </p>
-          </div>
+          <QuestionBlock
+            questions={next.questions}
+            onSubmit={(answers) => {
+              if (answers.length === 0) {
+                return siftActions.converge();
+              }
+              return siftActions.answer();
+            }}
+          />
+          <p className="mt-2 text-center text-[10px] text-stone-400">
+            选择后确认；每道题也可以单独标记为“暂不确定”。
+          </p>
         </NodeShell>
       );
     }
@@ -301,7 +301,7 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
       }
       badge={
         <span className="text-[10px] font-medium text-sky-800 bg-sky-50 border border-sky-200/80 px-1.5 py-0.5 rounded">
-          {`R${turn.afterRevision}`}
+            {revisionLabel(turn.afterRevision)}
         </span>
       }
       selected={selected}
@@ -313,7 +313,7 @@ export function AskNode({ id, data, selected }: NodeProps<Node<FlowData>>) {
               已确认视觉抉择
             </span>
             <span className="text-[10px] text-stone-400 font-mono">
-              R{turn.afterRevision}
+              {revisionLabel(turn.afterRevision)}
             </span>
           </div>
           {turn.questions && turn.event.type === "answer" ? (
