@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { useSiftStore, getUpstreamSummary } from "@/lib/convergence-store";
@@ -161,6 +161,8 @@ export function PlatformPlanNode({
   const customCards = useSiftStore((s) => s.customCards);
   const customEdges = useSiftStore((s) => s.customEdges);
   const synthesizeCard = useSiftStore((s) => s.synthesizeCard);
+  const setPlatformPlan = useSiftStore((s) => s.setPlatformPlan);
+  const updateCustomCard = useSiftStore((s) => s.updateCustomCard);
   const selectedRouteId = useSiftStore((s) => s.selectedRouteId);
   const sourceInteractions = useSiftStore((s) => s.sourceInteractions);
   const rawBrief = useSiftStore((s) => s.rawBrief);
@@ -172,12 +174,61 @@ export function PlatformPlanNode({
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [showSearchTrace, setShowSearchTrace] = useState(false);
   const [facetIndex, setFacetIndex] = useState<number>(-1);
+  const retrievalRequests = useRef(new Set<string>());
 
   const plan = data?.plan ?? DEFAULT_FALLBACK_PLAN;
-  const route =
+  const route: Route | undefined =
     routes.find((r) => r.id === plan.routeId || r.id === selectedRouteId) ??
-    customCards.find((c) => c.data?.route?.id === plan.routeId)?.data?.route;
+    (customCards.find((c) => c.data?.route?.id === plan.routeId)?.data?.route as Route | undefined);
   const themeName = route?.themeName || (route?.title ? route.title.replace(/[【】]/g, "") : "风格主题");
+
+  useEffect(() => {
+    if (!route || !state || state.status !== "confirmed" || !plan?.primarySources?.length) return;
+    const hasRetrieval = plan.primarySources.every((source) => source.retrieval);
+    if (hasRetrieval) return;
+
+    const requestKey = `${id}:${plan.id}:${plan.stepId}:${plan.primarySources.map((source) => source.id).join(",")}`;
+    if (retrievalRequests.current.has(requestKey)) return;
+    retrievalRequests.current.add(requestKey);
+
+    const step = route.steps.find((item) => item.id === plan.stepId) ?? route.steps[0];
+    if (!step) return;
+    const controller = new AbortController();
+    void fetch("/api/inspiration-search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: useSiftStore.getState().sessionId,
+        requestId: `inspiration-${Date.now().toString(36)}`,
+        state,
+        selectedRoute: route,
+        currentStep: step,
+        completedStepIds: [],
+        plan,
+      }),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const payload = (await response.json()) as { plan?: PlatformPlan };
+        return payload.plan ?? null;
+      })
+      .then((enrichedPlan) => {
+        if (!enrichedPlan || controller.signal.aborted) return;
+        const isCustomCard = useSiftStore.getState().customCards.some((card) => card.id === id);
+        if (isCustomCard) {
+          updateCustomCard(id, { data: { plan: enrichedPlan, isEmpty: false } });
+        } else {
+          setPlatformPlan(enrichedPlan);
+        }
+      })
+      .catch(() => {
+        // The card keeps its query plan and exposes no false evidence when a
+        // reader is unavailable. A later regeneration can retry the search.
+      });
+
+    return () => controller.abort();
+  }, [id, plan, route, setPlatformPlan, state, updateCustomCard]);
 
   const handleCopyAllKeywords = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -640,6 +691,44 @@ export function PlatformPlanNode({
                           {toInspirationCopy(clues.avoid)}
                         </p>
                       )}
+                    </div>
+                  )}
+
+                  {!isSkipped && source.retrieval && (
+                    <div className="mt-2 rounded-lg border border-amber-200/80 bg-amber-50/45 p-2.5 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2 text-[10px] text-amber-900/80">
+                        <span className="font-medium">
+                          {source.retrieval.status === "live"
+                            ? `已读取 ${source.retrieval.reviewedCount} 个真实页面`
+                            : source.retrieval.status === "partial"
+                              ? `已读取 ${source.retrieval.reviewedCount} 个页面，暂无高相关证据`
+                              : "暂未读取到可验证页面"}
+                        </span>
+                        <span className="font-mono text-amber-700/70">
+                          {source.retrieval.query.slice(0, 56)}
+                        </span>
+                      </div>
+                      {(source.evidence ?? []).map((evidence) => (
+                        <a
+                          key={evidence.url}
+                          href={evidence.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block rounded-md border border-amber-200/70 bg-white/80 px-2 py-1.5 hover:border-amber-400 hover:bg-white transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-[11px] font-medium leading-snug text-stone-800">
+                              {evidence.title}
+                            </span>
+                            <span className="shrink-0 text-[10px] font-mono text-emerald-700">
+                              {evidence.relevanceScore}%
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-[10px] leading-snug text-stone-500 line-clamp-2">
+                            {evidence.excerpt}
+                          </p>
+                        </a>
+                      ))}
                     </div>
                   )}
 

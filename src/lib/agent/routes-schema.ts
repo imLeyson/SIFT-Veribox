@@ -92,6 +92,27 @@ export const PlatformSourceSchema = z.object({
     })
     .optional(),
   lensRole: z.enum(["benchmark", "avant_garde", "proofing"]).optional(),
+  retrieval: z
+    .object({
+      status: z.enum(["live", "partial", "unavailable"]),
+      query: text.max(240),
+      searchedAt: text.max(80),
+      reviewedCount: z.number().int().min(0).max(20),
+    })
+    .optional(),
+  evidence: z
+    .array(
+      z.object({
+        url: z.string().url(),
+        title: text.max(180),
+        excerpt: text.max(420),
+        relevanceScore: z.number().min(0).max(100),
+        confidence: z.number().min(0).max(1),
+        matchedSignals: z.array(text.max(80)).max(8),
+      }),
+    )
+    .max(3)
+    .optional(),
 });
 
 export const PlatformPlanSchema = z

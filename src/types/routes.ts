@@ -43,6 +43,23 @@ export type PlatformKeyword = {
   jevJudgement?: string;
 };
 
+/** A page that was actually opened and reviewed by the inspiration retriever. */
+export type InspirationEvidence = {
+  url: string;
+  title: string;
+  excerpt: string;
+  relevanceScore: number;
+  confidence: number;
+  matchedSignals: string[];
+};
+
+export type InspirationRetrieval = {
+  status: "live" | "partial" | "unavailable";
+  query: string;
+  searchedAt: string;
+  reviewedCount: number;
+};
+
 export type PlatformSource = {
   id: string;
   platform: string;
@@ -55,6 +72,8 @@ export type PlatformSource = {
     avoid: string;
   };
   lensRole?: "benchmark" | "avant_garde" | "proofing";
+  retrieval?: InspirationRetrieval;
+  evidence?: InspirationEvidence[];
 };
 
 export type PlatformPlan = {
@@ -101,4 +120,3 @@ export function cleanStepLabel(rawTitle: string): string {
   }
   return cleaned.slice(0, 4) || rawTitle.replace(/^0?\d+[\.、\s]*/, "").slice(0, 4) || "视觉切入";
 }
-

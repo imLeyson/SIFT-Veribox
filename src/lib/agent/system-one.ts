@@ -56,6 +56,19 @@ export type SystemOneEvaluationResult = {
   answers: Record<string, SystemOneAnswer>;
 };
 
+export type InspirationCandidate = {
+  id: string;
+  title: string;
+  excerpt: string;
+  url: string;
+};
+
+export type InspirationCandidateScore = {
+  score: number;
+  confidence: number;
+  matchedSignals: string[];
+};
+
 export const DOMAIN_META = {
   packaging: {
     label: "包装微工艺与材质",
@@ -145,6 +158,48 @@ async function callJevCloudApi(
     process.env.JEV_BASE_URL ?? "https://api.typesafe.ai/v1/systemone";
 
   try {
+    const typedQuestions = Object.fromEntries(
+      questions.map((question) => {
+        if (question.type === "choice") {
+          return [
+            question.id,
+            {
+              type: "choice",
+              instructions: question.question,
+              criteria: Object.fromEntries(
+                question.options.map((option) => [option, option]),
+              ),
+            },
+          ];
+        }
+        if (question.type === "score") {
+          const min = question.min ?? 0;
+          return [
+            question.id,
+            {
+              type: "score",
+              instructions: question.question,
+              criteria: [
+                `低于 ${min}：明显不相关或信息不足`,
+                `中低：只有局部特征吻合`,
+                `中等：主体或方法有一项吻合`,
+                `高：主体与方法都吻合`,
+                `直接证据：页面实际展示该主体的设计案例`,
+              ],
+            },
+          ];
+        }
+        return [
+          question.id,
+          {
+            type: "noul",
+            instructions: question.question,
+            criteria: { true: "是", false: "否" },
+          },
+        ];
+      }),
+    );
+
     const res = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -154,7 +209,7 @@ async function callJevCloudApi(
       body: JSON.stringify({
         model: "jev-latest",
         state,
-        questions,
+        questions: typedQuestions,
       }),
       signal: AbortSignal.timeout(3000), // 3s budget for System 1
     });
@@ -165,31 +220,51 @@ async function callJevCloudApi(
     }
 
     const data = (await res.json()) as {
-      answers?: Array<{
-        questionId: string;
-        value: unknown;
-        confidence?: number;
-        probabilities?: Record<string, number>;
-      }>;
+      model?: string;
+      answers?: Record<
+        string,
+        {
+          type?: "choice" | "score" | "noul";
+          choice?: string;
+          score?: number;
+          noul?: number;
+          confidence?: number;
+          probabilities?: Record<string, number>;
+        }
+      >;
     };
 
     const latencyMs = Date.now() - start;
     const answerMap: Record<string, SystemOneAnswer> = {};
 
-    if (Array.isArray(data.answers)) {
-      for (const a of data.answers) {
-        answerMap[a.questionId] = {
-          questionId: a.questionId,
-          value: a.value,
-          confidence: a.confidence ?? 0.95,
-          probabilities: a.probabilities,
+    if (data.answers && typeof data.answers === "object") {
+      for (const question of questions) {
+        const answer = data.answers[question.id];
+        if (!answer) continue;
+        const value =
+          answer.type === "choice"
+            ? answer.choice
+            : answer.type === "score"
+              ? answer.score
+              : answer.type === "noul"
+                ? Number(answer.noul ?? 0) >= 0.5
+                : answer.choice ?? answer.score ?? Number(answer.noul ?? 0) >= 0.5;
+        answerMap[question.id] = {
+          questionId: question.id,
+          value,
+          confidence:
+            answer.confidence ??
+            (answer.type === "noul"
+              ? Math.max(Number(answer.noul ?? 0), 1 - Number(answer.noul ?? 0))
+              : 0.8),
+          probabilities: answer.probabilities,
         };
       }
     }
 
     return {
       engine: "jev-cloud",
-      model: "jev-latest",
+      model: data.model || "jev-latest",
       latencyMs,
       answers: answerMap,
     };
@@ -316,6 +391,117 @@ function evaluateNativeSystemOne(
     latencyMs,
     answers: answerMap,
   };
+}
+
+function tokenizeDesignSignals(value: string): string[] {
+  const stopwords = new Set([
+    "design",
+    "visual",
+    "style",
+    "creative",
+    "project",
+    "case",
+    "process",
+    "scene",
+    "minimal",
+    "material",
+  ]);
+  return Array.from(
+    new Set(
+      value
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, " ")
+        .split(/\s+/)
+        .map((part) => part.trim())
+        .filter((part) => part.length >= 2 && !stopwords.has(part)),
+    ),
+  );
+}
+
+/**
+ * Scores pages that were actually retrieved. JEV receives the complete page
+ * text and a short rubric; the native path remains deterministic when no key
+ * is configured or when the remote call times out.
+ */
+export async function scoreInspirationCandidates(
+  context: {
+    brief?: string;
+    strategy?: string;
+    theme?: string;
+    snapshot?: string;
+    step?: string;
+  },
+  candidates: InspirationCandidate[],
+): Promise<Record<string, InspirationCandidateScore>> {
+  if (candidates.length === 0) return {};
+
+  const contextText = [
+    context.brief,
+    context.strategy,
+    context.theme,
+    context.snapshot,
+    context.step,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const contextSignals = tokenizeDesignSignals(contextText);
+
+  const nativeScores = () => {
+    const result: Record<string, InspirationCandidateScore> = {};
+    for (const candidate of candidates) {
+      const candidateText = `${candidate.title} ${candidate.excerpt}`.toLowerCase();
+      const matchedSignals = contextSignals.filter((signal) =>
+        candidateText.includes(signal),
+      );
+      const titleSignals = contextSignals.filter((signal) =>
+        candidate.title.toLowerCase().includes(signal),
+      );
+      const overlap = contextSignals.length
+        ? matchedSignals.length / Math.min(contextSignals.length, 8)
+        : 0;
+      const score = matchedSignals.length
+        ? Math.min(
+            100,
+            Math.round(48 + Math.min(matchedSignals.length, 4) * 10 + Math.min(titleSignals.length, 3) * 8),
+          )
+        : 24;
+      result[candidate.id] = {
+        score,
+        confidence: Math.min(0.95, 0.52 + overlap * 0.42),
+        matchedSignals: matchedSignals.slice(0, 6),
+      };
+    }
+    return result;
+  };
+
+  const questions: SystemOneQuestion[] = candidates.map((candidate) => ({
+    id: candidate.id,
+    type: "score",
+    question: `这篇页面是否是真实设计案例，并且与当前设计上下文直接相关？页面：${candidate.title}\n${candidate.excerpt}`,
+    min: 0,
+    max: 4,
+  }));
+  const cloudResult = await callJevCloudApi(
+    { designContext: contextText, candidates },
+    questions,
+  );
+  if (!cloudResult) return nativeScores();
+
+  const native = nativeScores();
+  const result: Record<string, InspirationCandidateScore> = {};
+  for (const candidate of candidates) {
+    const answer = cloudResult.answers[candidate.id];
+    const raw = Number(answer?.value);
+    const score = Number.isFinite(raw)
+      ? Math.max(0, Math.min(100, Math.round((raw / 4) * 100)))
+      : native[candidate.id].score;
+    result[candidate.id] = {
+      score,
+      confidence: answer?.confidence ?? native[candidate.id].confidence,
+      matchedSignals: native[candidate.id].matchedSignals,
+    };
+  }
+  return result;
 }
 
 export function generateBriefSuggestion(brief: string, clarity: number): string {
@@ -1246,5 +1432,3 @@ export function inferKeywordDimension(
   }
   return "mood";
 }
-
-
