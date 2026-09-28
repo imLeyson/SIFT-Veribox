@@ -455,7 +455,10 @@ export function deriveStepsFromTheme(theme: Route): RouteStep[] {
  * 智能设计领域检索词提纯引擎：
  * 针对主题的形态母题、工艺特征与空间共生，自动提取国际设计圈公认的精准中英双语检索词库与去噪语法
  */
-export function extractThemeDimensionQueries(theme: Route): {
+export function extractThemeDimensionQueries(
+  theme: Route,
+  context?: { rawBrief?: string; strategy?: string; priorities?: string[] },
+): {
   reality: { keyword: string; meaning: string; query: string };
   form: { keyword: string; meaning: string; query: string };
   craft: { keyword: string; meaning: string; query: string };
@@ -468,7 +471,37 @@ export function extractThemeDimensionQueries(theme: Route): {
     theme.startingPoint || "",
     theme.visualSnapshot || "",
     theme.coreProblem || "",
+    context?.rawBrief || "",
+    context?.strategy || "",
+    ...(context?.priorities || []),
   ].join(" ").toLowerCase();
+
+  // Narrative / movement themes must stay attached to their subject. The old
+  // generic fallback turned these into unrelated industrial CMF searches.
+  if (/雨中|雨滴|雨幕|游行|队伍|行进|procession|parade|rain/.test(combined)) {
+    return {
+      reality: {
+        keyword: "rain parade procession visual design",
+        meaning: "围绕雨中游行队伍的行进关系、队列节奏与视觉叙事案例",
+        query: "rain parade procession visual design",
+      },
+      form: {
+        keyword: "rain drop radial rhythm visual system",
+        meaning: "把雨滴沿骨架放射排列形成的连续节奏与构图骨架",
+        query: "rain drop radial rhythm visual system",
+      },
+      craft: {
+        keyword: "rain streak layered translucent texture",
+        meaning: "雨丝叠层、半透明片段与连续切片形成的视觉质感",
+        query: "rain streak layered translucent texture",
+      },
+      mood: {
+        keyword: "rainy procession diffuse light scene",
+        meaning: "雨天漫射光下队伍共同行进的氛围、尺度与空间关系",
+        query: "rainy procession diffuse light scene",
+      },
+    };
+  }
 
   // 1. 木质 / 纤维 / 环保原生材料
   if (/木|纤维|原木|竹|wood|timber|fiber|bamboo/.test(combined)) {
@@ -655,12 +688,16 @@ export function extractThemeDimensionQueries(theme: Route): {
  * 5. 灵感方案推导（4 灵感检索）：
  * 直接从风格主题（3 风格主题）派生出精准跨平台去噪搜索方案，涵盖整体调性与分视点切片
  */
-export function derivePlanFromTheme(theme: Route, facetIndex?: number): PlatformPlan {
+export function derivePlanFromTheme(
+  theme: Route,
+  facetIndex?: number,
+  context?: { rawBrief?: string; strategy?: string; priorities?: string[] },
+): PlatformPlan {
   const themeName = theme?.themeName || cleanTitle(theme?.title) || "设计探索";
   const routeId = theme?.id || "custom-route";
   const steps = deriveStepsFromTheme(theme);
   const activeStep = (facetIndex !== undefined && steps[facetIndex]) ? steps[facetIndex] : steps[0];
-  const queries = extractThemeDimensionQueries(theme);
+  const queries = extractThemeDimensionQueries(theme, context);
 
   return {
     id: `plan-${routeId}`,
@@ -826,6 +863,29 @@ export function derivePlanFromTheme(theme: Route, facetIndex?: number): Platform
             language: "en",
             dimension: "mood",
             calibratedQuery: `${queries.mood.query} coexistence object`,
+          },
+        ],
+      },
+      {
+        id: `src-arena-${routeId}`,
+        platform: "arena",
+        roleTag: "叙事视觉调研",
+        reason: `从总监级视觉调研中补充「${themeName}」的队列关系、连续动作与空间叙事参考`,
+        searchUrl: `https://www.google.com/search?q=site:are.na+${encodeURIComponent(queries.reality.query)}`,
+        keywords: [
+          {
+            keyword: queries.reality.keyword,
+            meaning: "队伍共同动作与视觉叙事的跨媒介参考",
+            language: "en",
+            dimension: "reality",
+            calibratedQuery: `${queries.reality.query} visual narrative`,
+          },
+          {
+            keyword: queries.mood.keyword,
+            meaning: "队列在漫射光与空间中的氛围关系",
+            language: "en",
+            dimension: "mood",
+            calibratedQuery: `${queries.mood.query} visual research`,
           },
         ],
       },
@@ -1295,7 +1355,14 @@ export function synthesizeCardFromInputs(
       stepNode?.data?.route ??
       deriveThemeFromStrategy(ctx?.state, ctx?.rawBrief);
 
-    const plan = derivePlanFromTheme(parentRoute);
+    const direction = ctx?.state?.direction;
+    const plan = derivePlanFromTheme(parentRoute, undefined, {
+      rawBrief: ctx?.rawBrief || ctx?.state?.brief?.goal,
+      strategy: direction?.intent?.text,
+      priorities: Array.isArray(direction?.priorities)
+        ? direction.priorities.map((item: any) => typeof item === "string" ? item : item?.text).filter(Boolean)
+        : [],
+    });
     const themeDisplay = parentRoute?.themeName || cleanTitle(parentRoute?.title) || "风格主题";
     return {
       title: `${themeDisplay} · 灵感检索`,

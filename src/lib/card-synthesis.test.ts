@@ -275,6 +275,25 @@ describe("Card Synthesis & Upstream Blending", () => {
     expect(functionalQueries.form.keyword).toContain("skeletal");
   });
 
+  it("keeps narrative rain-parade inspiration tied to the brief instead of generic CMF", () => {
+    const parade: Route = {
+      ...mockThemeA,
+      id: "route-parade",
+      themeName: "雨中游行队伍",
+      title: "虚构角色在八片平面上绕圈行进",
+      focusDimension: "雨滴沿骨架放射排布",
+      visualSnapshot: "雨滴按骨架放射排布，虚构角色在平面上连续行进",
+    };
+    const queries = extractThemeDimensionQueries(parade, {
+      rawBrief: "为一支雨中游行队伍寻找连续行进的视觉灵感",
+      strategy: "通过雨滴节奏建立队伍的共同动作",
+    });
+    expect(queries.reality.query).toContain("rain parade procession");
+    expect(queries.form.query).toContain("rain drop radial rhythm");
+    expect(queries.craft.query).not.toContain("matte surface");
+    expect(queries.mood.query).toContain("procession");
+  });
+
   it("synthesizeCardFromInputs router handles Ask and State card derivation", () => {
     const askSynth = synthesizeCardFromInputs("ask", [
       { id: "brief", type: "brief", data: { rawBrief: "极简智能音箱" } },

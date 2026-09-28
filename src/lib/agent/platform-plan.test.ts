@@ -186,5 +186,29 @@ describe("platform plan agent generation", () => {
     // Must contain sustainable / fiber / tactile keywords
     expect(allKeywords.some((k) => /sustainable|recycled|fiber|材料|毛发|再生/i.test(k))).toBe(true);
   });
-});
 
+  it("keeps API regeneration tied to a rain-parade narrative", async () => {
+    const paradeRoute = {
+      ...mockRoutes[0],
+      id: "route-rain-parade",
+      themeName: "雨中游行队伍",
+      title: "虚构角色在八片平面上绕圈行进",
+      focusDimension: "雨滴沿骨架放射排布",
+      visualSnapshot: "雨滴按骨架放射排布，虚构角色在平面上连续行进",
+    };
+    const result = await runPlatformPlanGeneration({
+      sessionId: "s_rain",
+      requestId: "p_rain",
+      state: {
+        ...confirmedState,
+        brief: { ...confirmedState.brief, goal: "为雨中游行队伍寻找连续行进的视觉灵感" },
+      },
+      selectedRoute: paradeRoute,
+      currentStep: paradeRoute.steps[0],
+      completedStepIds: [],
+    });
+    const keywords = result.plan.primarySources.flatMap((source) => source.keywords.map((item) => item.keyword));
+    expect(keywords.some((value) => /rain|parade|procession|雨|游行|队伍/i.test(value))).toBe(true);
+    expect(keywords.some((value) => /industrial design|matte surface|monolithic geometric/i.test(value))).toBe(false);
+  });
+});

@@ -1,6 +1,7 @@
 import type { PlatformPlan, PlatformSource } from "@/types/routes";
 import type { Route, RouteStep } from "@/types/routes";
 import type { DesignState } from "@/types/convergence";
+import { derivePlanFromTheme } from "../card-synthesis";
 import { buildPlatformSearchUrl, PLATFORM_REGISTRY } from "./platform-registry";
 import {
   calibratePlatformQuery,
@@ -28,6 +29,16 @@ export function getMockPlatformPlan(
   ).toLowerCase();
 
   const combinedText = (stepText + " " + (state.brief.goal ?? "")).toLowerCase();
+
+  // Narrative subjects need the same subject-locked query set as the canvas
+  // synthesizer. Keep API regeneration from falling back to generic CMF terms.
+  if (/雨中|雨滴|雨幕|游行|队伍|行进|procession|parade|rain/.test(combinedText)) {
+    return derivePlanFromTheme(route, undefined, {
+      rawBrief: state.brief.goal ?? undefined,
+      strategy: state.direction.intent?.text ?? undefined,
+      priorities: state.direction.priorities.map((item) => item.text),
+    });
+  }
 
   const isDigital =
     stepText.includes("界面") ||
