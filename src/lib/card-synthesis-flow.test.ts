@@ -403,4 +403,124 @@ describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
     expect(rendered).toContain("推导概念画面");
   });
 
+  it("regenerating a blended card updates in-place without creating phantom ghost routes", () => {
+    // 1. Setup store with 2 themes
+    const mockRoutes: Route[] = [
+      {
+        id: "r1",
+        title: "【清透浅底】风味色块",
+        themeName: "清透浅底 · 风味色块",
+        focusDimension: "清透底色与色块比例",
+        startingPoint: "以浅底反衬风味色块",
+        coreProblem: "如何平衡留白与色块饱和度？",
+        purpose: "传达轻盈与清爽的风味辨识度",
+        pros: "现代、轻快",
+        cons: "需避免颜色过多",
+        recommendedReason: null,
+        alignmentScore: 92,
+        steps: [{ id: "r1-s1", title: "底色明度试验", question: "色块面积多少？", purpose: "确立视觉比例", acceptanceCriteria: ["留白大于60%"] }],
+      },
+      {
+        id: "r2",
+        title: "【原浆纸白】微肌理留白",
+        themeName: "原浆纸白 · 微肌理留白",
+        focusDimension: "纸浆微肌理",
+        startingPoint: "原生纸张触觉质地",
+        coreProblem: "如何不用大色块有高级感？",
+        purpose: "通过微弱光影建立品质",
+        pros: "亲和力佳",
+        cons: "公差控制难",
+        recommendedReason: null,
+        alignmentScore: 90,
+        steps: [{ id: "r2-s1", title: "压凹深度试验", question: "压凹多深？", purpose: "推敲手感", acceptanceCriteria: ["触手可及"] }],
+      },
+    ];
+
+    useSiftStore.setState({
+      routes: mockRoutes,
+      rawBrief: "气泡果茶包装",
+      customCards: [],
+      customEdges: [],
+      deletedNodeIds: [],
+    });
+
+    // 2. Add blank card, connect both themes
+    const cardId = useSiftStore.getState().addCustomCard({
+      id: "card-route-regen-test",
+      type: "route",
+      title: "空白主题",
+      position: { x: 900, y: 0 },
+      data: { isEmpty: true },
+    });
+    useSiftStore.getState().addCustomEdge({ id: "e1", source: "route-r1", target: cardId });
+    useSiftStore.getState().addCustomEdge({ id: "e2", source: "route-r2", target: cardId });
+
+    // 3. First synthesis
+    useSiftStore.getState().synthesizeCard(cardId);
+    const afterFirst = useSiftStore.getState();
+    const firstCard = afterFirst.customCards.find((c) => c.id === cardId)!;
+    const firstRouteId = (firstCard.data?.route as Route).id;
+    const firstThemeName = (firstCard.data?.route as Route).themeName;
+    const routeCountAfterFirst = afterFirst.routes.length;
+
+    expect(firstCard.data?.isBlended).toBe(true);
+    expect(firstRouteId).toBeTruthy();
+
+    // 4. Regenerate — "重新生成" — this is the critical test
+    useSiftStore.getState().synthesizeCard(cardId);
+    const afterSecond = useSiftStore.getState();
+    const secondCard = afterSecond.customCards.find((c) => c.id === cardId)!;
+    const secondRouteId = (secondCard.data?.route as Route).id;
+    const secondThemeName = (secondCard.data?.route as Route).themeName;
+
+    // The route ID must remain STABLE (no new phantom route)
+    expect(secondRouteId).toBe(firstRouteId);
+
+    // The routes array must NOT grow (no ghost routes)
+    expect(afterSecond.routes.length).toBe(routeCountAfterFirst);
+
+    // The content must actually change (blendGeneration++ ensures different template variant)
+    expect(secondThemeName).not.toBe(firstThemeName);
+
+    // The card itself is still in-place (same cardId, not a new card)
+    expect(afterSecond.customCards.filter((c) => c.id === cardId)).toHaveLength(1);
+
+    // 5. Regenerate a third time — still no ghosts
+    useSiftStore.getState().synthesizeCard(cardId);
+    const afterThird = useSiftStore.getState();
+    const thirdRouteId = (afterThird.customCards.find((c) => c.id === cardId)!.data?.route as Route).id;
+
+    expect(thirdRouteId).toBe(firstRouteId);
+    expect(afterThird.routes.length).toBe(routeCountAfterFirst);
+
+    // 6. Verify the card renders with action buttons
+    const finalCard = afterThird.customCards.find((c) => c.id === cardId)!;
+    let html = "";
+    expect(() => {
+      html = renderToString(
+        React.createElement(
+          ReactFlowProvider,
+          null,
+          React.createElement(RouteNode, {
+            id: finalCard.id,
+            data: { ...finalCard.data, title: finalCard.title },
+            selected: false,
+            type: "route",
+            zIndex: 0,
+            isConnectable: true,
+            xPos: 900,
+            yPos: 0,
+            dragging: false,
+          } as any)
+        )
+      );
+    }).not.toThrow();
+
+    // Action toolbar should be present
+    expect(html).toContain("选定此主题开始探索");
+    expect(html).toContain("视点推进");
+    expect(html).toContain("灵感检索");
+    expect(html).toContain("画面生成");
+  });
+
 });

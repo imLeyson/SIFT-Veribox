@@ -13,6 +13,10 @@ import {
   Compass,
   Eye,
   Layers,
+  Check,
+  Search,
+  Wand2,
+  ChevronRight,
 } from "lucide-react";
 
 export type RouteNodeData = {
@@ -95,6 +99,42 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
   const synthesizeCard = useSiftStore((s) => s.synthesizeCard);
   const collapsedNodeIds = useSiftStore((s) => s.collapsedNodeIds);
   const collapseAllNodes = useSiftStore((s) => s.collapseAllNodes);
+  const selectRoute = useSiftStore((s) => s.selectRoute);
+  const addCustomCard = useSiftStore((s) => s.addCustomCard);
+  const addCustomEdge = useSiftStore((s) => s.addCustomEdge);
+
+  const isSelected = selectedRouteId === route.id || `route-${selectedRouteId}` === id;
+
+  const handleSelectTheme = () => {
+    selectRoute(route.id);
+  };
+
+  /** Spawn a downstream card of a given type, connected from this route card */
+  const spawnDownstream = (type: "step" | "platformPlan" | "imageGen") => {
+    const suffix = Math.random().toString(36).slice(2, 6);
+    const ts = Date.now().toString(36);
+    const newId = `card-${type}-${ts}-${suffix}`;
+
+    // Find this card's position to place the new one to the right
+    const thisCard = customCards.find((c) => c.id === id);
+    const basePos = thisCard?.position ?? { x: 0, y: 0 };
+    const offsetY = downstreamNodeIds.length * 300;
+
+    addCustomCard({
+      id: newId,
+      type,
+      position: { x: basePos.x + 480, y: basePos.y + offsetY },
+      title: type === "step" ? "视点推进" : type === "platformPlan" ? "灵感检索" : "画面生成",
+      data: { isEmpty: true },
+    });
+    addCustomEdge({
+      id: `edge-${id}-${newId}`,
+      source: id,
+      target: newId,
+    });
+    // Auto-synthesize the new card immediately
+    setTimeout(() => synthesizeCard(newId), 50);
+  };
 
 
   const upstream = useMemo(
@@ -514,6 +554,65 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
 
             </div>
           </details>
+
+          {/* ── Action Toolbar: make this theme card fully usable ── */}
+          <div className="rounded-xl border border-stone-200/80 bg-gradient-to-b from-white/90 to-stone-50/80 p-2.5 space-y-2">
+            {/* Select theme as active */}
+            <button
+              type="button"
+              onClick={handleSelectTheme}
+              disabled={isSelected}
+              className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                isSelected
+                  ? "bg-indigo-100 text-indigo-700 border border-indigo-200/80 cursor-default"
+                  : "bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] text-white shadow-sm shadow-indigo-200"
+              }`}
+              title={isSelected ? "已选定为当前探索主题" : "选定此主题作为当前探索方向"}
+            >
+              {isSelected ? (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  <span>已选定为当前主题</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>选定此主题开始探索</span>
+                </>
+              )}
+            </button>
+
+            {/* Quick-derive downstream cards */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => spawnDownstream("step")}
+                className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10.5px] font-medium transition-colors cursor-pointer border border-stone-200/60"
+                title="展开视点推进"
+              >
+                <ChevronRight className="h-3 w-3 text-emerald-600" />
+                <span>视点推进</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => spawnDownstream("platformPlan")}
+                className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10.5px] font-medium transition-colors cursor-pointer border border-stone-200/60"
+                title="生成灵感检索方案"
+              >
+                <Search className="h-3 w-3 text-amber-600" />
+                <span>灵感检索</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => spawnDownstream("imageGen")}
+                className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10.5px] font-medium transition-colors cursor-pointer border border-stone-200/60"
+                title="生成概念画面"
+              >
+                <Wand2 className="h-3 w-3 text-violet-600" />
+                <span>画面生成</span>
+              </button>
+            </div>
+          </div>
 
           {/* Branch Fold / Chain Grouping */}
           {downstreamNodeIds.length > 0 && (

@@ -236,7 +236,24 @@ function deriveNewCardWithContext({
   }
 
   const upstreamNodes = upstreamNode ? [upstreamNode] : [];
-  const synthesized = synthesizeCardFromInputs(type, upstreamNodes, { state, rawBrief, routes });
+
+  // When spawning from a wire drag, resolve Brief context from the source node's data.
+  // The edge doesn't exist yet, so we look directly at the upstream node for chain-specific data.
+  let contextRawBrief = rawBrief;
+  let contextState = state;
+  if (upstreamNode) {
+    const nd = upstreamNode.data ?? {};
+    if (nd.rawBrief) contextRawBrief = nd.rawBrief;
+    if (nd.state) contextState = nd.state;
+    // Route cards from independent chains carry their own rawBrief/state
+    if (nd.route?.id && nd.rawBrief) contextRawBrief = nd.rawBrief;
+  }
+
+  const synthesized = synthesizeCardFromInputs(type, upstreamNodes, {
+    state: contextState,
+    rawBrief: contextRawBrief,
+    routes,
+  });
 
   return {
     card: {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSiftStore, resolveNodeContext, getUpstreamSummary } from "./convergence-store";
+import { createSiftStore, resolveNodeContext, resolveChainBriefContext, getUpstreamSummary } from "./convergence-store";
 import { EXAMPLES } from "./agent/examples";
 import { mockConvergence } from "./agent/convergence-mock";
 import type { ConvergenceInput, TurnResult } from "@/types/convergence";
@@ -539,5 +539,114 @@ describe("convergence session", () => {
     const stepSummary = getUpstreamSummary("card-step-test", store.getState());
     expect(stepSummary.hasStep).toBe(true);
     expect(stepSummary.labels[0]).toContain("4 视点推进");
+  });
+});
+
+describe("resolveChainBriefContext — multi-brief chain resolution", () => {
+  it("traces upstream edges to find the correct Brief for an independent chain", () => {
+    const store = createSiftStore(memoryStorage());
+
+    // Simulate two independent Brief chains on the canvas
+    // Chain A: brief-A → state-A → route-A
+    store.getState().addCustomCard({
+      id: "brief-A",
+      type: "brief",
+      position: { x: 0, y: 0 },
+      data: { rawBrief: "设计一款极简茶具", state: { brief: { goal: "茶具" } } },
+    });
+    store.getState().addCustomCard({
+      id: "state-A",
+      type: "state",
+      position: { x: 470, y: 0 },
+      data: { rawBrief: "设计一款极简茶具", state: { brief: { goal: "茶具" }, status: "confirmed" } },
+    });
+    store.getState().addCustomCard({
+      id: "route-A",
+      type: "route",
+      position: { x: 940, y: 0 },
+      data: { rawBrief: "设计一款极简茶具", route: { id: "r-a", title: "茶道极简" }, isEmpty: false },
+    });
+    store.getState().addCustomEdge({ id: "e-ba", source: "brief-A", target: "state-A" });
+    store.getState().addCustomEdge({ id: "e-sa", source: "state-A", target: "route-A" });
+
+    // Chain B: brief-B → state-B → route-B
+    store.getState().addCustomCard({
+      id: "brief-B",
+      type: "brief",
+      position: { x: 0, y: 600 },
+      data: { rawBrief: "设计一款儿童玩具包装", state: { brief: { goal: "儿童玩具" } } },
+    });
+    store.getState().addCustomCard({
+      id: "state-B",
+      type: "state",
+      position: { x: 470, y: 600 },
+      data: { rawBrief: "设计一款儿童玩具包装", state: { brief: { goal: "儿童玩具" }, status: "confirmed" } },
+    });
+    store.getState().addCustomCard({
+      id: "route-B",
+      type: "route",
+      position: { x: 940, y: 600 },
+      data: { rawBrief: "设计一款儿童玩具包装", route: { id: "r-b", title: "趣味积木" }, isEmpty: false },
+    });
+    store.getState().addCustomEdge({ id: "e-bb", source: "brief-B", target: "state-B" });
+    store.getState().addCustomEdge({ id: "e-sb", source: "state-B", target: "route-B" });
+
+    // Create a blank route card connected to route-B (chain B downstream)
+    store.getState().addCustomCard({
+      id: "blank-from-B",
+      type: "route",
+      position: { x: 1410, y: 600 },
+      data: { isEmpty: true },
+    });
+    store.getState().addCustomEdge({ id: "e-rb", source: "route-B", target: "blank-from-B" });
+
+    const s = store.getState();
+
+    // Resolve chain context for blank-from-B → should find Brief B's rawBrief, NOT Brief A
+    const ctx = resolveChainBriefContext("blank-from-B", s);
+    expect(ctx.rawBrief).toBe("设计一款儿童玩具包装");
+
+    // Resolve chain context for route-A → should find Brief A
+    const ctxA = resolveChainBriefContext("route-A", s);
+    expect(ctxA.rawBrief).toBe("设计一款极简茶具");
+
+    // Resolve from state-B directly → should have both rawBrief and state
+    const ctxState = resolveChainBriefContext("state-B", s);
+    expect(ctxState.rawBrief).toBe("设计一款儿童玩具包装");
+    expect(ctxState.state).toBeTruthy();
+    expect(ctxState.state.brief.goal).toBe("儿童玩具");
+  });
+
+  it("falls back to primary pipeline brief when tracing reaches id='brief'", () => {
+    const store = createSiftStore(memoryStorage());
+    store.getState().setRawBrief("全局简报内容");
+
+    // No custom cards, but there's a custom edge from "brief" → "some-route"
+    store.getState().addCustomCard({
+      id: "some-route",
+      type: "route",
+      position: { x: 940, y: 0 },
+      data: { isEmpty: true },
+    });
+    store.getState().addCustomEdge({ id: "e-1", source: "brief", target: "some-route" });
+
+    const ctx = resolveChainBriefContext("some-route", store.getState());
+    expect(ctx.rawBrief).toBe("全局简报内容");
+  });
+
+  it("returns null when no chain-specific context is found", () => {
+    const store = createSiftStore(memoryStorage());
+
+    // Orphan card with no edges
+    store.getState().addCustomCard({
+      id: "orphan",
+      type: "route",
+      position: { x: 0, y: 0 },
+      data: { isEmpty: true },
+    });
+
+    const ctx = resolveChainBriefContext("orphan", store.getState());
+    expect(ctx.rawBrief).toBeNull();
+    expect(ctx.state).toBeNull();
   });
 });

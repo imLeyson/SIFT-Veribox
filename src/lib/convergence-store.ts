@@ -850,12 +850,17 @@ export function createSiftStore(providedStorage?: StateStorage) {
             .map((srcId) => resolveNodeContext(srcId, state))
             .filter((n): n is ResolvedNodeContext => Boolean(n));
 
+          // Resolve chain-specific Brief context by traversing edges upstream.
+          // This ensures each independent Brief chain uses its own rawBrief/state
+          // instead of always falling back to the global singleton.
+          const chainCtx = resolveChainBriefContext(cardId, state);
+
           const synthesized = synthesizeCardFromInputs(
             targetCard.type as ToolType,
             upstreamNodes,
             {
-              state: state.state,
-              rawBrief: state.rawBrief,
+              state: chainCtx.state ?? state.state,
+              rawBrief: chainCtx.rawBrief ?? state.rawBrief,
               routes: state.routes,
             }
           );
@@ -871,13 +876,39 @@ export function createSiftStore(providedStorage?: StateStorage) {
           let nextRoutes = state.routes;
           if (synthesized.data?.route) {
             const rawRoute = synthesized.data.route as Route;
-            // Harmonize route id with target card id for direct edge/step consistency
+
+            // Determine a STABLE route ID for this card:
+            // If the card already owns a route, reuse that ID so regeneration
+            // replaces in-place instead of spawning a phantom pipeline card.
+            const existingRouteId = (targetCard.data?.route as Route | undefined)?.id;
+            const stableId =
+              targetCard.type === "route"
+                ? (existingRouteId || targetCard.id)
+                : rawRoute.id;
+
+            // Remove the OLD route from the routes array (if the generated ID
+            // differs from the stable ID, the old entry would become a ghost).
+            if (existingRouteId && existingRouteId !== stableId) {
+              nextRoutes = nextRoutes.filter((r) => r.id !== existingRouteId);
+            }
+
+            // Rewrite route and step IDs to use the stable ID
             const newRoute: Route = {
               ...rawRoute,
-              id: targetCard.type === "route" ? (rawRoute.id || targetCard.id) : rawRoute.id,
+              id: stableId,
+              steps: (rawRoute.steps ?? []).map((s, idx) => ({
+                ...s,
+                id: s.id.startsWith(stableId) ? s.id : `${stableId}-s${idx + 1}`,
+              })),
             };
             synthesized.data.route = newRoute;
 
+            // Also clean up any leftover ghost with the raw generated ID
+            if (rawRoute.id !== stableId) {
+              nextRoutes = nextRoutes.filter((r) => r.id !== rawRoute.id);
+            }
+
+            // Upsert the route with the stable ID
             if (!nextRoutes.some((r) => r.id === newRoute.id)) {
               nextRoutes = [...nextRoutes, newRoute];
             } else {
@@ -1364,6 +1395,87 @@ export function resolveNodeContext(
   }
 
   return null;
+}
+
+/**
+ * 沿着 customEdges 向上游递归追溯（BFS），找到与当前卡片所在链路上
+ * 最近的 Brief 或 State 节点的 rawBrief 和 state 数据。
+ * 这使得多条 Brief 链各自拥有独立的上下文，而不是全部回退到全局单例。
+ */
+export function resolveChainBriefContext(
+  cardId: string,
+  store: {
+    customEdges: CustomEdgeInput[];
+    customCards: CustomCard[];
+    rawBrief?: string;
+    state?: any;
+  },
+): { rawBrief: string | null; state: any | null } {
+  const visited = new Set<string>();
+  const queue = [cardId];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (visited.has(current)) continue;
+    visited.add(current);
+
+    // Check customCards for brief/state/route nodes carrying chain-specific data
+    const card = store.customCards?.find((c) => c.id === current);
+    if (card) {
+      if (card.type === "brief" && card.data?.rawBrief) {
+        return {
+          rawBrief: card.data.rawBrief as string,
+          state: card.data.state ?? null,
+        };
+      }
+      if (card.type === "state" && card.data?.state) {
+        return {
+          rawBrief: (card.data.rawBrief as string) ?? null,
+          state: card.data.state,
+        };
+      }
+      if (card.type === "ask" && card.data?.rawBrief) {
+        return {
+          rawBrief: card.data.rawBrief as string,
+          state: card.data.state ?? null,
+        };
+      }
+      // Route cards spawned by independent-chain-runner also carry rawBrief/state
+      if (card.type === "route" && card.data?.rawBrief) {
+        return {
+          rawBrief: card.data.rawBrief as string,
+          state: card.data.state ?? null,
+        };
+      }
+    }
+
+    // Check if this is the primary pipeline brief node
+    if (current === "brief") {
+      return {
+        rawBrief: store.rawBrief ?? null,
+        state: store.state ?? null,
+      };
+    }
+
+    // Check if this is the primary pipeline direction/state node
+    if (current === "direction") {
+      return {
+        rawBrief: store.rawBrief ?? null,
+        state: store.state ?? null,
+      };
+    }
+
+    // Continue traversing upstream via edges
+    const parentEdges = store.customEdges.filter((e) => e.target === current);
+    for (const edge of parentEdges) {
+      if (!visited.has(edge.source)) {
+        queue.push(edge.source);
+      }
+    }
+  }
+
+  // No chain-specific context found — caller should fall back to global store
+  return { rawBrief: null, state: null };
 }
 
 export interface UpstreamSummary {
