@@ -282,6 +282,15 @@ describe("convergence session", () => {
     store.getState().selectRoute(dupCard!.data!.route.id);
     expect(store.getState().selectedRouteId).toBe(dupCard!.data!.route.id);
     expect(store.getState().activeStepId).toBe(dupCard!.data!.route.steps[0].id);
+
+    store.getState().deleteNodeById(cardId);
+    expect(store.getState().customCards.find((card) => card.id === cardId)).toBeUndefined();
+    expect(store.getState().routes.some((route) => route.id === "route-custom-1")).toBe(false);
+    expect(store.getState().selectedRouteId).toBe(dupCard!.data!.route.id);
+
+    store.getState().deleteNodeById(dupCardId!);
+    expect(store.getState().routes.some((route) => route.id === dupCard!.data!.route.id)).toBe(false);
+    expect(store.getState().selectedRouteId).toBeNull();
   });
 
   it("supports creating, updating, and resizing image cards for visual reference", () => {
@@ -489,7 +498,7 @@ describe("convergence session", () => {
 
     const resolvedStep = resolveNodeContext("step-r1", s);
     expect(resolvedStep?.type).toBe("step");
-    expect(resolvedStep?.label).toContain("4 视点推进");
+    expect(resolvedStep?.label).toContain("探索验证");
     expect(resolvedStep?.data?.step?.title).toBe("纸张克重与压凹试验");
 
     const resolvedPlan = resolveNodeContext("plan-r1-s1", s);
@@ -538,7 +547,7 @@ describe("convergence session", () => {
 
     const stepSummary = getUpstreamSummary("card-step-test", store.getState());
     expect(stepSummary.hasStep).toBe(true);
-    expect(stepSummary.labels[0]).toContain("4 视点推进");
+    expect(stepSummary.labels[0]).toContain("探索验证");
   });
 });
 

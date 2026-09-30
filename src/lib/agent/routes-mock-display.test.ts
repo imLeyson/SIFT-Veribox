@@ -9,6 +9,6 @@ describe("mock theme display", () => {
       confirmedDimensions: [],
     } as any;
     const routes = getMockRoutes("可持续材料产品", state).routes;
-    expect(routes.every((route) => !/《[^》]+》\s+[A-Za-z]/.test(route.themeName ?? ""))).toBe(true);
+    expect(routes.every((route) => !/[《》]/.test(route.themeName ?? ""))).toBe(true);
   });
 });

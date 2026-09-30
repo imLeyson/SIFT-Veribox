@@ -214,7 +214,7 @@ describe("Card Synthesis & Upstream Blending", () => {
     expect(routeNote.color).toBe("amber");
 
     const stepNote = deriveNoteFromNode(mockThemeA.steps[0], "step");
-    expect(stepNote.title).toContain("视点观察手记");
+    expect(stepNote.title).toContain("探索验证手记");
     expect(stepNote.content).toContain("【当前切入视点】");
     expect(stepNote.color).toBe("rose");
   });

@@ -7,7 +7,6 @@ import {
   Controls,
   MarkerType,
   ReactFlow,
-  ReactFlowProvider,
   useNodesState,
   useReactFlow,
   type Connection,
@@ -29,7 +28,6 @@ import type { Route, PlatformPlan } from "@/types/routes";
 import { synthesizeCardFromInputs } from "@/lib/card-synthesis";
 import { processImageForCanvas } from "@/lib/image-utils";
 import {
-  Plus,
   FileText,
   HelpCircle,
   ShieldCheck,
@@ -63,22 +61,18 @@ function deriveNewCardWithContext({
   targetPos,
   sourceNodeId,
   routes,
-  selectedRouteId,
   customCards,
   state,
   rawBrief,
-  activeStepId,
   platformPlans,
 }: {
   type: ToolType;
   targetPos: { x: number; y: number };
   sourceNodeId?: string;
   routes: Route[];
-  selectedRouteId: string | null;
   customCards: CustomCard[];
   state: any;
   rawBrief: string;
-  activeStepId: string | null;
   platformPlans: PlatformPlan[];
 }): {
   card: Omit<CustomCard, "id"> & { id?: string };
@@ -95,20 +89,6 @@ function deriveNewCardWithContext({
           data: {
             isEmpty: true,
             index: routes.length,
-          },
-        },
-      };
-    }
-
-    if (type === "step") {
-      return {
-        card: {
-          id: `card-step-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-          type: "step",
-          position: targetPos,
-          title: "空白视点待推导",
-          data: {
-            isEmpty: true,
           },
         },
       };
@@ -266,7 +246,7 @@ function deriveNewCardWithContext({
       data: {
         ...synthesized.data,
         index: routes.length,
-        isEmpty: !sourceNodeId && (type === "route" || type === "step" || type === "platformPlan" || type === "imageGen"),
+        isEmpty: !sourceNodeId && (type === "route" || type === "platformPlan" || type === "imageGen"),
       },
     },
   };
@@ -290,15 +270,12 @@ function FlowInner() {
   const addCustomEdge = useSiftStore((s) => s.addCustomEdge);
   const state = useSiftStore((s) => s.state);
   const rawBrief = useSiftStore((s) => s.rawBrief);
-  const activeStepId = useSiftStore((s) => s.activeStepId);
   const deleteNodeById = useSiftStore((s) => s.deleteNodeById);
   const deleteCustomEdge = useSiftStore((s) => s.deleteCustomEdge);
-  const updateCustomCard = useSiftStore((s) => s.updateCustomCard);
   const synthesizeCard = useSiftStore((s) => s.synthesizeCard);
-  const collapsedNodeIds = useSiftStore((s) => s.collapsedNodeIds);
   const collapseAllNodes = useSiftStore((s) => s.collapseAllNodes);
 
-  const { fitView, screenToFlowPosition, getViewport, setCenter, getNode } = useReactFlow();
+  const { fitView, screenToFlowPosition, setCenter, getNode } = useReactFlow();
   const followingPeer = useFollowingPeer();
   const draggingNodeIdRef = useRef<string | null>(null);
 
@@ -741,11 +718,9 @@ function FlowInner() {
         targetPos,
         sourceNodeId,
         routes,
-        selectedRouteId,
         customCards,
         state,
         rawBrief,
-        activeStepId,
         platformPlans,
       });
 
@@ -769,11 +744,9 @@ function FlowInner() {
       setPosition,
       addCustomEdge,
       routes,
-      selectedRouteId,
       customCards,
       state,
       rawBrief,
-      activeStepId,
       platformPlans,
     ],
   );
@@ -1467,11 +1440,7 @@ function FlowInner() {
   );
 }
 
-export function InfiniteCanvas({
-  onOpenDossier: _onOpenDossier,
-}: {
-  onOpenDossier?: () => void;
-} = {}) {
+export function InfiniteCanvas() {
   return (
     <div className="h-full w-full">
       <FlowInner />

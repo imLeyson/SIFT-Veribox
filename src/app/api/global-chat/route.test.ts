@@ -86,4 +86,51 @@ describe("POST /api/global-chat endpoint", () => {
     expect(data.reply).toContain("极简几何");
     expect(data.reply).toContain("温暖人本");
   });
+
+  it("defaults old requests to co-create and returns the shared result contract", async () => {
+    const res = await handleGlobalChat(req({
+      context: { goal: "便携咖啡器具" },
+      messages: [{ role: "user", content: "继续探索" }],
+    }));
+    const data = await res.json();
+    expect(data.mode).toBe("co_create");
+    expect(data.title).toBeTruthy();
+    expect(data.claims).toEqual(expect.any(Array));
+    expect(data.suggestedArtifacts).toEqual(expect.any(Array));
+  });
+
+  it("rejects unsupported task modes", async () => {
+    const res = await handleGlobalChat(req({
+      mode: "approve",
+      context: {},
+      messages: [{ role: "user", content: "比较" }],
+    }));
+    expect(res.status).toBe(400);
+  });
+
+  it("keeps judge results comparative and preserves supplied source ids", async () => {
+    const res = await handleGlobalChat(req({
+      mode: "judge",
+      sourceCardIds: ["route-a", "route-b"],
+      context: { routes: [{ title: "方向甲", pros: "轻" }, { title: "方向乙", cons: "成本" }] },
+      messages: [{ role: "user", content: "比较方向" }],
+    }));
+    const data = await res.json();
+    expect(data.mode).toBe("judge");
+    expect(data.reply).toContain("不替你选择");
+    expect(data.reply).not.toContain("当前主推");
+    expect(data.claims[0].sourceCardIds).toEqual(["route-a", "route-b"]);
+    expect(data).not.toHaveProperty("selectedRouteId");
+  });
+
+  it("returns distinguishable synthesize and co-create fallbacks", async () => {
+    const base = { context: { goal: "便携咖啡器具", notes: ["保留纸感", "减少塑料感"] }, messages: [{ role: "user" as const, content: "继续" }] };
+    const coCreate = await (await handleGlobalChat(req(base))).json();
+    const synthesize = await (await handleGlobalChat(req({ ...base, mode: "synthesize" }))).json();
+    expect(coCreate.mode).toBe("co_create");
+    expect(coCreate.reply).toContain("多个设计假设");
+    expect(synthesize.mode).toBe("synthesize");
+    expect(synthesize.reply).toContain("保留纸感");
+    expect(synthesize.reply).not.toBe(coCreate.reply);
+  });
 });

@@ -4,6 +4,12 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useSiftStore } from "@/lib/convergence-store";
 import type { GlobalChatProjectContext, GlobalChatMessage } from "@/lib/agent/global-chat";
 import {
+  AITaskModeLabels,
+  collectGlobalChatSourceCardIds,
+  type AITaskMode,
+  type AITaskResult,
+} from "@/lib/agent/ai-task";
+import {
   Sparkles,
   Send,
   RotateCcw,
@@ -27,7 +33,9 @@ interface MessageItem {
   id: string;
   role: "user" | "assistant";
   content: string;
-  time: string;
+  task?: AITaskResult;
+  sourceCardIds?: string[];
+  savedTypes?: Array<"note" | "route">;
 }
 
 /**
@@ -51,8 +59,10 @@ const QUICK_ACTIONS = [
   },
 ];
 
+const TASK_MODES: AITaskMode[] = ["co_create", "synthesize", "judge"];
+
 export function GlobalChatView({ onClose }: GlobalChatViewProps) {
-  const { state, rawBrief, routes, selectedRouteId, customCards, stepNotes } = useSiftStore();
+  const { state, rawBrief, routes, selectedRouteId, customCards, stepNotes, addCustomCard } = useSiftStore();
 
   const [currentProjectId, setCurrentProjectId] = useState<string>(() => getActiveProjectId());
   const [messages, setMessages] = useState<MessageItem[]>(() => {
@@ -61,16 +71,28 @@ export function GlobalChatView({ onClose }: GlobalChatViewProps) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [taskMode, setTaskMode] = useState<AITaskMode>("co_create");
+  const savingArtifactKeys = useRef(new Set<string>());
+  const requestEpochRef = useRef(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const sourceCardIds = useMemo(
+    () => collectGlobalChatSourceCardIds(routes, customCards),
+    [routes, customCards],
+  );
 
   // Synchronize messages when project changes
   useEffect(() => {
-    const handleProjectChanged = (e: any) => {
-      const targetId = e.detail?.projectId || getActiveProjectId();
+    const handleProjectChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ projectId?: string }>).detail;
+      const targetId = detail?.projectId || getActiveProjectId();
       setCurrentProjectId(targetId);
       setMessages(getProjectChatHistory<MessageItem>(targetId));
+      setLoading(false);
+      setTaskMode("co_create");
+      savingArtifactKeys.current.clear();
+      requestEpochRef.current += 1;
     };
 
     window.addEventListener("sift-project-changed", handleProjectChanged as EventListener);
@@ -138,11 +160,22 @@ export function GlobalChatView({ onClose }: GlobalChatViewProps) {
     const textToSend = (userText || input).trim();
     if (!textToSend || loading) return;
 
+    const requestProjectId = currentProjectId;
+    const requestMode = taskMode;
+    const requestSourceCardIds = [...sourceCardIds];
+    const requestContext = projectContext;
+    const requestEpoch = ++requestEpochRef.current;
+    const nextMessageId = (prefix: string) => {
+      const id = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      return `${prefix}-${id}`;
+    };
+
     const userMessage: MessageItem = {
-      id: `usr-${Date.now()}`,
+      id: nextMessageId("usr"),
       role: "user",
       content: textToSend,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
     const nextHistory = [...messages, userMessage];
@@ -160,8 +193,10 @@ export function GlobalChatView({ onClose }: GlobalChatViewProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          context: projectContext,
+          context: requestContext,
           messages: apiMessages,
+          mode: requestMode,
+          sourceCardIds: requestSourceCardIds,
         }),
       });
 
@@ -170,21 +205,29 @@ export function GlobalChatView({ onClose }: GlobalChatViewProps) {
       }
 
       const data = await res.json();
+      if (getActiveProjectId() !== requestProjectId || requestEpochRef.current !== requestEpoch) return;
       const assistantMessage: MessageItem = {
-        id: `asst-${Date.now()}`,
+        id: nextMessageId("asst"),
         role: "assistant",
         content: data.reply || "未能生成有效回复，请重试。",
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        sourceCardIds: requestSourceCardIds,
+        task: {
+          mode: data.mode || requestMode,
+          title: data.title || "AI 草案",
+          reply: data.reply || "",
+          claims: data.claims || [],
+          suggestedArtifacts: data.suggestedArtifacts || [],
+        },
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
       console.error("[GlobalChat error]:", err);
+      if (getActiveProjectId() !== requestProjectId || requestEpochRef.current !== requestEpoch) return;
       const errorMessage: MessageItem = {
-        id: `err-${Date.now()}`,
+        id: nextMessageId("err"),
         role: "assistant",
         content: "网络波动或响应超时，请再试一次。",
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -194,6 +237,7 @@ export function GlobalChatView({ onClose }: GlobalChatViewProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void handleSend();
@@ -211,6 +255,72 @@ export function GlobalChatView({ onClose }: GlobalChatViewProps) {
     setMessages([]);
     clearProjectChatHistory(currentProjectId);
     setInput("");
+    setTaskMode("co_create");
+    savingArtifactKeys.current.clear();
+    requestEpochRef.current += 1;
+  };
+
+  const isArtifactSaved = (message: MessageItem, type: "note" | "route") =>
+    Boolean(
+      customCards.some(
+        (card) =>
+          card.data?.sourceMessageId === message.id && card.data?.artifactType === type,
+      ),
+    );
+
+  const saveAssistantDraft = (message: MessageItem, type: "note" | "route") => {
+    if (!message.task || isArtifactSaved(message, type)) return;
+    const saveKey = `${message.id}:${type}`;
+    if (savingArtifactKeys.current.has(saveKey)) return;
+    savingArtifactKeys.current.add(saveKey);
+    const artifact = message.task.suggestedArtifacts.find((item) => item.type === type) ?? {
+      type,
+      title: message.task.title,
+      content: message.task.reply,
+    };
+    const sourceIds = message.sourceCardIds ?? [];
+    const routeId = `ai-route-${message.id}`;
+    const route = type === "route"
+      ? {
+          id: routeId,
+          title: artifact.title,
+          themeName: artifact.title,
+          visualSnapshot: artifact.content.slice(0, 240),
+          startingPoint: "来自 AI 阶段性草案，待设计师继续验证",
+          coreProblem: "将草案转化为可验证的设计方向",
+          purpose: artifact.content,
+          pros: "待补充",
+          cons: "待验证",
+          recommendedReason: null,
+          steps: [],
+        }
+      : undefined;
+    addCustomCard({
+      id: `ai-${message.id}-${type}`,
+      type,
+      title: artifact.title,
+      content: artifact.content,
+      position: { x: 720 + customCards.length * 28, y: 180 + customCards.length * 20 },
+      data: {
+        ...(route ? { route } : {}),
+        taskMode: message.task.mode,
+        sourceCardIds: sourceIds,
+        generatedAt: new Date().toISOString(),
+        claims: message.task.claims,
+        originalReplySummary: message.task.reply.slice(0, 240),
+        sourceMessageId: message.id,
+        artifactType: type,
+        isDraft: true,
+      },
+    });
+    setMessages((prev) =>
+      prev.map((item) =>
+        item.id === message.id
+          ? { ...item, savedTypes: [...new Set([...(item.savedTypes ?? []), type])] }
+          : item,
+      ),
+    );
+    savingArtifactKeys.current.delete(saveKey);
   };
 
   const hasMessages = messages.length > 0;
@@ -224,18 +334,22 @@ export function GlobalChatView({ onClose }: GlobalChatViewProps) {
         <div className="flex items-center gap-1">
           {hasMessages && (
             <button
+              type="button"
               onClick={handleResetChat}
               className="p-1 text-stone-400 hover:text-stone-700 rounded hover:bg-stone-100/70 transition-colors"
               title="清空对话"
+              aria-label="清空对话"
             >
               <RotateCcw className="h-3 w-3" />
             </button>
           )}
           {onClose && (
             <button
+              type="button"
               onClick={onClose}
               className="p-1 text-stone-400 hover:text-stone-700 rounded hover:bg-stone-100/70 transition-colors"
               title="关闭顾问面板"
+              aria-label="关闭策略顾问"
             >
               <X className="h-3 w-3" />
             </button>
@@ -261,6 +375,7 @@ export function GlobalChatView({ onClose }: GlobalChatViewProps) {
                 {QUICK_ACTIONS.map((action) => (
                   <button
                     key={action.label}
+                    type="button"
                     onClick={() => handleSend(action.prompt)}
                     className="w-full text-left px-3 py-2 rounded-lg bg-stone-50 border border-stone-200/80 hover:border-stone-400 hover:bg-stone-100/60 text-xs text-stone-700 font-medium transition-all"
                   >
@@ -290,9 +405,11 @@ export function GlobalChatView({ onClose }: GlobalChatViewProps) {
                         顾问分析
                       </span>
                       <button
+                        type="button"
                         onClick={() => handleCopy(msg.id, msg.content)}
                         className="text-stone-400 hover:text-stone-700 transition-colors p-0.5 rounded"
                         title="复制内容"
+                        aria-label="复制顾问回复"
                       >
                         {copiedId === msg.id ? (
                           <Check className="h-2.5 w-2.5 text-emerald-600" />
@@ -304,6 +421,29 @@ export function GlobalChatView({ onClose }: GlobalChatViewProps) {
                     <div className="text-xs leading-relaxed space-y-1">
                       {renderFormattedMessage(msg.content, (code) => handleCopy(msg.id, code))}
                     </div>
+                    {msg.task && (
+                      <div className="pt-2 space-y-1.5 border-t border-stone-200/70">
+                        <div className="text-[10px] text-stone-500">{AITaskModeLabels[msg.task.mode]} · 草案</div>
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => saveAssistantDraft(msg, "note")}
+                            disabled={isArtifactSaved(msg, "note")}
+                            className="px-2 py-1 rounded-md border border-stone-300 text-[10px] text-stone-700 hover:bg-white disabled:opacity-50"
+                          >
+                            {isArtifactSaved(msg, "note") ? "已保存便签" : "保存为便签"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => saveAssistantDraft(msg, "route")}
+                            disabled={isArtifactSaved(msg, "route")}
+                            className="px-2 py-1 rounded-md border border-stone-300 text-[10px] text-stone-700 hover:bg-white disabled:opacity-50"
+                          >
+                            {isArtifactSaved(msg, "route") ? "已保存方向卡" : "保存为方向卡"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -325,6 +465,7 @@ export function GlobalChatView({ onClose }: GlobalChatViewProps) {
           {QUICK_ACTIONS.map((action) => (
             <button
               key={action.label}
+              type="button"
               onClick={() => handleSend(action.prompt)}
               disabled={loading}
               className="shrink-0 px-2 py-0.5 rounded-md bg-stone-50 border border-stone-200/80 hover:border-stone-400 text-[10px] text-stone-600 hover:text-stone-900 transition-all disabled:opacity-40"
@@ -336,24 +477,42 @@ export function GlobalChatView({ onClose }: GlobalChatViewProps) {
       )}
 
       {/* Input */}
-      <div className="p-2 border-t border-stone-200 flex items-end gap-1.5 shrink-0">
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="向顾问提问…"
-          rows={1}
-          className="flex-1 max-h-20 resize-none bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs text-stone-800 focus:outline-none focus:border-stone-400 focus:bg-white placeholder:text-stone-400 leading-normal"
-        />
-        <button
-          onClick={() => handleSend()}
-          disabled={!input.trim() || loading}
-          className="p-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 active:scale-95 text-white transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
-          title="发送 (Enter)"
-        >
-          <Send className="h-3.5 w-3.5" />
-        </button>
+      <div className="p-2 border-t border-stone-200 shrink-0 space-y-1.5">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar" role="group" aria-label="本次任务模式">
+          {TASK_MODES.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              aria-pressed={taskMode === mode}
+              onClick={() => setTaskMode(mode)}
+              className={`shrink-0 px-2 py-1 rounded-md text-[10px] transition-colors ${taskMode === mode ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-100"}`}
+            >
+              {AITaskModeLabels[mode]}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-end gap-1.5">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="向顾问提问…"
+            rows={1}
+            aria-label="向策略顾问提问"
+            className="flex-1 max-h-20 resize-none bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs text-stone-800 focus:outline-none focus:border-stone-400 focus:bg-white placeholder:text-stone-400 leading-normal"
+          />
+          <button
+            type="button"
+            onClick={() => handleSend()}
+            disabled={!input.trim() || loading}
+            className="p-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 active:scale-95 text-white transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+            title="发送 (Enter)"
+            aria-label="发送消息"
+          >
+            <Send className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -380,8 +539,10 @@ function renderFormattedMessage(content: string, onCopyCode?: (code: string) => 
               <span>PROMPT</span>
               {onCopyCode && (
                 <button
+                  type="button"
                   onClick={() => onCopyCode(codeText)}
                   className="hover:text-stone-200 transition-colors flex items-center gap-0.5"
+                  aria-label="复制提示词"
                 >
                   <Copy className="h-2.5 w-2.5" />
                   <span>复制</span>

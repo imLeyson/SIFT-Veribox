@@ -51,7 +51,7 @@ export function Workspace() {
   return (
     <ReactFlowProvider>
       <main className="flex h-dvh flex-col overflow-hidden">
-        <header className="z-10 flex h-12 items-center justify-between border-b border-stone-200/80 bg-white/80 px-4 backdrop-blur-md select-none sm:px-5">
+        <header className="z-10 flex h-12 items-center justify-between border-b border-stone-200/80 bg-white/80 px-5 backdrop-blur-md select-none">
           <div className="flex items-center gap-2.5">
             {/* Brand Logo - clean, confident, restrained */}
             <span className="font-serif font-black tracking-wider text-base text-stone-900 select-none">
@@ -66,6 +66,8 @@ export function Workspace() {
             {/* Strategy Advisor Drawer Toggle */}
             <button
               type="button"
+              aria-pressed={advisorOpen}
+              aria-label={advisorOpen ? "关闭策略顾问" : "打开策略顾问"}
               onClick={() => setAdvisorOpen(!advisorOpen)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer select-none ${
                 advisorOpen
@@ -150,9 +152,7 @@ export function Workspace() {
       <div className="relative min-h-0 flex-1 flex">
         <div className="relative min-h-0 flex-1">
           <CanvasErrorBoundary>
-            <InfiniteCanvas
-              onOpenDossier={() => setDossierOpen(true)}
-            />
+            <InfiniteCanvas />
           </CanvasErrorBoundary>
         </div>
 

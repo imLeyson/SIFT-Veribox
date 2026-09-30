@@ -125,7 +125,7 @@ describe("routes agent generation", () => {
 
     expect(normalized.routes).toHaveLength(3);
     expect(normalized.routes[0].title).not.toBe("自然");
-    expect(normalized.routes[0].title).toMatch(/转译与落地法/);
+    expect(normalized.routes[0].title).toBe("天然材质");
     expect(normalized.routes[0].focusDimension).toBeTruthy();
     expect(normalized.routes[0].feasibility).toBe("high");
     expect(normalized.routes[0].steps.length).toBeGreaterThanOrEqual(3);
@@ -316,7 +316,7 @@ describe("routes agent generation", () => {
         state: confirmedState,
       },
     );
-    expect(normalized.routes.map((route) => route.themeName)).toEqual(["《木纹触点》", "《镜面回声》", "《折线借景》"]);
+    expect(normalized.routes.map((route) => route.themeName)).toEqual(["木纹触点", "镜面回声", "折线借景"]);
   });
 
   it("generates pet-anchored fallback routes and steps for pet visual briefs", () => {
@@ -342,7 +342,7 @@ describe("routes agent generation", () => {
     expect(petNames.every((name) => !/[A-Z]{3,}/.test(name))).toBe(true);
 
     // Titles & snapshots must refer to warm healing / pet identity
-    expect(petNormalized.routes[0].title).toBe("350g 棉柔纸微触感 × 浅浮雕无墨微压凹");
+    expect(petNormalized.routes[0].title).toBe("棉柔纸微触感与浅浮雕无墨微凹");
     expect(petNormalized.routes[0].visualSnapshot).toContain("陪伴温度");
     expect(petNormalized.routes[0].visualSnapshot).not.toContain("罐身大面积纯白原浆棉纸");
 

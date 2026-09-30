@@ -237,6 +237,97 @@ describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
     expect(renderedPlanPopulated).not.toContain("4 灵感检索");
   });
 
+  it("renders judge synthesis as a comparison draft without a fallback theme", () => {
+    const routes: Route[] = [
+      {
+        id: "judge-r1",
+        title: "方向甲",
+        themeName: "方向甲",
+        startingPoint: "轮廓切入",
+        coreProblem: "如何保持识别度？",
+        purpose: "验证轮廓",
+        pros: "识别度明确",
+        cons: "材质风险待验证",
+        recommendedReason: null,
+        steps: [],
+      },
+      {
+        id: "judge-r2",
+        title: "方向乙",
+        themeName: "方向乙",
+        startingPoint: "触感切入",
+        coreProblem: "如何控制成本？",
+        purpose: "验证触感",
+        pros: "触感有记忆点",
+        cons: "工艺证据不足",
+        recommendedReason: null,
+        steps: [],
+      },
+    ];
+
+    useSiftStore.setState({
+      routes,
+      customCards: [],
+      customEdges: [],
+      selectedRouteId: null,
+      recommendedRouteId: null,
+      deletedNodeIds: [],
+    });
+
+    const cardId = useSiftStore.getState().addCustomCard({
+      id: "judge-draft-card",
+      type: "route",
+      title: "空白主题待推导",
+      position: { x: 900, y: 300 },
+      data: { isEmpty: true },
+    });
+    useSiftStore.getState().addCustomEdge({
+      id: "judge-edge-a",
+      source: "route-judge-r1",
+      target: cardId,
+    });
+    useSiftStore.getState().addCustomEdge({
+      id: "judge-edge-b",
+      source: "route-judge-r2",
+      target: cardId,
+    });
+
+    expect(useSiftStore.getState().synthesizeCard(cardId, { mode: "judge" })).toBe(true);
+    const card = useSiftStore.getState().customCards.find((item) => item.id === cardId)!;
+    expect(card.data?.taskMode).toBe("judge");
+    expect(card.data?.isDraft).toBe(true);
+    expect(card.content).toContain("方向甲");
+
+    const renderedHtml = renderToString(
+      React.createElement(
+        ReactFlowProvider,
+        null,
+        React.createElement(RouteNode, {
+          id: card.id,
+          data: {
+            ...card.data,
+            title: card.title,
+            content: card.content,
+            color: card.color,
+          },
+          selected: false,
+          type: "route",
+          zIndex: 0,
+          isConnectable: true,
+          xPos: 900,
+          yPos: 300,
+          dragging: false,
+        } as any),
+      ),
+    );
+
+    expect(renderedHtml).toContain("方向比较草案");
+    expect(renderedHtml).toContain("暂未设置主推方向");
+    expect(renderedHtml).toContain("保存为便签");
+    expect(renderedHtml).toContain("保存为方向卡");
+    expect(renderedHtml).not.toContain("选定此主题开始探索");
+  });
+
   it("safely synthesizes ImageGen card connected to theme route and renders without crash", () => {
     // 1. Add custom ImageGen card connected to route r1
     const imageGenCardId = useSiftStore.getState().addCustomCard({
@@ -518,7 +609,6 @@ describe("Card Connection & Synthesis Flow (Crash Prevention)", () => {
 
     // Action toolbar should be present
     expect(html).toContain("选定此主题开始探索");
-    expect(html).toContain("视点推进");
     expect(html).toContain("灵感检索");
     expect(html).toContain("画面生成");
   });

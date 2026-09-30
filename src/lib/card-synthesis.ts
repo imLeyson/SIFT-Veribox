@@ -1,6 +1,13 @@
 import type { Route, RouteStep, PlatformPlan, PlatformSource } from "@/types/routes";
 import { cleanStepLabel } from "@/types/routes";
 import { toInspirationCopy } from "@/lib/exploration-copy";
+import type { AITaskMode, AIClaim } from "./agent/ai-task";
+
+export type SynthesisContext = {
+  mode?: AITaskMode;
+  instruction?: string;
+  sourceCardIds?: string[];
+};
 
 export type ToolType =
   | "brief"
@@ -418,7 +425,7 @@ export function deriveThemeFromStrategy(state: any, rawBrief?: string): Route {
 }
 
 /**
- * 4. 视点试验推导（04 视点推进）：
+ * 4. 视点试验推导（旧项目验证卡兼容）：
  * 从主题派生出 3 阶段切入视点
  */
 export function deriveStepsFromTheme(theme: Route): RouteStep[] {
@@ -987,7 +994,7 @@ export function deriveNoteFromNode(
     const title = route.themeName || cleanTitle(route.title);
     return {
       title: `便签 · ${title}`,
-      content: `【主题探索要点】\n• 核心聚焦：${route.focusDimension || "主线特征"}\n• 视觉主张：${route.startingPoint || ""}\n• 视点试验：${route.steps?.map((s, i) => `0${i + 1} ${cleanStepLabel(s.title)}`).join(" / ") || "未拆解"}\n\n【关键评审备忘】：\n• `,
+      content: `【主题探索要点】\n• 核心聚焦：${route.focusDimension || "主线特征"}\n• 视觉主张：${route.startingPoint || ""}\n• 探索验证：${route.steps?.map((s, i) => `0${i + 1} ${cleanStepLabel(s.title)}`).join(" / ") || "未拆解"}\n\n【关键评审备忘】：\n• `,
       color: "amber",
     };
   }
@@ -995,9 +1002,9 @@ export function deriveNoteFromNode(
   if (nodeType === "step") {
     const step = nodeData?.step ?? nodeData?.route?.steps?.[0];
     const route = nodeData?.route;
-    const title = step?.title ? cleanStepLabel(step.title) : "视点试验";
+    const title = step?.title ? cleanStepLabel(step.title) : "探索验证";
     return {
-      title: `便签 · 视点观察手记`,
+      title: `便签 · 探索验证手记`,
       content: `【当前切入视点】${title}\n• 探索问题：${toInspirationCopy(step?.question || "")}\n• 观察重点：${toInspirationCopy(step?.purpose || "")}\n\n【落地检验清单】\n${step?.acceptanceCriteria?.map((c: string) => `• ${c}`).join("\n") || "• 暂无准则"}\n\n【设计师速记】：\n• `,
       color: "rose",
     };
@@ -1278,7 +1285,7 @@ export function generateMockConceptSvg(
 export function synthesizeCardFromInputs(
   targetType: ToolType,
   upstreamNodes: Array<{ id: string; type?: string; data: any }>,
-  ctx?: { state?: any; rawBrief?: string; routes?: Route[] },
+  ctx?: { state?: any; rawBrief?: string; routes?: Route[]; task?: SynthesisContext },
 ): { title?: string; content?: string; color?: any; data?: any } {
   // Collect all upstream routes
   const upstreamRoutes: Route[] = [];
@@ -1295,15 +1302,87 @@ export function synthesizeCardFromInputs(
 
   // Target: 03 风格主题
   if (targetType === "route") {
+    const task = ctx?.task;
+    const sourceCardIds = task?.sourceCardIds ?? upstreamNodes.map((node) => node.id);
+
+    if (task?.mode === "judge") {
+      const comparedRoutes = upstreamRoutes.slice(0, 3);
+      const routeNames = comparedRoutes.map((route) => route.themeName || route.title);
+      const comparisonLines = comparedRoutes.length >= 2
+        ? comparedRoutes.map((route) =>
+            `${route.themeName || route.title}：优势 ${route.pros || "待补充"}；风险 ${route.cons || "待验证"}`,
+          )
+        : comparedRoutes.length === 1
+          ? [`${routeNames[0]}：优势 ${comparedRoutes[0].pros || "待补充"}；风险 ${comparedRoutes[0].cons || "待验证"}`]
+          : ["当前没有可比较的主题，请先连接至少一个已有方向。"];
+      return {
+        title: comparedRoutes.length >= 2 ? "方向比较草案" : "方向审视草案",
+        content: [
+          comparedRoutes.length >= 2 ? `比较对象：${routeNames.join(" / ")}` : "比较对象：当前连接内容不足",
+          ...comparisonLines,
+          "证据缺口：需要用同一评价标准继续验证真实场景、实现成本与受众反馈。",
+          "待验证问题：哪些优势来自真实素材，哪些只是概念或渲染表现？",
+        ].join("\n"),
+        data: {
+          isEmpty: false,
+          isDraft: true,
+          taskMode: "judge",
+          sourceCardIds,
+          generatedAt: new Date().toISOString(),
+          claims: [
+            { text: "比较依据来自当前已连接主题的优势与风险字段", sourceCardIds, kind: "observation" },
+            { text: "需要用同一标准补充验证证据，暂不指定主推方向", sourceCardIds, kind: "recommendation" },
+          ] satisfies AIClaim[],
+        },
+      };
+    }
+
+    if (task?.mode === "co_create") {
+      const first = upstreamRoutes[0];
+      const second = upstreamRoutes[1];
+      const firstName = first?.themeName || first?.title || "现有设计线索";
+      const secondName = second?.themeName || second?.title || "待补充方向";
+      const content = [
+        `假设 1：保留「${firstName}」的核心识别度，放大其材质或结构特征。`,
+        `假设 2：将「${firstName}」与「${secondName}」的互补线索并置，形成可验证的复合方向。`,
+        "假设 3：反转当前主线的比例或使用场景，测试更克制或更大胆的边界。",
+        "下一步：从中挑选值得制作样稿的假设，再由设计师编辑确认。",
+      ].join("\n");
+      return {
+        title: "共创发散草案",
+        content,
+        data: {
+          isEmpty: false,
+          isDraft: true,
+          taskMode: "co_create",
+          sourceCardIds,
+          generatedAt: new Date().toISOString(),
+          claims: [
+            { text: "输出多个可继续验证的设计假设，不要求立即选择", sourceCardIds, kind: "observation" },
+            { text: "假设需要通过样稿或场景测试后再保存为方向", sourceCardIds, kind: "recommendation" },
+          ] satisfies AIClaim[],
+        },
+      };
+    }
+
     // Case 1: Connected to 2 or more themes -> Theme Blending!
     if (upstreamRoutes.length >= 2) {
       const blended = blendThemes(upstreamRoutes[0], upstreamRoutes[1]);
+      const claims: AIClaim[] = [
+        { text: "两个主题都保留了可复用的视觉线索", sourceCardIds, kind: "observation" },
+        { text: "融合候选仍需由设计师编辑确认", sourceCardIds, kind: "recommendation" },
+      ];
       return {
         title: blended.themeName,
         data: {
           route: blended,
           isBlended: true,
           isEmpty: false,
+          isDraft: true,
+          taskMode: task?.mode ?? "synthesize",
+          sourceCardIds,
+          generatedAt: new Date().toISOString(),
+          claims,
         },
       };
     }
@@ -1311,12 +1390,21 @@ export function synthesizeCardFromInputs(
     // Case 2: Connected to 1 theme -> Theme Evolution / Variation!
     if (upstreamRoutes.length === 1) {
       const evolved = evolveTheme(upstreamRoutes[0]);
+      const claims: AIClaim[] = [
+        { text: "基于已连接主题提炼可继续验证的变奏方向", sourceCardIds, kind: "observation" },
+        { text: "变奏内容仍需由设计师编辑确认", sourceCardIds, kind: "recommendation" },
+      ];
       return {
         title: evolved.themeName,
         data: {
           route: evolved,
           isEvolved: true,
           isEmpty: false,
+          isDraft: true,
+          taskMode: task?.mode ?? "synthesize",
+          sourceCardIds,
+          generatedAt: new Date().toISOString(),
+          claims,
         },
       };
     }
@@ -1329,16 +1417,24 @@ export function synthesizeCardFromInputs(
         route: derived,
         isDerived: true,
         isEmpty: false,
+        isDraft: true,
+        taskMode: task?.mode ?? "synthesize",
+        sourceCardIds,
+        generatedAt: new Date().toISOString(),
+        claims: [
+          { text: "根据当前策略基准整理出阶段性主题草案", sourceCardIds, kind: "observation" },
+          { text: "请继续补充证据并手动标记喜欢或待审", sourceCardIds, kind: "recommendation" },
+        ] satisfies AIClaim[],
       },
     };
   }
 
-  // Target: 04 视点推进
+  // Target: legacy step cards, kept for existing projects
   if (targetType === "step") {
     const parentRoute = upstreamRoutes[0] ?? deriveThemeFromStrategy(ctx?.state, ctx?.rawBrief);
     const steps = deriveStepsFromTheme(parentRoute);
     return {
-      title: `${parentRoute.themeName || parentRoute.title} · 视点推进`,
+      title: `${parentRoute.themeName || parentRoute.title} · 探索验证`,
       data: {
         route: parentRoute,
         stepId: steps[0]?.id,

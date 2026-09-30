@@ -6,9 +6,7 @@ import {
   Copy,
   Check,
   Compass,
-  Sparkles,
   ChevronDown,
-  User,
   Radio,
 } from "lucide-react";
 import { useReactFlow } from "@xyflow/react";
@@ -16,7 +14,6 @@ import {
   collabManager,
   getLocalPeer,
   updateLocalPeer,
-  getCurrentRoomId,
   useFollowingPeer,
   type CollaborationStatus,
 } from "@/lib/collaboration/collab-manager";
@@ -186,7 +183,7 @@ export function CollaborationBar() {
         )}
 
 
-        <span>
+        <span className="hidden sm:inline">
           {isMultiplayer ? `${activePeers.length} 人在线` : "协同"}
         </span>
 

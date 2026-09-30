@@ -229,7 +229,7 @@ export function NodeShell({
   };
 
   const cleanKicker = kicker
-    .replace(/^(?:0?[0-7]|简报解析|视觉抉择|策略基准|风格主题|视点推进|灵感检索|画面生成|生成图片|DIRECTION|RECORD|领地\s*0?[1-3])\s*·\s*/i, "")
+    .replace(/^(?:0?[0-7]|简报解析|视觉抉择|策略基准|风格主题|灵感检索|画面生成|生成图片|DIRECTION|RECORD|领地\s*0?[1-3])\s*·\s*/i, "")
     .trim();
 
   // Spotlight Calculation

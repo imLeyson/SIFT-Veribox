@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { executeGlobalChat, type GlobalChatRequest } from "@/lib/agent/global-chat";
+import { AITaskModeSchema, AITaskResultSchema } from "@/lib/agent/ai-task";
 
 export const maxDuration = 60;
 
@@ -32,6 +33,8 @@ const GlobalChatRouteContextSchema = z.object({
 }).default({});
 
 const GlobalChatRouteRequestSchema = z.object({
+  mode: AITaskModeSchema.default("co_create"),
+  sourceCardIds: z.array(z.string()).default([]),
   context: GlobalChatRouteContextSchema,
   messages: z.array(
     z.object({
@@ -57,8 +60,8 @@ export async function POST(request: Request) {
 
   try {
     const result = await executeGlobalChat(parseResult.data as GlobalChatRequest);
-    return NextResponse.json(result);
-  } catch (error: any) {
+    return NextResponse.json(AITaskResultSchema.parse(result));
+  } catch (error: unknown) {
     console.error("[API global-chat error]:", error);
     return NextResponse.json(
       {

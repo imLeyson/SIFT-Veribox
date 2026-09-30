@@ -1,5 +1,6 @@
 import { resolveNodeContext, type SiftStore } from "./convergence-store";
 import { evaluateBriefIntentSync } from "./agent/system-one";
+import { AITaskModeLabels, type AITaskMode } from "./agent/ai-task";
 
 export function generateDossierMarkdown(store: Partial<SiftStore>): string {
   const {
@@ -13,6 +14,7 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
     completedCriteria = {},
     outcomeItems = [],
     outcomeGroups = [],
+    customCards = [],
   } = store;
 
   const now = new Date().toLocaleDateString("zh-CN", {
@@ -30,6 +32,22 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
   lines.push(`# 🎨 SIFT 设计探索与收敛提案简报`);
   lines.push(`> 项目：**${goalTitle}**  `);
   lines.push(`> 生成时间：${now} · 工具：SIFT 视觉策略工作台\n`);
+
+  const aiDrafts = customCards.filter((card) => card.data?.isDraft && card.data?.taskMode);
+  if (aiDrafts.length > 0) {
+    lines.push(`## AI 工作过程与阶段性成果`);
+    lines.push(`> 以下内容是 AI 草案与用户明确保存的阶段性成果；主推与评审标签仍由用户手动决定。\n`);
+    aiDrafts.forEach((card) => {
+      const modeLabel = AITaskModeLabels[card.data?.taskMode as AITaskMode] ?? "AI 任务";
+      const sourceIds = Array.isArray(card.data?.sourceCardIds) ? card.data.sourceCardIds.join("、") : "无";
+      lines.push(`### ${card.title || "AI 草案"} · ${modeLabel}`);
+      lines.push(`- 类型：${card.type === "route" ? "方向卡" : "便签"}`);
+      lines.push(`- 来源卡片：${sourceIds}`);
+      lines.push(`- 生成时间：${card.data?.generatedAt || "未知"}`);
+      if (card.content) lines.push(`- 内容：${card.content}`);
+      lines.push("");
+    });
+  }
 
   // Section 0: Brief & System 1 Diagnostics
   lines.push(`## 0 原始设计任务 (Brief)`);
@@ -222,7 +240,6 @@ export function generateDossierMarkdown(store: Partial<SiftStore>): string {
 
   // Module 3: Collaborative Review & Tagged Cards
   const cardTags = store.cardTags ?? {};
-  const customCards = store.customCards ?? [];
   const taggedIds = Object.keys(cardTags);
 
   if (taggedIds.length > 0) {

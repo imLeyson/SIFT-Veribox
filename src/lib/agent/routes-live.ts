@@ -4,6 +4,7 @@ import type { z } from "zod";
 import type { RoutesInputSchema } from "./routes-schema";
 import { sanitizeAntiTeleology } from "./convergence-live";
 import { selectCreativeLenses, type CreativeLens } from "./creative-lenses";
+import { normalizeRouteTitle, normalizeThemeName } from "./route-title";
 
 type RoutesInput = z.infer<typeof RoutesInputSchema>;
 
@@ -18,11 +19,16 @@ const SYSTEM = `你是 SIFT 设计主题构思 Agent，充当资深设计总监�
 
 关键原则与动态主题命名架构（去除 AI 感与套路复读）：
 1. 主题名称必须先从当前 Brief 找到真实锚点，再形成有创意的中文概念，不强制使用书名号、英文副标题或固定的“材质 × 工艺”格式。
-   - themeName：4–8 个中文字符，来自当前任务中的具体物件、动作、场景、材料变化或信息关系；名称应让设计师能联想到一个可继续探索的画面，不要写成抽象品牌口号。
+   - themeName：4–10 个中文字符，作为画布上的直接工作标签，来自当前任务中的具体物件、动作、场景、材料变化或信息关系。
+     * 不加《》或【】；不要写成书名、广告语、诗句或抽象品牌口号。
+     * 优先使用“对象与关系”“形态与处理”这类直接命名，例如“硬壳与软质”“弧面转折”“握持面处理”。
      * 概念名称必须与当前任务主体有关，不能只写“高级、极简、温暖、秩序、未来”等泛化形容词。
      * 【严禁虚空公关套话与网红奶茶词汇】：绝对禁止使用“时光、岁月、初见、温馨、星河、物性转化、空间解构、多维赋能、生态感知、心流共鸣、交融升华”等虚无 AI 词汇！
      * 【严禁敷衍平庸词】：绝对禁止使用“现代风、白色简约、好看的包装、高端大气、主题一”等空洞废话！
-   - title：一句自然的视觉命题，可以写材料、动作、场景、信息关系或工艺，但不要求每条都使用“材质 × 工艺”的配方结构。
+   - title：卡片第一行的工作标题，直接写清楚视觉对象和处理关系，像设计师在画布上的工作标签，不是广告文案或诗句。
+     * 使用 8–18 个中文字符，优先采用“对象与处理”“形态与关系”这类直接说法，例如“硬壳与软质交界”“弧面转折与三面关系”。
+     * 禁止使用《》、【】、引号、英文副标题、乘号“×”、对仗句（如“远看……近看……”）和抒情隐喻（如“掌心磨出的亮面”）。
+     * 禁止“打造、构建、探索、赋能、焕新、高级感”等宣传或 AI 套话；只写要比较的设计处理。
 
 2. 动态创意方向（禁止固定套用）：
    - 根据 Brief、交付载体、目标受众和已确认的优先级，自主发现 3 个真正适合当前任务的切入方向；
@@ -145,7 +151,7 @@ function themeNameCore(value: string): string {
 function stripThemeStudioTag(value: string): string {
   const clean = value.replace(/[《》【】]/g, "").trim();
   const bookMatch = clean.match(/^([^\s]+)\s+[A-Za-z][A-Za-z\s\/_-]*$/);
-  if (bookMatch) return `《${bookMatch[1]}》`;
+  if (bookMatch) return bookMatch[1];
   return clean.replace(/[A-Za-z][A-Za-z\s\/_-]*/g, "").replace(/\s{2,}/g, " ").trim() || value;
 }
 
@@ -173,7 +179,7 @@ function creativeAnchor(input: RoutesInput, index: number): string {
 }
 
 function fallbackCreativeThemeName(input: RoutesInput, index: number, lens: CreativeLens): string {
-  const suffixes = ["触点", "折面", "留痕", "偏轴", "回声", "借景", "层差", "余温"];
+  const suffixes = ["触点", "折面", "转折", "层差", "边界", "曲面", "收口", "结构"];
   const anchor = creativeAnchor(input, index);
   const lensOffset = lens.id.charCodeAt(0) % suffixes.length;
   return `${anchor}${suffixes[(index + lensOffset + (input.refreshIndex ?? 0)) % suffixes.length]}`;
@@ -182,10 +188,22 @@ function fallbackCreativeThemeName(input: RoutesInput, index: number, lens: Crea
 function namesNeedDiversity(names: string[]): boolean {
   const cores = names.map(themeNameCore).filter(Boolean);
   if (cores.length < 3) return false;
-  if (new Set(cores).size < cores.length) return true;
+  // Keep concrete names supplied by the model. Diversity fallback is only
+  // needed when names are duplicated or remain one of the generic template
+  // labels; shared initials alone are not evidence of a bad set.
+  const generic = /^(?:不同切面|设计主题|探索切面|方向|主题|自然|极简|高级|现代|温暖|质感)/;
+  if (new Set(cores).size < cores.length || cores.some((name) => generic.test(name))) return true;
   const firstChars = cores.map((name) => name.slice(0, 1));
-  const sharedFirst = firstChars.every((char) => char === firstChars[0]);
-  return sharedFirst && /冷|暖|极|新|原|纯|清|深|低|柔|微|高/.test(firstChars[0]);
+  return firstChars.every((char) => char === firstChars[0]) &&
+    /冷|暖|极|新|原|纯|清|深|低|柔|微|高/.test(firstChars[0]);
+}
+
+function needsThemeNameFallback(name: string, allNames: string[]): boolean {
+  const core = themeNameCore(name);
+  if (!core) return true;
+  const generic = /^(?:不同切面|设计主题|探索切面|方向|主题|自然|极简|高级|现代|温暖|质感)/;
+  if (generic.test(core)) return true;
+  return allNames.filter((candidate) => themeNameCore(candidate) === core).length > 1;
 }
 
 function creativeRoundPrompt(lenses: CreativeLens[]): string {
@@ -215,7 +233,7 @@ function adaptiveThemeName(
   const chunks = source.split(/\s+/).filter(Boolean);
   const base = (chunks[index % Math.max(chunks.length, 1)] || "设计方向").slice(0, 6);
   const suffixes = ["切面", "转译", "构成", "语法", "折线"];
-  return `《${base}${suffixes[index % suffixes.length]}》`;
+  return `${base}${suffixes[index % suffixes.length]}`;
 }
 
 export function normalizeLiveRoutesPayload(
@@ -597,17 +615,14 @@ export function normalizeLiveRoutesPayload(
     }
     seenStarting.add(starting);
 
-    let title = nonEmpty(r.title, defaultTitles[i] ?? `设计主题 ${i + 1}`);
-    if (/^(自然|极简|高级|复古|现代|轻奢|科技感|温暖|可爱|优雅|大气|高端|简约|清新|质感|时尚|酷炫|潮流)$/.test(title)) {
-      title = `【${title}】视觉转译与落地法`;
-    }
+    const rawTitle = nonEmpty(r.title, defaultTitles[i] ?? `设计主题 ${i + 1}`);
 
     let themeName = typeof r.themeName === "string" && r.themeName.trim()
       ? stripThemeStudioTag(sanitizeLeakedVariables(r.themeName.trim()))
       : "";
 
     if (!themeName) {
-      const match = title.match(/【(.*?)】(.*)/);
+      const match = rawTitle.match(/【(.*?)】(.*)/);
       if (match) {
         themeName = match[2].trim() || match[1].trim();
       } else {
@@ -716,10 +731,21 @@ export function normalizeLiveRoutesPayload(
       creativeLenses[i] ?? creativeLenses[0],
     );
 
+    const normalizedThemeName = normalizeThemeName(
+      resolvedThemeName,
+      fallbackCreativeThemeName(input, i, creativeLenses[i] ?? creativeLenses[0]),
+      { startingPoint: starting, focusDimension: resolvedFocusDimension },
+    );
+
     return {
       id: routeId,
-      title: sanitizeAntiTeleology(title),
-      themeName: sanitizeAntiTeleology(resolvedThemeName),
+      title: sanitizeAntiTeleology(
+        normalizeRouteTitle(rawTitle, defaultTitles[i] ?? `设计主题 ${i + 1}`, {
+          startingPoint: starting,
+          focusDimension: resolvedFocusDimension,
+        }),
+      ),
+        themeName: sanitizeAntiTeleology(normalizedThemeName),
       visualSnapshot: sanitizeAntiTeleology(visualSnapshot),
       sensoryMetaphor: sanitizeAntiTeleology(sensoryMetaphor),
       startingPoint: sanitizeAntiTeleology(starting),
@@ -736,15 +762,29 @@ export function normalizeLiveRoutesPayload(
   });
 
   if (routes.length === 3 && namesNeedDiversity(routes.map((route) => route.themeName || ""))) {
+    const names = routes.map((route) => route.themeName || "");
+    const fallbackNameIndexes = new Set<number>();
+    const genericName = /^(?:不同切面|设计主题|探索切面|方向|主题|自然|极简|高级|现代|温暖|质感)/;
+    names.forEach((name, index) => {
+      if (genericName.test(themeNameCore(name))) fallbackNameIndexes.add(index);
+    });
+    const firstChars = names.map((name) => themeNameCore(name).slice(0, 1));
+    if (firstChars.every((char) => char && char === firstChars[0])) {
+      names.forEach((name, index) => {
+        if (themeNameCore(name).length <= 4) fallbackNameIndexes.add(index);
+      });
+    }
     routes = routes.map((route, index) => ({
       ...route,
-      themeName: sanitizeAntiTeleology(
-        fallbackCreativeThemeName(
-          input,
-          index,
-          creativeLenses[index] ?? creativeLenses[0],
-        ),
-      ),
+      themeName: (fallbackNameIndexes.has(index) || needsThemeNameFallback(route.themeName || "", names))
+        ? sanitizeAntiTeleology(
+            fallbackCreativeThemeName(
+              input,
+              index,
+              creativeLenses[index] ?? creativeLenses[0],
+            ),
+          )
+        : route.themeName,
     }));
   }
 
@@ -753,7 +793,14 @@ export function normalizeLiveRoutesPayload(
     const i = routes.length;
     routes.push({
       id: `route_${i + 1}`,
-      title: defaultTitles[i] ?? `【视觉策略与探索】实战方案 0${i + 1}`,
+      title: normalizeRouteTitle(
+        defaultTitles[i] ?? `设计主题 ${i + 1}`,
+        defaultTitles[i] ?? `设计主题 ${i + 1}`,
+        {
+          startingPoint: defaultStarts[i],
+          focusDimension: defaultDimensions[i],
+        },
+      ),
       themeName: fallbackCreativeThemeName(
         input,
         i,

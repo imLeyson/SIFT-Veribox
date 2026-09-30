@@ -1,9 +1,10 @@
 import type { Route } from "@/types/routes";
 import type { DesignState } from "@/types/convergence";
+import { normalizeRouteTitle, normalizeThemeName } from "./route-title";
 
 function stripEnglishThemeTag(themeName: string): string {
   const match = themeName.trim().match(/^(《[^》]+》)\s*(?:[·\-–—:]?\s*[A-Za-z][A-Za-z0-9 /_-]*)?$/);
-  return match?.[1] || themeName.trim();
+  return match?.[1]?.replace(/[《》]/g, "") || themeName.trim().replace(/[《》【】]/g, "");
 }
 
 function attachAlignmentScores(routes: Route[], recommendedId: string | null): Route[] {
@@ -15,7 +16,14 @@ function attachAlignmentScores(routes: Route[], recommendedId: string | null): R
 
   return routes.map((r, i) => ({
     ...r,
-    themeName: stripEnglishThemeTag(r.themeName || ""),
+    themeName: normalizeThemeName(stripEnglishThemeTag(r.themeName || ""), `设计主题 ${i + 1}`, {
+      startingPoint: r.startingPoint,
+      focusDimension: r.focusDimension,
+    }),
+    title: normalizeRouteTitle(r.title || "", `设计主题 ${i + 1}`, {
+      startingPoint: r.startingPoint,
+      focusDimension: r.focusDimension,
+    }),
     sensoryMetaphor: r.sensoryMetaphor || defaultMetaphors[i] || defaultMetaphors[0],
     alignmentScore: r.id === recommendedId || r.recommendedReason ? 96 : i === 1 ? 91 : 87,
   }));

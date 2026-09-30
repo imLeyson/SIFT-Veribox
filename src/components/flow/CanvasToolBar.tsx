@@ -11,7 +11,6 @@ import {
   HelpCircle,
   ShieldCheck,
   Sparkles,
-  Layers,
   Search,
   StickyNote,
   Image as ImageIcon,
@@ -28,7 +27,6 @@ export type ToolType =
   | "ask"
   | "state"
   | "route"
-  | "step"
   | "platformPlan"
   | "imageGen"
   | "note"
@@ -212,7 +210,7 @@ export function CanvasToolBar({
   return (
     <div
       ref={menuRef}
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 select-none flex flex-col items-center"
+      className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 select-none flex-col items-center"
     >
 
       {/* Popover Card Picker */}

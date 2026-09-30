@@ -30,7 +30,7 @@ import {
   type RouteStep,
   type PlatformPlan,
 } from "@/types/routes";
-import { synthesizeCardFromInputs, type ToolType } from "./card-synthesis";
+import { synthesizeCardFromInputs, type ToolType, type SynthesisContext } from "./card-synthesis";
 
 export const STORAGE_KEY = "sift-convergence-v3";
 
@@ -216,7 +216,7 @@ export type SiftStore = Session & {
   restoreRoutes: () => void;
   addCustomEdge: (edge: CustomEdgeInput) => void;
   deleteCustomEdge: (id: string) => void;
-  synthesizeCard: (id: string) => boolean;
+  synthesizeCard: (id: string, task?: SynthesisContext) => boolean;
   duplicateNode: (id: string) => string | null;
   toggleNodeCollapse: (id: string) => void;
   collapseAllNodes: (nodeIds: string[]) => void;
@@ -782,20 +782,37 @@ export function createSiftStore(providedStorage?: StateStorage) {
           notifyMutation("card:update", { cardId: id, patch });
         },
         deleteNodeById: (id) => {
-          const currentDeleted = get().deletedNodeIds;
+          const state = get();
+          const deletedCard = state.customCards.find((card) => card.id === id);
+          const removedRouteId =
+            deletedCard?.type === "route" && deletedCard.data?.route?.id
+              ? String(deletedCard.data.route.id)
+              : null;
+          const nextRoutes = removedRouteId
+            ? state.routes.filter((route) => route.id !== removedRouteId)
+            : state.routes;
+          const routeWasSelected = removedRouteId === state.selectedRouteId;
           set({
-            deletedNodeIds: currentDeleted.includes(id)
-              ? currentDeleted
-              : [...currentDeleted, id],
-            customCards: get().customCards.filter((c) => c.id !== id),
-            customEdges: get().customEdges.filter(
+            deletedNodeIds: state.deletedNodeIds.includes(id)
+              ? state.deletedNodeIds
+              : [...state.deletedNodeIds, id],
+            customCards: state.customCards.filter((c) => c.id !== id),
+            customEdges: state.customEdges.filter(
               (e) => e.source !== id && e.target !== id
             ),
-            outcomeItems: get().outcomeItems.filter((itemId) => itemId !== id),
-            outcomeGroups: get().outcomeGroups.map((group) => ({
+            outcomeItems: state.outcomeItems.filter((itemId) => itemId !== id),
+            outcomeGroups: state.outcomeGroups.map((group) => ({
               ...group,
               itemIds: group.itemIds.filter((itemId) => itemId !== id),
             })),
+            routes: nextRoutes,
+            recommendedRouteId:
+              state.recommendedRouteId === removedRouteId ? null : state.recommendedRouteId,
+            selectedRouteId: routeWasSelected ? null : state.selectedRouteId,
+            exploredRouteIds: removedRouteId
+              ? state.exploredRouteIds.filter((routeId) => routeId !== removedRouteId)
+              : state.exploredRouteIds,
+            activeStepId: routeWasSelected ? null : state.activeStepId,
           });
           notifyMutation("card:delete", { nodeId: id });
         },
@@ -838,13 +855,14 @@ export function createSiftStore(providedStorage?: StateStorage) {
           });
           notifyMutation("edge:delete", { edgeId: id });
         },
-        synthesizeCard: (cardId: string) => {
+        synthesizeCard: (cardId: string, task?: SynthesisContext) => {
           const state = get();
           const targetCard = state.customCards.find((c) => c.id === cardId);
           if (!targetCard) return false;
 
           const upstreamEdges = state.customEdges.filter((e) => e.target === cardId);
           const upstreamIds = Array.from(new Set(upstreamEdges.map((e) => e.source)));
+          const sourceCardIds = task?.sourceCardIds ?? upstreamIds;
 
           const upstreamNodes = upstreamIds
             .map((srcId) => resolveNodeContext(srcId, state))
@@ -862,12 +880,16 @@ export function createSiftStore(providedStorage?: StateStorage) {
               state: chainCtx.state ?? state.state,
               rawBrief: chainCtx.rawBrief ?? state.rawBrief,
               routes: state.routes,
+              task: {
+                ...task,
+                sourceCardIds,
+              },
             }
           );
 
           const synthesis = {
-            sourceCardIds: upstreamIds,
-            sourceCount: upstreamIds.length,
+            sourceCardIds,
+            sourceCount: sourceCardIds.length,
             sourceStateRevision: state.state?.revision ?? null,
             generatedAt: new Date().toISOString(),
             outputType: targetCard.type,
@@ -945,6 +967,7 @@ export function createSiftStore(providedStorage?: StateStorage) {
                       ...synthesized.data,
                       synthesis,
                       isEmpty: false,
+                      ...(task?.mode && !synthesized.data?.taskMode ? { taskMode: task.mode } : {}),
                     },
                   }
                 : c
@@ -1321,18 +1344,18 @@ export function resolveNodeContext(
     };
   }
 
-  // 5. 4 Steps (4 视点推进 - standard steps: "step-{routeId}")
+  // 5. Legacy step nodes (standard IDs: "step-{routeId}")
   if (nodeId.startsWith("step-")) {
     const routeId = nodeId.replace(/^step-/, "");
     const parentRoute = store.routes?.find(
       (r) => r.id === routeId || `route-${r.id}` === routeId,
     );
     const step = parentRoute?.steps?.[0];
-    const stepTitle = step?.title ? cleanStepLabel(step.title) : "视点推进";
+    const stepTitle = step?.title ? cleanStepLabel(step.title) : "探索验证";
     return {
       id: nodeId,
       type: "step",
-      label: `4 视点推进 · ${stepTitle}`,
+      label: `探索验证 · ${stepTitle}`,
       data: {
         route: parentRoute,
         step,
@@ -1368,7 +1391,7 @@ export function resolveNodeContext(
     } else if (custom.type === "step") {
       const customStep = custom.data?.step || custom.data?.route?.steps?.[0];
       const stepTitle = customStep?.title ? cleanStepLabel(customStep.title) : "";
-      label = `视点推进${stepTitle ? ` · ${stepTitle}` : ""}`;
+      label = `探索验证${stepTitle ? ` · ${stepTitle}` : ""}`;
     } else if (custom.type === "platformPlan") {
       label = "灵感检索";
     } else if (custom.type === "image") {
@@ -1480,6 +1503,7 @@ export function resolveChainBriefContext(
 
 export interface UpstreamSummary {
   count: number;
+  sourceCardIds: string[];
   labels: string[];
   themesCount: number;
   hasStrategy: boolean;
@@ -1529,6 +1553,7 @@ export function getUpstreamSummary(
 
   return {
     count: upstreamIds.length,
+    sourceCardIds: upstreamIds,
     labels,
     themesCount,
     hasStrategy,

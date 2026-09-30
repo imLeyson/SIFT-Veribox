@@ -75,7 +75,7 @@ export function StepNode({ id, data, selected }: NodeProps) {
         <NodeShell
           nodeId={id}
           stage="4"
-          kicker="4 视点推进"
+          kicker="探索验证"
           title={hasUpstream ? `已连接 ${upstream.count} 个上游，等待生成` : "等待连线导入设计主题"}
           badge={
             <span className="text-[10px] font-mono text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
@@ -118,7 +118,7 @@ export function StepNode({ id, data, selected }: NodeProps) {
                   className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-[0.99] text-white text-xs font-semibold shadow-md shadow-purple-200 transition-all cursor-pointer"
                 >
                   <Sparkles className="h-3.5 w-3.5 text-purple-200" />
-                  <span>点击根据已连主题生成视点试验</span>
+                  <span>点击根据已连主题生成验证草案</span>
                 </button>
               </div>
             ) : (
@@ -151,7 +151,7 @@ export function StepNode({ id, data, selected }: NodeProps) {
                 <span>支持的引线连接与生成模式：</span>
               </div>
               <p className="leading-relaxed pl-1 text-stone-600">
-                自动将该主题的三阶段视点（01 核心母题骨架试验、02 物料工艺微触感试验、03 场景交互系统试验）导入推进工作台，展开多视点平行试验。
+                自动将该主题的三阶段验证（01 核心母题骨架、02 物料工艺微触感、03 场景交互系统）导入工作台，展开多项平行验证。
               </p>
             </div>
           </div>
@@ -208,8 +208,8 @@ export function StepNode({ id, data, selected }: NodeProps) {
       <NodeShell
         nodeId={id}
         stage="4"
-        kicker="4 视点推进"
-        title={`视点试验推进 (${activeIdx + 1}/${steps.length})`}
+        kicker="探索验证"
+        title={`设计验证 (${activeIdx + 1}/${steps.length})`}
         onRegenerate={upstream.count > 0 ? () => synthesizeCard(id) : undefined}
         badge={
           <span className="text-[10px] font-medium text-purple-800 bg-purple-50 border border-purple-200/80 px-1.5 py-0.5 rounded">
@@ -282,7 +282,7 @@ export function StepNode({ id, data, selected }: NodeProps) {
                 type="button"
                 onClick={() => synthesizeCard(id)}
                 className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-md bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-semibold transition-colors cursor-pointer shadow-xs"
-                title="根据当前连线上游重新生成视点试验"
+                title="根据当前连线上游重新生成探索验证"
               >
                 <RefreshCw className="h-3 w-3" />
                 <span>重新生成</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import { NodeShell } from "../NodeShell";
 import { useSiftStore, getUpstreamSummary } from "@/lib/convergence-store";
@@ -16,12 +16,27 @@ import {
   Check,
   Search,
   Wand2,
-  ChevronRight,
 } from "lucide-react";
+import type { AITaskMode } from "@/lib/agent/ai-task";
 
 export type RouteNodeData = {
-  route: Route;
-  index: number;
+  route?: Route;
+  content?: string;
+  claims?: Array<{
+    text: string;
+    sourceCardIds: string[];
+    kind: "observation" | "inference" | "recommendation";
+  }>;
+  sourceCardIds?: string[];
+  generatedAt?: string;
+  taskMode?: "co_create" | "synthesize" | "judge";
+  isDraft?: boolean;
+  index?: number;
+  title?: string;
+  isEmpty?: boolean;
+  isBlended?: boolean;
+  isEvolved?: boolean;
+  isDerived?: boolean;
 };
 
 function cleanText(str: string | null | undefined): string {
@@ -77,22 +92,26 @@ const DEFAULT_FALLBACK_ROUTE: Route = {
 };
 
 export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>) {
-  const isEmpty = Boolean((data as any)?.isEmpty);
-  const isBlended = Boolean((data as any)?.isBlended);
-  const isEvolved = Boolean((data as any)?.isEvolved);
-  const isDerived = Boolean((data as any)?.isDerived);
+  const isEmpty = Boolean(data?.isEmpty);
+  const isBlended = Boolean(data?.isBlended);
+  const isEvolved = Boolean(data?.isEvolved);
+  const isDerived = Boolean(data?.isDerived);
+  const isJudgeDraft = data?.taskMode === "judge" && data?.isDraft === true;
+  const [synthesisMode, setSynthesisMode] = useState<AITaskMode>("synthesize");
 
-  const route = data?.route ?? {
-    ...DEFAULT_FALLBACK_ROUTE,
-    id: id || "custom-route",
-    title: (data as any)?.title || DEFAULT_FALLBACK_ROUTE.title,
-    themeName: (data as any)?.title?.replace(/【|】/g, "") || DEFAULT_FALLBACK_ROUTE.themeName,
-  };
+  const route = useMemo(() => {
+    if (data?.route) return data.route;
+    const title = data?.title || DEFAULT_FALLBACK_ROUTE.title;
+    return {
+      ...DEFAULT_FALLBACK_ROUTE,
+      id: id || "custom-route",
+      title,
+      themeName: title.replace(/【|】/g, "") || DEFAULT_FALLBACK_ROUTE.themeName,
+    };
+  }, [data?.route, data?.title, id]);
   const index = data?.index ?? 0;
 
-  const [showTrace, setShowTrace] = useState(false);
   const selectedRouteId = useSiftStore((s) => s.selectedRouteId);
-  const activeRequest = useSiftStore((s) => s.activeRequest);
   const customEdges = useSiftStore((s) => s.customEdges);
   const customCards = useSiftStore((s) => s.customCards);
   const routes = useSiftStore((s) => s.routes);
@@ -110,7 +129,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
   };
 
   /** Spawn a downstream card of a given type, connected from this route card */
-  const spawnDownstream = (type: "step" | "platformPlan" | "imageGen") => {
+  const spawnDownstream = (type: "platformPlan" | "imageGen") => {
     const suffix = Math.random().toString(36).slice(2, 6);
     const ts = Date.now().toString(36);
     const newId = `card-${type}-${ts}-${suffix}`;
@@ -124,7 +143,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
       id: newId,
       type,
       position: { x: basePos.x + 480, y: basePos.y + offsetY },
-      title: type === "step" ? "视点推进" : type === "platformPlan" ? "灵感检索" : "画面生成",
+      title: type === "platformPlan" ? "灵感检索" : "画面生成",
       data: { isEmpty: true },
     });
     addCustomEdge({
@@ -142,7 +161,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
     [id, customEdges, routes, customCards],
   );
 
-  const downstreamNodeIds = useMemo(() => {
+  const downstreamNodeIds = (() => {
     const ids = new Set<string>();
     const queue = [id];
     while (queue.length > 0) {
@@ -158,7 +177,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
       route.steps?.forEach((st) => ids.add(`step-${st.id}`));
     }
     return Array.from(ids);
-  }, [id, customEdges, route, selectedRouteId]);
+  })();
 
   const areAllDownstreamCollapsed =
     downstreamNodeIds.length > 0 &&
@@ -189,12 +208,11 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
     return raw.replace(/[【】]/g, "").trim();
   }, [route.themeName, route.title]);
 
-  // Display the Chinese concept only; English studio tags add noise to the theme scan.
+  // Display the theme as a plain workbench label; decorative book-title styling adds noise.
   const { conceptTitle } = useMemo(() => {
-    const raw = (route.themeName || "").trim();
+    const raw = (route.themeName || heroTitle || "设计主题").trim();
     if (!raw) {
-      const fallback = heroTitle;
-      return { conceptTitle: fallback.startsWith("《") ? fallback : `《${fallback}》`, englishTag: "" };
+      return { conceptTitle: "设计主题", englishTag: "" };
     }
     // Match 《...》 followed by optional English Tag
     const bookMatch = raw.match(/^(《[^》]+》)(.*)$/);
@@ -203,7 +221,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
       // Guard against composite strings like "PALM VALLEY与《卵石序列》 PEBBLE SEQUENCE复合变奏"
       const cleanEn = enRaw.replace(/与.*$/, "").replace(/复合变奏.*$/, "").trim();
       return {
-        conceptTitle: bookMatch[1].trim(),
+        conceptTitle: bookMatch[1].replace(/[《》]/g, "").trim(),
         englishTag: /^[a-zA-Z\s\/\-_]+$/.test(cleanEn) ? cleanEn : "",
       };
     }
@@ -212,17 +230,17 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
     if (generalMatch && generalMatch[1]) {
       const zh = generalMatch[1].trim();
       return {
-        conceptTitle: zh.startsWith("《") ? zh : `《${zh}》`,
+        conceptTitle: zh.replace(/[《》]/g, ""),
         englishTag: (generalMatch[2] || "").trim(),
       };
     }
     return {
-      conceptTitle: raw.startsWith("《") ? raw : `《${raw}》`,
+      conceptTitle: raw.replace(/[《》【】]/g, "").replace(/\s+(?:[·\-–—]?\s*)?[A-Za-z][A-Za-z0-9 /_-]*$/, "").trim(),
       englishTag: "",
     };
   }, [route.themeName, heroTitle]);
 
-  // Two-Tier Craft Formula Subtitle (CMF材质 × 结构工艺)
+  // Keep the supporting craft label factual and easy to scan.
   const craftParts = useMemo(() => {
     const rawTitle = (route.title || "").trim();
     if (!rawTitle || rawTitle === route.themeName) return [];
@@ -263,7 +281,7 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
               <React.Fragment key={idx}>
                 {idx > 0 && (
                   <span className="text-indigo-600 font-bold px-0.5 select-none text-[13px]">
-                    ×
+                    与
                   </span>
                 )}
                 <span>{part}</span>
@@ -275,15 +293,143 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
     );
   }, [conceptTitle, craftParts]);
 
-  // Consolidated craft description (must be called unconditionally!)
-  const visualCraftText = useMemo(() => {
-    const rawCraft = route.focusDimension || route.startingPoint || route.pros;
-    return toInspirationCopy(cleanText(rawCraft));
-  }, [route.focusDimension, route.startingPoint, route.pros]);
+  const isJudgeArtifactSaved = (type: "note" | "route") =>
+    customCards.some(
+      (card) =>
+        card.data?.sourceDraftId === id &&
+        card.data?.artifactType === type,
+    );
+
+  const saveJudgeDraft = (type: "note" | "route") => {
+    if (!isJudgeDraft || isJudgeArtifactSaved(type)) return;
+
+    const content = data?.content?.trim() || "暂无比较内容";
+    const sourceCardIds = data?.sourceCardIds ?? upstream.sourceCardIds;
+    const generatedAt = data?.generatedAt ?? new Date().toISOString();
+    const artifactId = `ai-${id}-${type}`;
+    const title = type === "route" ? "待验证方向比较" : "方向比较记录";
+    const route = type === "route"
+      ? {
+          ...DEFAULT_FALLBACK_ROUTE,
+          id: artifactId,
+          title,
+          themeName: title,
+          visualSnapshot: content.slice(0, 240),
+          purpose: content,
+          startingPoint: "来自方向比较草案，待设计师继续验证",
+          coreProblem: "明确不同方向的优势、风险与证据缺口",
+          pros: "比较依据已整理，待补充真实证据",
+          cons: "尚未完成场景与成本验证",
+          recommendedReason: null,
+          steps: [],
+        }
+      : undefined;
+
+    addCustomCard({
+      id: artifactId,
+      type,
+      title,
+      content,
+      position: { x: 720 + customCards.length * 28, y: 180 + customCards.length * 20 },
+      data: {
+        ...(route ? { route } : {}),
+        taskMode: "judge",
+        sourceCardIds,
+        generatedAt,
+        claims: data?.claims ?? [],
+        sourceDraftId: id,
+        artifactType: type,
+        originalReplySummary: content.slice(0, 240),
+        isDraft: true,
+      },
+    });
+  };
+
+  if (isJudgeDraft) {
+    const claims = data?.claims ?? [];
+    const sourceLabels = upstream.labels.length > 0
+      ? upstream.labels.join(" + ")
+      : `${data?.sourceCardIds?.length ?? 0} 个来源卡片`;
+
+    return (
+      <div className="w-[390px] transition-all duration-300 hover:shadow-md">
+        <NodeShell
+          nodeId={id}
+          stage="3"
+          kicker="判断比较"
+          title={<span className="font-serif font-bold text-ink text-[17px]">方向比较草案</span>}
+          badge={
+            <span className="text-[10px] font-medium text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded">
+              草案 · 未定主推
+            </span>
+          }
+          selected={selected}
+        >
+          <div className="space-y-2.5 text-xs">
+            <div className="rounded-lg border border-amber-200/80 bg-amber-50/60 px-3 py-2 text-[11px] text-amber-900">
+              比较结果只提供判断依据，不会自动设置主推方向。
+            </div>
+            <div className="rounded-xl border border-stone-200/80 bg-stone-50/60 p-3 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-stone-600">
+                <Eye className="h-3.5 w-3.5 text-stone-400" />
+                <span>比较结果</span>
+              </div>
+              <p className="whitespace-pre-line text-[12.5px] text-stone-800 leading-[1.68]">
+                {data?.content || "暂无可展示的比较内容，请重新生成。"}
+              </p>
+            </div>
+            {claims.length > 0 && (
+              <div className="rounded-xl border border-stone-200/70 bg-white/70 p-3 space-y-2">
+                <div className="text-[10px] font-semibold text-stone-500">判断依据</div>
+                {claims.map((claim, index) => (
+                  <div key={`${claim.kind}-${index}`} className="flex gap-2 text-[11px] leading-relaxed text-stone-700">
+                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                    <span>{claim.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 border-t border-stone-200/70 pt-2">
+              <button
+                type="button"
+                onClick={() => saveJudgeDraft("note")}
+                disabled={isJudgeArtifactSaved("note")}
+                className="rounded-md border border-stone-300 px-2 py-1 text-[10px] text-stone-700 hover:bg-white disabled:cursor-default disabled:opacity-50"
+              >
+                {isJudgeArtifactSaved("note") ? "已保存便签" : "保存为便签"}
+              </button>
+              <button
+                type="button"
+                onClick={() => saveJudgeDraft("route")}
+                disabled={isJudgeArtifactSaved("route")}
+                className="rounded-md border border-stone-300 px-2 py-1 text-[10px] text-stone-700 hover:bg-white disabled:cursor-default disabled:opacity-50"
+              >
+                {isJudgeArtifactSaved("route") ? "已保存方向卡" : "保存为方向卡"}
+              </button>
+            </div>
+            <div className="flex items-center justify-between border-t border-stone-200/70 pt-2 text-[10px] text-stone-400">
+              <span className="truncate pr-2">来源：{sourceLabels}</span>
+              <span className="shrink-0">暂未设置主推方向</span>
+            </div>
+          </div>
+        </NodeShell>
+      </div>
+    );
+  }
 
   // Blank / Empty State Card
   if (isEmpty) {
     const hasUpstream = upstream.count > 0;
+    const synthesisModeLabel = synthesisMode === "co_create"
+      ? "继续发散"
+      : synthesisMode === "judge"
+        ? "比较判断"
+        : "整理合成";
+    const synthesisModeDescription = synthesisMode === "co_create"
+      ? "生成可编辑的多个设计假设，保留为草案"
+      : synthesisMode === "judge"
+        ? "比较差异、优势、风险和证据缺口"
+        : "整理已连接内容，提炼阶段性方向";
     return (
       <div className="w-[390px] transition-all duration-300 hover:shadow-md">
         <NodeShell
@@ -326,19 +472,45 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
                   </div>
                 </div>
 
+                <div className="grid grid-cols-3 gap-1 rounded-lg border border-indigo-100 bg-white/70 p-1">
+                  {([
+                    ["co_create", "继续发散"],
+                    ["synthesize", "整理合成"],
+                    ["judge", "比较判断"],
+                  ] as const).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setSynthesisMode(mode)}
+                      className={`rounded-md px-2 py-1.5 text-[10.5px] font-medium transition-colors ${
+                        synthesisMode === mode
+                          ? "bg-indigo-100 text-indigo-800 shadow-xs"
+                          : "text-stone-500 hover:bg-stone-50 hover:text-stone-700"
+                      }`}
+                      aria-pressed={synthesisMode === mode}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-left text-[10.5px] leading-relaxed text-stone-500">
+                  <span className="font-medium text-stone-700">{synthesisModeLabel}：</span>
+                  {synthesisModeDescription}
+                </div>
+
                 {/* Explicit Click to Generate Button */}
                 <button
                   type="button"
-                  onClick={() => synthesizeCard(id)}
+                  onClick={() => synthesizeCard(id, { mode: synthesisMode, sourceCardIds: upstream.sourceCardIds })}
                   className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] text-white text-xs font-semibold shadow-md shadow-indigo-200 transition-all cursor-pointer"
                 >
                   <Sparkles className="h-3.5 w-3.5 text-indigo-200" />
                   <span>
-                    点击根据上下文生成主题
+                    {synthesisModeLabel}
                     {upstream.themesCount >= 2
-                      ? " (跨界双主题融合)"
+                      ? synthesisMode === "judge" ? "（比较两个主题）" : "（处理两个主题）"
                       : upstream.themesCount === 1
-                        ? " (变奏分支)"
+                        ? "（处理一个主题）"
                         : ""}
                   </span>
                 </button>
@@ -584,15 +756,6 @@ export function RouteNode({ id, data, selected }: NodeProps<Node<RouteNodeData>>
 
             {/* Quick-derive downstream cards */}
             <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => spawnDownstream("step")}
-                className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10.5px] font-medium transition-colors cursor-pointer border border-stone-200/60"
-                title="展开视点推进"
-              >
-                <ChevronRight className="h-3 w-3 text-emerald-600" />
-                <span>视点推进</span>
-              </button>
               <button
                 type="button"
                 onClick={() => spawnDownstream("platformPlan")}
